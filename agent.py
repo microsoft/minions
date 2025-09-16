@@ -42,7 +42,11 @@ class Agent:
 
         # assign values to class variables
         self.agent_type = agent_type
-        self.permission = permission
+        if permission is None and agent_type == AgentType.CUSTOM_AGENT:
+            self.permission = PermissionLabels.READ_WRITE
+        else:
+            self.permission = permission
+
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.system_prompt = get_system_prompt(agent_type, folder_to_mount)
         self.environment = environment  # TODO: initialize environment

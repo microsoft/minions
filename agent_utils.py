@@ -112,16 +112,19 @@ def validate_agent_type_and_permission(agent_type, permission):
     ):
         raise ValueError("Writing agent cannot have read-only permission")
 
-    elif agent_type == AgentType.CUSTOM_AGENT and permission == None:
-        raise ValueError("Custom agent must have a permission")
+    elif agent_type == AgentType.BROWSING_AGENT and permission is not None:
+        raise ValueError("Browsing agent cannot have permission provided")
 
 
 def validate_agent_type_and_folder_to_mount(agent_type, folder_to_mount):
-    if agent_type != AgentType.CUSTOM_AGENT and folder_to_mount is None:
-        raise ValueError("Folder to mount is required for non-custom agents")
+    if agent_type == AgentType.CUSTOM_AGENT and folder_to_mount is None:
+        raise ValueError("Folder to mount is required for custom agent")
 
     elif agent_type == AgentType.WRITING_AGENT and folder_to_mount is not None:
         raise ValueError("Folder to mount should provided for writing agents")
 
     elif agent_type == AgentType.READING_AGENT and folder_to_mount is not None:
         raise ValueError("Folder to mount should provided for reading agents")
+
+    elif agent_type == AgentType.BROWSING_AGENT and folder_to_mount is not None:
+        raise ValueError("Folder to mount should not be provided for browsing agents")
