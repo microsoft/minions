@@ -11,7 +11,10 @@ import subprocess
 import sys
 import threading
 import time
+import logging
 from typing import Callable, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class ShellCommunicator:
@@ -55,7 +58,7 @@ class ShellCommunicator:
         """
         try:
             if self.shell_type not in self.shell_commands:
-                print(f"Unsupported shell type: {self.shell_type}")
+                logger.error("Unsupported shell type: %s", self.shell_type)
                 return False
 
             cmd = self.shell_commands[self.shell_type]
@@ -89,12 +92,12 @@ class ShellCommunicator:
             self.output_thread.start()
             self.error_thread.start()
 
-            print(f"{self.shell_type.capitalize()} session started successfully")
-            print(f"Process ID: {self.process.pid}")
+            logger.info("%s session started successfully", self.shell_type.capitalize())
+            logger.debug("Process ID: %s", self.process.pid)
             return True
 
         except Exception as e:
-            print(f"Failed to start shell session: {e}")
+            logger.exception("Failed to start shell session: %s", e)
             return False
 
     def _monitor_output(self, stream, output_queue: queue.Queue, stream_type: str):
@@ -133,13 +136,13 @@ class ShellCommunicator:
             List of output lines
         """
         if not self.is_running or not self.process:
-            print("No active shell session")
+            logger.warning("No active shell session")
             return []
 
         try:
             self.process.stdin.write(command + "\n")
             self.process.stdin.flush()
-            print(f"Sent: {command}")
+            logger.debug("Sent command: %s", command)
 
             if not wait_for_output:
                 return []
@@ -152,10 +155,14 @@ class ShellCommunicator:
                     # Check for output
                     stream_type, line = self.output_queue.get(timeout=0.1)
                     output_lines.append(f"{line}")
-                    print(f"{stream_type}: {line}")
+                    if stream_type == "ERROR":
+                        logger.error("%s", line)
+                    else:
+                        logger.debug("%s", line)
                 except queue.Empty:
                     continue
-                except:
+                except Exception:
+                    logger.exception("Unexpected error while reading output queue")
                     break
 
             # Check for errors
@@ -163,14 +170,17 @@ class ShellCommunicator:
                 while True:
                     stream_type, line = self.error_queue.get_nowait()
                     output_lines.append(f"{line}")
-                    print(f"{stream_type}: {line}")
+                    if stream_type == "ERROR":
+                        logger.error("%s", line)
+                    else:
+                        logger.debug("%s", line)
             except queue.Empty:
                 pass
 
             return output_lines
 
         except Exception as e:
-            print(f"Failed to send command: {e}")
+            logger.exception("Failed to send command: %s", e)
             return []
 
 
@@ -207,7 +217,7 @@ class ShellCommunicator:
         """
         Close the shell session and cleanup resources.
         """
-        print("Closing shell session...")
+        logger.info("Closing shell session...")
 
         self.is_running = False
 
@@ -232,10 +242,10 @@ class ShellCommunicator:
                     if self.process.poll() is None:
                         self.process.kill()
 
-                print("Shell session closed")
+                logger.info("Shell session closed")
 
             except Exception as e:
-                print(f"Error during cleanup: {e}")
+                logger.exception("Error during cleanup: %s", e)
 
         # Wait for threads to finish
         if self.output_thread and self.output_thread.is_alive():
