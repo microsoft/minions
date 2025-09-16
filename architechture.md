@@ -1,5 +1,5 @@
 # agent
-    Agent will accept "name", "permission" and "system_prompt", "llm", "environment", "additional_tools"
+    Agent will accept "name", "permission" and "system_prompt", "llm", "environment", "additional_tools", "folder_to_mount
         "agent_type" => "READING_AGENT" | "WRITING_AGENT" | "BROWSING_AGENT" | "CUSTOM_AGENT"
         "permission" => "READ_ONLY" | "READ_WRITE" (optional field)
         "model_name" => { // Based on provider the agent will instantiate llm instance
@@ -43,7 +43,7 @@
         will stop the docker container and remove it
 
 # llm (singleton class) stateless class
-    llm will expose "messages", and message_id method and return response
+    llm will expose ask "messages", and message_id method and return response
         will return the response from the llm
     
     We will write one llm class with responses api, one without responses api ( all messages )
