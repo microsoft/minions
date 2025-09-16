@@ -18,7 +18,6 @@ class LocalDockerEnvironment:
         self.start()
 
     def start(self):
-        """Start the container without exposing any ports."""
         mode_map = {
         "READ_ONLY": "ro",
         "READ_WRITE": "rw"

@@ -173,66 +173,6 @@ class ShellCommunicator:
             print(f"Failed to send command: {e}")
             return []
 
-    def send_input(self, input_text: str):
-        """
-        Send raw input to the shell (useful for interactive programs).
-
-        Args:
-            input_text: Text to send
-        """
-        if not self.is_running or not self.process:
-            print("No active shell session")
-            return
-
-        try:
-            self.process.stdin.write(input_text)
-            self.process.stdin.flush()
-            print(f"Input sent: {repr(input_text)}")
-        except Exception as e:
-            print(f"Failed to send input: {e}")
-
-    def get_recent_output(self, max_lines: int = 10) -> List[str]:
-        """
-        Get recent output from the shell.
-
-        Args:
-            max_lines: Maximum number of lines to retrieve
-
-        Returns:
-            List of recent output lines
-        """
-        output_lines = []
-
-        try:
-            # Get output lines
-            while len(output_lines) < max_lines:
-                try:
-                    stream_type, line = self.output_queue.get_nowait()
-                    output_lines.append(f"[{stream_type}] {line}")
-                except queue.Empty:
-                    break
-
-            # Get error lines
-            while len(output_lines) < max_lines:
-                try:
-                    stream_type, line = self.error_queue.get_nowait()
-                    output_lines.append(f"[{stream_type}] {line}")
-                except queue.Empty:
-                    break
-
-        except Exception as e:
-            print(f"❌ Error getting output: {e}")
-
-        return output_lines
-
-    def set_output_callback(self, callback: Callable[[str, str], None]):
-        """
-        Set a callback function to handle real-time output.
-
-        Args:
-            callback: Function that takes (stream_type, line) as arguments
-        """
-        self.output_callback = callback
 
     def is_alive(self) -> bool:
         """
@@ -267,7 +207,7 @@ class ShellCommunicator:
         """
         Close the shell session and cleanup resources.
         """
-        print("🔄 Closing shell session...")
+        print("Closing shell session...")
 
         self.is_running = False
 
@@ -292,10 +232,10 @@ class ShellCommunicator:
                     if self.process.poll() is None:
                         self.process.kill()
 
-                print("✅ Shell session closed")
+                print("Shell session closed")
 
             except Exception as e:
-                print(f"⚠️ Error during cleanup: {e}")
+                print(f"Error during cleanup: {e}")
 
         # Wait for threads to finish
         if self.output_thread and self.output_thread.is_alive():
