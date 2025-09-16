@@ -69,6 +69,7 @@ class Agent:
 
     # return type of run should be { status: bool, result: string, error: string | None, log: log of communication between llm and environment }
     def run(self, task, max_iterations=20, timeout_in_seconds=10) -> AgentRunResult:
+
         iteration_count = 0
         # start timer
         start_time = time.time()
@@ -81,12 +82,9 @@ class Agent:
 
         while llm_response.task_done is False:
 
-            llm_command_output = self.environment.execute(llm_response.command)
-            llm_response = self.llm.ask(llm_command_output)
-
             # increment iteration count
             iteration_count += 1
-            if iteration_count > max_iterations:
+            if iteration_count >= max_iterations:
                 return_value.error = f"Max iterations {max_iterations} reached"
                 return return_value
 
@@ -97,5 +95,8 @@ class Agent:
             if elapsed_time > timeout:
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
+
+            llm_command_output = self.environment.execute(llm_response.command)
+            llm_response = self.llm.ask(llm_command_output)
 
         return {"status": True, "result": llm_response.result}
