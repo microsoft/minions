@@ -54,7 +54,9 @@ llm_output_format = """```json
 """
 
 
-def get_system_prompt(agent_type: AgentType, mounted_directory: str) -> str:
+def get_system_prompt(
+    agent_type: AgentType, mounted_directory: str, system_prompt: str | None
+) -> str:
 
     # Create system prompt based on agent_type and permission mapping
     system_prompt_common = """There is a shell session open for you. 
@@ -82,6 +84,7 @@ def get_system_prompt(agent_type: AgentType, mounted_directory: str) -> str:
     You are only provided access to read and write files inside the mounted directory {mounted_directory}.
     You are also provided access to internet to search for information.
     """,
+        AgentType.CUSTOM_AGENT: system_prompt,
     }
 
     return system_prompts.get(agent_type)

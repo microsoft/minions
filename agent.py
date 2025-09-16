@@ -48,7 +48,9 @@ class Agent:
             self.permission = permission
 
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
-        self.system_prompt = get_system_prompt(agent_type, folder_to_mount)
+        self.system_prompt = get_system_prompt(
+            agent_type, folder_to_mount, system_prompt
+        )
         self.environment = environment  # TODO: initialize environment
         self.tools = tools + additional_tools
         self.model_details = model_details
