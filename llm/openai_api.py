@@ -29,7 +29,7 @@ class OpenAIResponseApi:
         self.ai_client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
         self.deployment_name = deployment_name
         self.system_prompt = system_prompt
-        self.messages = [{"role": "user", "content": system_prompt}]
+        self.messages = [{"role": "system", "content": system_prompt}]
 
     def ask(self, message) -> llmAskResponse:
         self.messages.append({"role": "user", "content": message})
@@ -37,7 +37,7 @@ class OpenAIResponseApi:
             model=self.deployment_name,
             input=self.messages,
         )
-        self.messages.append({"role": "system", "content": response.output_text})
+        self.messages.append({"role": "user", "content": response.output_text})
         return_value = {
             "task_done": False,
             "command": None,
