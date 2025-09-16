@@ -1,3 +1,4 @@
+import os
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -17,4 +18,6 @@ async def receive_message(message: Message):
     return {"status": "success", "output": "\n".join(command_output)}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    # Prefer AGENT_PORT, else default 8080
+    port = int(os.getenv("AGENT_PORT")  or 8080)
+    uvicorn.run(app, host="0.0.0.0", port=port)

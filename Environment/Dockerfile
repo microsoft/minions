@@ -1,11 +1,9 @@
-FROM python:3.11-slim
+FROM mcr.microsoft.com/devcontainers/python:3.11
 
 WORKDIR /app
 
-# Install any dependencies
-RUN pip install uvicorn
-RUN pip install fastapi
-RUN pip install pydantic
+# Install required runtime dependencies (FastAPI stack)
+RUN pip install --no-cache-dir fastapi uvicorn pydantic
 
 # Copy application files
 COPY Environment/docker_shell.py .
