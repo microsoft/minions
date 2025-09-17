@@ -1,5 +1,5 @@
 # agent
-    Agent will accept "name", "permission" and "system_prompt", "llm", "environment", "additional_tools"
+    Agent will accept "name", "permission" and "system_prompt", "llm", "environment", "additional_tools", "folder_to_mount
         "agent_type" => "READING_AGENT" | "WRITING_AGENT" | "BROWSING_AGENT" | "CUSTOM_AGENT"
         "permission" => "READ_ONLY" | "READ_WRITE" (optional field)
         "model_name" => { // Based on provider the agent will instantiate llm instance
@@ -42,11 +42,15 @@
     environment will expose "kill" method which will kill the environment
         will stop the docker container and remove it
 
-# llm (singleton class) stateless class
-    llm will expose "messages", and message_id method and return response
-        will return the response from the llm
-    
-    We will write one llm class with responses api, one without responses api ( all messages )
+# llm class
+
+    llm will accept "system_prompt" and "deployment_name"
+    system_prompt => string, 
+    deployment_name => string (like my-custom-gpt5-agent)
+
+    llm will expose ask method which will accept "message" and will return llm response in particular json format
+        the method will append each message to messages array and each response also will be appended to the messages array, 
+    llm will expose clear history method which will clear the messages array except the system prompt
     
 
 # tool definition singleton class
