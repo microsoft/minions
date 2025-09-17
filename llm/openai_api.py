@@ -18,9 +18,16 @@ api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
 
 
 class llmAskResponse:
-    task_done: bool
-    command: str
-    result: str | None
+    def __init__(self):
+        self.task_done: bool = False
+        self.command: str = ""
+        self.result: str | None = None
+
+
+def validate_llm_response(response: dict) -> bool:
+    if "task_done" in response and "command" in response and "result" in response:
+        return True
+    return False
 
 
 class OpenAIApi:
@@ -31,24 +38,22 @@ class OpenAIApi:
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
 
-    def ask(self, message) -> llmAskResponse:
+    def ask(self, message) -> dict:
         self.messages.append({"role": "user", "content": message})
-        response = self.ai_client.responses.create(
-            model=self.deployment_name,
-            input=self.messages,
-        )
-        self.messages.append({"role": "model", "content": response.output_text})
-        return_value = {
-            "task_done": False,
-            "command": None,
-            "result": None,
-        }
-        try:
-            return_value = json.loads(response.output_text)
-        except Exception as e:
-            print(f"Error occurred while dumping JSON: {e}")
-            print("Failed to parse JSON from LLM response and the response is")
-            print(response.output_text)
+        return_value = {}
+        while validate_llm_response(return_value) is False:
+            response = self.ai_client.responses.create(
+                model=self.deployment_name,
+                input=self.messages,
+            )
+            try:
+                return_value = json.loads(response.output_text)
+            except Exception as e:
+                print(f"Error occurred while dumping JSON: {e}")
+                print("Failed to parse JSON from LLM response and the response is")
+                print(response.output_text)
+
+        self.messages.append({"role": "assistant", "content": response.output_text})
 
         return return_value
 

@@ -1,16 +1,28 @@
-from enum import Enum
+import logging
+import socket
+from enum import Enum, StrEnum
 from typing import Optional
 
+from tool_definitions.base_tool import BaseTool
+from tool_definitions.ctags import Ctags
+from tool_definitions.node import Node
 
-class ModelProvider(Enum):
+logger = logging.getLogger(__name__)
+
+
+def get_default_tools() -> list[BaseTool]:
+    return [Node()]
+
+
+class ModelProvider(StrEnum):
     OPENAI = "openai"
 
 
-class ModelEnum(Enum):
+class ModelEnum(StrEnum):
     GPT_5 = "gpt-5"
 
 
-class PermissionLabels(Enum):
+class PermissionLabels(StrEnum):
     READ_ONLY = "READ_ONLY"
     READ_WRITE = "READ_WRITE"
 
@@ -22,7 +34,7 @@ class PermissionMapping:
     }
 
 
-class AgentType(Enum):
+class AgentType(StrEnum):
     READING_AGENT = "READING_AGENT"
     WRITING_AGENT = "WRITING_AGENT"
     BROWSING_AGENT = "BROWSING_AGENT"
@@ -45,6 +57,21 @@ llm_output_format = """```json
 """
 
 
+def get_free_port():
+    # Create a temporary socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        # Bind the socket to address 0.0.0.0 and port 0
+        # Port 0 tells the OS to assign a free ephemeral port
+        sock.bind(("0.0.0.0", 0))
+        # Get the port number that was assigned
+        port = sock.getsockname()[1]
+        return port
+    finally:
+        # Close the socket to release the port
+        sock.close()
+
+
 def get_system_prompt(
     agent_type: AgentType, mounted_directory: str, system_prompt: str | None
 ) -> str:
@@ -52,7 +79,7 @@ def get_system_prompt(
     # Create system prompt based on agent_type and permission mapping
     system_prompt_common = """There is a shell session open for you. 
             I will provide a task to achieve using the shell. 
-            You will provide the commands to achieve the task in this particular below json format 
+            You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
             {llm_output_format}
             after each command I will provide the output of the command. 
             ensure to run only one command at a time.
@@ -72,13 +99,24 @@ def get_system_prompt(
     """,
         AgentType.BROWSING_AGENT: f"""
     {system_prompt_common}
-    You are only provided access to read and write files inside the mounted directory {mounted_directory}.
     You are also provided access to internet to search for information.
     """,
         AgentType.CUSTOM_AGENT: system_prompt,
     }
 
     return system_prompts.get(agent_type)
+
+
+def assign_permission_based_on_agent_type(agent_type, permission):
+    return_value = permission
+    if permission is None and agent_type == AgentType.CUSTOM_AGENT:
+        return_value = PermissionLabels.READ_WRITE
+    else:
+        if agent_type == AgentType.READING_AGENT:
+            return_value = PermissionLabels.READ_ONLY
+        elif agent_type == AgentType.WRITING_AGENT:
+            return_value = PermissionLabels.READ_WRITE
+    return return_value
 
 
 def validate_agent_type_and_system_prompt(agent_type, system_prompt):
@@ -111,13 +149,16 @@ def validate_agent_type_and_permission(agent_type, permission):
 
 
 def validate_agent_type_and_folder_to_mount(agent_type, folder_to_mount):
+
+    print(agent_type, folder_to_mount, "validating folder to mount")
+
     if agent_type == AgentType.CUSTOM_AGENT and folder_to_mount is None:
         raise ValueError("Folder to mount is required for custom agent")
 
-    elif agent_type == AgentType.WRITING_AGENT and folder_to_mount is not None:
+    elif agent_type == AgentType.WRITING_AGENT and folder_to_mount is None:
         raise ValueError("Folder to mount should provided for writing agents")
 
-    elif agent_type == AgentType.READING_AGENT and folder_to_mount is not None:
+    elif agent_type == AgentType.READING_AGENT and folder_to_mount is None:
         raise ValueError("Folder to mount should provided for reading agents")
 
     elif agent_type == AgentType.BROWSING_AGENT and folder_to_mount is not None:
