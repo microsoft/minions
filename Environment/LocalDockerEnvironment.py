@@ -13,7 +13,7 @@ class LocalDockerEnvironment:
         port: int,
         folder_to_mount: Optional[str] = None,
         permission: Optional[str] = None,
-        image: str = "shell_server:latest",
+        image: str = "kkaitepalliregistry.azurecr.io/shell_server:latest",
 
     ):
         if folder_to_mount is None and permission is not None:

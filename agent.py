@@ -103,10 +103,11 @@ class Agent:
         start_time = time.time()
         timeout = timeout_in_seconds
         llm_response = self.llm.ask(task)
-        return_value: AgentRunResult = {
-            "status": False,
-            "error": "Did not complete",
-        }
+        return_value: AgentRunResult = AgentRunResult(
+            status=False,
+            result=None,
+            error="Did not complete",
+        )
 
         while llm_response["task_done"] is False:
 
@@ -127,7 +128,11 @@ class Agent:
             llm_command_output = self.environment.execute(llm_response["command"])
             llm_response = self.llm.ask(llm_command_output)
 
-        return {"status": True, "result": llm_response["result"]}
+        return AgentRunResult(
+            status=True,
+            result=llm_response["result"],
+            error=None,
+        )
 
     def _tool_installation_through_ai(self, tool: BaseTool):
         result = self.run(
