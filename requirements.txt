@@ -1,2 +1,6 @@
 openai
 python-dotenv
+docker
+fastapi
+uvicorn
+pydantic
