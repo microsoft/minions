@@ -1,0 +1,57 @@
+[MASTER]
+# A comma-separated list of plugins to load.
+# Load any custom plugins here
+# load-plugins=
+
+[MESSAGES CONTROL]
+# A comma-separated list of Pylint errors and warnings to disable.
+# Add codes here to disable specific warnings that don't apply to your project.
+# E.g., C0114 (missing module docstring), R0903 (too few public methods), W0511 (fixme), C0103 (invalid name)
+disable=
+    C0114, # missing-module-docstring
+    C0115, # missing-class-docstring
+    C0116, # missing-function-docstring
+    W0511, # fixme (disable if you don't want to be nagged about TODOs)
+
+# A comma-separated list of Pylint errors and warnings to enable.
+# Enable specific checks here if you want to be more strict.
+# enable=
+
+[REPORTS]
+# Tells Pylint not to generate the report section at the end.
+# This makes the output cleaner and easier to read.
+reports=no
+
+# Minimum percentage of documentation to enforce on public methods.
+# For example, doc-min-len=20 to require at least 20% of public methods to have docstrings.
+# doc-min-len=0
+
+[FORMAT]
+# Maximum number of characters on a single line.
+# A value of 88 is often used, following PEP 8.
+max-line-length=88
+
+# Regular expression to match valid module names.
+# E.g., a regex like `[a-z_][a-z0-9_]*` for snake_case naming.
+# good-names=
+
+[DESIGN]
+# The maximum number of arguments allowed for a function.
+max-args=5
+
+# The maximum number of locals allowed in a function.
+max-locals=15
+
+# The maximum number of branches allowed in a function.
+max-branches=10
+
+# The maximum number of statements allowed in a function.
+max-statements=50
+
+[TYPECHECK]
+# Tells Pylint to check for uninferable members (e.g., from C extensions).
+# If you are using libraries with C bindings, set this to False.
+# It can help reduce false positives.
+#
+# E.g., pandas and numpy often trigger these warnings.
+# disable=E1101 # no-member
