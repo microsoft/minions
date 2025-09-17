@@ -9,8 +9,8 @@ load_dotenv()
 
 from openai import OpenAI
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from agent_utils import llm_output_format
+# sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# from agent_utils import llm_output_format
 
 endpoint = os.getenv("OPEN_AI_END_POINT")
 deployment_name = os.getenv("OPEN_AI_DEPLOYMENT_NAME")
@@ -23,7 +23,7 @@ class llmAskResponse:
     result: str | None
 
 
-class OpenAIResponseApi:
+class OpenAIApi:
 
     def __init__(self, system_prompt, deployment_name=deployment_name):
         self.ai_client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
@@ -63,16 +63,16 @@ class OpenAIResponseApi:
 
 
 # Do a quick test
-if __name__ == "__main__":
-    openai_api = OpenAIResponseApi(
-        system_prompt="""You are a helpful assistant.
-        I will give you a task to achieve using the shell.
-        "You will provide the result of the task in this particular below json format
-        {llm_output_format}
-        if the task is completed change task_done to true
-        """
-    )
-    response = openai_api.ask(
-        "The task is give me the command to list all files in current directory"
-    )
-    print(response)
+# if __name__ == "__main__":
+#     openai_api = OpenAIApi(
+#         system_prompt="""You are a helpful assistant.
+#         I will give you a task to achieve using the shell.
+#         "You will provide the result of the task in this particular below json format
+#         {llm_output_format}
+#         if the task is completed change task_done to true
+#         """
+#     )
+#     response = openai_api.ask(
+#         "The task is give me the command to list all files in current directory"
+#     )
+#     print(response)

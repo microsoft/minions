@@ -22,14 +22,6 @@ class PermissionMapping:
     }
 
 
-class Model:
-    provider: ModelProvider
-    # TODO: As of now model is not required as deployment name is enough to identify the model,
-    # Need to figure out how to use different models from same provider
-    model: ModelEnum
-    deployment_name: str
-
-
 class AgentType(Enum):
     READING_AGENT = "READING_AGENT"
     WRITING_AGENT = "WRITING_AGENT"
@@ -43,7 +35,6 @@ class AgentRunResult(Enum):
     error: Optional[str]
 
 
-llm_finished_keyword = "DONE"
 llm_output_format = """```json
 {
     task_done: true | false, 

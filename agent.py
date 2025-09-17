@@ -8,17 +8,15 @@ from typing import Optional
 from agent_utils import (
     AgentRunResult,
     AgentType,
-    Model,
     ModelProvider,
     PermissionLabels,
     PermissionMapping,
     get_system_prompt,
-    llm_finished_keyword,
     validate_agent_type_and_folder_to_mount,
     validate_agent_type_and_permission,
     validate_agent_type_and_system_prompt,
 )
-from llm.openai_api import OpenAIResponseApi
+from llm.openai_api import OpenAIApi
 
 tools = []
 
@@ -28,7 +26,7 @@ class Agent:
     def __init__(
         self,
         agent_type: AgentType,
-        model_details: Model,
+        model: str,
         system_prompt: Optional[str] = None,
         environment: Optional[any] = None,  # TODO: Need to pass environment class
         additional_tools: Optional[str] = None,
@@ -53,14 +51,17 @@ class Agent:
         )
         self.environment = environment  # TODO: initialize environment
         self.tools = tools + additional_tools
-        self.model_details = model_details
+        self.model = model
+
+        # model will be a string like "openai/gpt-5"
+        self.model_provider = model.split("/")[0]
+        self.deployment_name = model.split("/")[1]
 
         # initialize llm with system prompt
-        if self.model_details.provider == ModelProvider.OPENAI:
+        if self.model_provider == ModelProvider.OPENAI:
 
-            self.llm = OpenAIResponseApi(
-                system_prompt=self.system_prompt,
-                deployment_name=self.model_details.deployment_name,
+            self.llm = OpenAIApi(
+                system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
 
         # initialize the environment and install all the tools inside the environment
