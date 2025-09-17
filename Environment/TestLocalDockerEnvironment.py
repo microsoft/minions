@@ -15,7 +15,7 @@ NOTES:
   - Error handling here is minimal; in production wrap execute calls and inspect return values.
 
 USAGE:
-    python -m Environment.LocalDockerEnvironment
+    python -m Environment.TestLocalDockerEnvironment
 
 Clean Up Manually (example):
     docker ps | grep shell_server
@@ -25,21 +25,21 @@ Clean Up Manually (example):
 from Environment import LocalDockerEnvironment
 
 
-def Test_LocalDockerEnvironment():
-    # Environment 1: Read-write mount of /home/kkaitepalli/MAP on host port 8085
+def TestLocalDockerEnvironment():
+    # Environment 1: Read-write mount of /home/kkaitepalli/MAP on host port 8095
     # Provide absolute path to a directory on your host machine
     env1 = LocalDockerEnvironment(
-        port=8085,
+        port=8095,
         folder_to_mount="/home/kkaitepalli/MAP",
         permission="READ_WRITE",
     )
 
-    # Environment 2: No mount (isolated filesystem view) on host port 8086
-    env2 = LocalDockerEnvironment(port=8086)
+    # Environment 2: No mount (isolated filesystem view) on host port 8096
+    env2 = LocalDockerEnvironment(port=8096)
 
-    # Environment 3: Read-only mount of /home/kkaitepalli/telescope on host port 8087
+    # Environment 3: Read-only mount of /home/kkaitepalli/telescope on host port 8097
     env3 = LocalDockerEnvironment(
-        port=8087,
+        port=8097,
         folder_to_mount="/home/kkaitepalli/telescope",
         permission="READ_ONLY",
     )
@@ -79,5 +79,5 @@ def Test_LocalDockerEnvironment():
         # env1.stop(); env2.stop(); env3.stop()
 
 
-if __name__ == "__main__":  # Allows running via: python -m Environment.LocalDockerEnvironment
-    Test_LocalDockerEnvironment()
+if __name__ == "__main__":  # Allows running via: python -m Environment.TestLocalDockerEnvironment
+    TestLocalDockerEnvironment()
