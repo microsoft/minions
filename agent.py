@@ -2,10 +2,10 @@
 
 # agent_type can be either "READING_AGENT" | "WRITING_AGENT" | "BROWSING_AGENT" | "CUSTOM_AGENT"
 # Create enum for agent_type and assign to agent argument agent_type
+import logging
 import os
 import time
 from typing import Optional
-
 from agent_utils import (
     AgentRunResult,
     AgentType,
@@ -25,6 +25,7 @@ from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 
 tools = []
+logger = logging.getLogger(__name__)
 
 
 class Agent:
@@ -71,16 +72,7 @@ class Agent:
                 folder_to_mount=folder_to_mount,
                 permission=self.permission,
             )
-        for tool in self.tools:
-            self.environment.execute(tool.installation_command)
-            self.environment.execute(tool.verification_command)
-            self.tool_usage_instructions += tool.usage_instructions_to_llm + "\n"
 
-        self.system_prompt += (
-            "\nThere are some special tool commands available in shell. I have mentioned those with it's usage instructions below \n. Ensure "
-            + self.tool_usage_instructions
-            + "\n"
-        )
         # initialize llm with system prompt
         if self.model_provider == ModelProvider.OPENAI:
 
@@ -88,10 +80,22 @@ class Agent:
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
 
-        # and add the tool usage instructions to system prompt
-        # also convey about the mounted directory and permission to the llm on the mounted directory
+        # for tool in self.tools:
+        # logger.info(f"⬇️ Installing tool: {tool.name}")
+        # installation_status = self._tool_installation_through_ai(tool)
+        # if installation_status is False:
+        #     raise Exception(f"Tool {tool.name} installation failed")
+        # logger.info(f"✅ Tool {tool.name} installed successfully")
+        # self.tool_usage_instructions += tool.usage_instructions_to_llm + "\n"
 
-    # return type of run should be { status: bool, result: string, error: string | None, log: log of communication between llm and environment }
+        # self.llm.clear_history()
+
+        self.system_prompt += (
+            "\nThere are some special tool commands available in shell. I have mentioned those with it's usage instructions below \n. Ensure "
+            + self.tool_usage_instructions
+            + "\n"
+        )
+
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> AgentRunResult:
 
         iteration_count = 0
@@ -124,3 +128,11 @@ class Agent:
             llm_response = self.llm.ask(llm_command_output)
 
         return {"status": True, "result": llm_response["result"]}
+
+    def _tool_installation_through_ai(self, tool: BaseTool):
+        result = self.run(
+            f"""The task is to install the tool using the command: {tool.installation_command}
+                 you can verify if the tool is installed correctly using the following command: {tool.verification_command}
+                 """
+        )
+        return result["status"]

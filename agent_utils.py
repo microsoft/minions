@@ -1,3 +1,4 @@
+import logging
 import socket
 from enum import Enum, StrEnum
 from typing import Optional
@@ -6,9 +7,11 @@ from tool_definitions.base_tool import BaseTool
 from tool_definitions.ctags import Ctags
 from tool_definitions.node import Node
 
+logger = logging.getLogger(__name__)
+
 
 def get_default_tools() -> list[BaseTool]:
-    return [Ctags(), Node()]
+    return [Node()]
 
 
 class ModelProvider(StrEnum):
