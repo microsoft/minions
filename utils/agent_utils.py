@@ -1,50 +1,16 @@
 import logging
 import socket
-from enum import Enum, StrEnum
-from typing import Optional
 
 from tool_definitions.base_tool import BaseTool
 from tool_definitions.ctags import Ctags
 from tool_definitions.node import Node
+from types_and_constants.agent import AgentType, PermissionLabels
 
 logger = logging.getLogger(__name__)
 
 
 def get_default_tools() -> list[BaseTool]:
-    return [Node()]
-
-
-class ModelProvider(StrEnum):
-    OPENAI = "openai"
-
-
-class ModelEnum(StrEnum):
-    GPT_5 = "gpt-5"
-
-
-class PermissionLabels(StrEnum):
-    READ_ONLY = "READ_ONLY"
-    READ_WRITE = "READ_WRITE"
-
-
-class PermissionMapping:
-    MAPPING = {
-        PermissionLabels.READ_ONLY: "ro",
-        PermissionLabels.READ_WRITE: "rw",
-    }
-
-
-class AgentType(StrEnum):
-    READING_AGENT = "READING_AGENT"
-    WRITING_AGENT = "WRITING_AGENT"
-    BROWSING_AGENT = "BROWSING_AGENT"
-    CUSTOM_AGENT = "CUSTOM_AGENT"
-
-
-class AgentRunResult(Enum):
-    status: bool
-    result: str | None
-    error: Optional[str]
+    return []
 
 
 llm_output_format = """```json
@@ -149,8 +115,6 @@ def validate_agent_type_and_permission(agent_type, permission):
 
 
 def validate_agent_type_and_folder_to_mount(agent_type, folder_to_mount):
-
-    print(agent_type, folder_to_mount, "validating folder to mount")
 
     if agent_type == AgentType.CUSTOM_AGENT and folder_to_mount is None:
         raise ValueError("Folder to mount is required for custom agent")
