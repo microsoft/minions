@@ -8,7 +8,7 @@ on:
       - 'Environment/Image/ShellCommunicator.py'
       - '.github/workflows/dockerBuildPush.yml'
     branches:
-      - kkaitepalli/test-push
+      - main
 
 jobs:
   build-and-push:
