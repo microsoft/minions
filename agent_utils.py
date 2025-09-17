@@ -7,6 +7,8 @@ from tool_definitions.base_tool import BaseTool
 from tool_definitions.ctags import Ctags
 from tool_definitions.node import Node
 
+from dataclasses import dataclass
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,8 +42,8 @@ class AgentType(StrEnum):
     BROWSING_AGENT = "BROWSING_AGENT"
     CUSTOM_AGENT = "CUSTOM_AGENT"
 
-
-class AgentRunResult(Enum):
+@dataclass
+class AgentRunResult:
     status: bool
     result: str | None
     error: Optional[str]
@@ -49,8 +51,8 @@ class AgentRunResult(Enum):
 
 llm_output_format = """```json
 {
-    task_done: true | false, 
-    command: "<command to run> | null", 
+    task_done: true | false,
+    command: "<command to run> | null",
     result: str | null
 }
 ```
@@ -77,24 +79,24 @@ def get_system_prompt(
 ) -> str:
 
     # Create system prompt based on agent_type and permission mapping
-    system_prompt_common = """There is a shell session open for you. 
-            I will provide a task to achieve using the shell. 
+    system_prompt_common = """There is a shell session open for you.
+            I will provide a task to achieve using the shell.
             You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
             {llm_output_format}
-            after each command I will provide the output of the command. 
+            after each command I will provide the output of the command.
             ensure to run only one command at a time.
             I won't be able to intervene once I have given task. ."""
 
     system_prompts = {
         AgentType.READING_AGENT: f"""
     {system_prompt_common}
-    You are a reading agent. 
+    You are a reading agent.
     You are only provided access only read files inside the mounted directory {mounted_directory}.
     Once all the commands are done, and task is verified finally give me .
     """,
         AgentType.WRITING_AGENT: f"""
     {system_prompt_common}
-    You are a writing agent. 
+    You are a writing agent.
     You are provided access to read and write files inside the mounted directory {mounted_directory}.
     """,
         AgentType.BROWSING_AGENT: f"""
