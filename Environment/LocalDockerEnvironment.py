@@ -14,7 +14,7 @@ class LocalDockerEnvironment:
         folder_to_mount: Optional[str] = None,
         permission: Optional[str] = None,
         image: str = "shell_server:latest",
-        
+
     ):
         if folder_to_mount is None and permission is not None:
             raise ValueError("permission provided but folder_to_mount is None")
@@ -39,15 +39,26 @@ class LocalDockerEnvironment:
         }
         volumes_config = {}
         if self.folder_to_mount and self.permission:
-            volumes_config[self.folder_to_mount] = {
-                "bind": f"/app/{os.path.basename(self.folder_to_mount)}",
-                "mode": mode_map[self.permission],
-            }
-            logger.debug(
-                "📦 Volume mapping: %s → /app/%s",
-                self.folder_to_mount,
-                os.path.basename(self.folder_to_mount),
-            )
+            if self.permission == "READ_ONLY":
+                volumes_config[self.folder_to_mount] = {
+                    "bind": f"/ro/{os.path.basename(self.folder_to_mount)}",
+                    "mode": mode_map[self.permission],
+                }
+                logger.debug(
+                    "📦 Volume mapping: %s → /ro/%s",
+                    self.folder_to_mount,
+                    os.path.basename(self.folder_to_mount),
+                )
+            else:
+                volumes_config[self.folder_to_mount] = {
+                    "bind": f"/app/{os.path.basename(self.folder_to_mount)}",
+                    "mode": mode_map[self.permission],
+                }
+                logger.debug(
+                    "📦 Volume mapping: %s → /app/%s",
+                    self.folder_to_mount,
+                    os.path.basename(self.folder_to_mount),
+                )
 
         # Port mapping
         port_mapping = {f"{self.container_port}/tcp": self.port}
@@ -67,6 +78,19 @@ class LocalDockerEnvironment:
             self.port,
         )
         time.sleep(2) # Give some time for the server to start
+
+        if self.permission == "READ_ONLY":
+            self._setup_overlay_mount(self.folder_to_mount)
+
+    def _setup_overlay_mount(self, folder_to_mount: str):
+        path_name = os.path.basename(os.path.abspath(folder_to_mount))
+        # Mount /ro/path_name to /app/path_name using overlayfs
+        mount_command = (
+            f"mkdir -p /app/{path_name} && "
+            f"mount -t overlay overlay -o lowerdir=/ro/{path_name},upperdir=/app/{path_name},workdir=/tmp/work /app/{path_name}"
+        )
+        self.execute(mount_command)
+        logger.info("🔒 Set up overlay mount for read-only directory at /app/%s", folder_to_mount)
 
     def stop(self):
         """Stop and remove the container"""
