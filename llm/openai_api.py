@@ -37,7 +37,7 @@ class OpenAIApi:
             model=self.deployment_name,
             input=self.messages,
         )
-        self.messages.append({"role": "user", "content": response.output_text})
+        self.messages.append({"role": "model", "content": response.output_text})
         return_value = {
             "task_done": False,
             "command": None,
