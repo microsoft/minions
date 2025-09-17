@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from logging import getLogger
 from typing import Optional
 
 from Environment.LocalDockerEnvironment import LocalDockerEnvironment
@@ -16,13 +17,16 @@ from types_and_constants.agent import (
 from utils.agent_utils import (
     assign_permission_based_on_agent_type,
     get_default_tools,
-    get_free_port,
     get_system_prompt,
     validate_agent_type_and_folder_to_mount,
     validate_agent_type_and_permission,
     validate_agent_type_and_system_prompt,
+    validate_model_and_provider,
 )
-from utils.logger import logger
+from utils.logger import LogLevelEmoji
+from utils.network import get_free_port
+
+logger = getLogger(__name__)
 
 
 class Minion:
@@ -40,7 +44,7 @@ class Minion:
         # validate init values before assigning
         self.permission = assign_permission_based_on_agent_type(agent_type, permission)
         self._agent_arg_validation(
-            agent_type, system_prompt, self.permission, folder_to_mount
+            agent_type, system_prompt, self.permission, folder_to_mount, model
         )
         if folder_to_mount is not None:
             self.folder_to_mount_base_path = os.path.basename(folder_to_mount)
@@ -54,7 +58,6 @@ class Minion:
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
         self.environment = environment
-        self.tool_usage_instructions = ""
         self._create_environment(folder_to_mount)
         self._create_llm()
 
@@ -69,14 +72,17 @@ class Minion:
             "status": False,
             "error": "Did not complete",
         }
-        logger.info("TASK STARTED : %s...", task[0:15])
+        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:15])
         while llm_response["task_done"] is False:
             print(
                 "----------------------------------------------------------------------------------------------------------"
             )
-            logger.info("Task Iteration Count : %d", iteration_count)
             logger.info(
-                "After LLM Communication Response : %s",
+                " %s Task Iteration Count : %d", LogLevelEmoji.INFO, iteration_count
+            )
+            logger.info(
+                " %s After LLM Communication Response : %s",
+                LogLevelEmoji.INFO,
                 json.dumps(llm_response["command"]),
             )
             # increment iteration count
@@ -101,7 +107,7 @@ class Minion:
             llm_command_output = self.environment.execute(llm_response["command"])
             llm_response = self.llm.ask(llm_command_output)
 
-        logger.completed("TASK COMPLETED : %s...", task[0:15])
+        logger.info("%s TASK COMPLETED : %s...", LogLevelEmoji.COMPLETED, task[0:15])
         return {"status": True, "result": llm_response["result"]}
 
     def _create_environment(self, folder_to_mount):
@@ -123,8 +129,9 @@ class Minion:
             )
 
     def _agent_arg_validation(
-        self, agent_type, system_prompt, permission, folder_to_mount
+        self, agent_type, system_prompt, permission, folder_to_mount, model
     ):
         validate_agent_type_and_system_prompt(agent_type, system_prompt)
         validate_agent_type_and_permission(agent_type, permission)
         validate_agent_type_and_folder_to_mount(agent_type, folder_to_mount)
+        validate_model_and_provider(model)

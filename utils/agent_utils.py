@@ -4,7 +4,7 @@ import socket
 from tool_definitions.base_tool import BaseTool
 from tool_definitions.ctags import Ctags
 from tool_definitions.node import Node
-from types_and_constants.agent import AgentType, PermissionLabels
+from types_and_constants.agent import AgentType, ModelProvider, PermissionLabels
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +21,6 @@ llm_output_format = """```json
 }
 ```
 """
-
-
-def get_free_port():
-    # Create a temporary socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        # Bind the socket to address 0.0.0.0 and port 0
-        # Port 0 tells the OS to assign a free ephemeral port
-        sock.bind(("0.0.0.0", 0))
-        # Get the port number that was assigned
-        port = sock.getsockname()[1]
-        return port
-    finally:
-        # Close the socket to release the port
-        sock.close()
 
 
 def get_system_prompt(
@@ -127,3 +112,13 @@ def validate_agent_type_and_folder_to_mount(agent_type, folder_to_mount):
 
     elif agent_type == AgentType.BROWSING_AGENT and folder_to_mount is not None:
         raise ValueError("Folder to mount should not be provided for browsing agents")
+
+
+def validate_model_and_provider(model):
+    # Ensure it has only only slash
+    if model.count("/") != 1:
+        raise ValueError("Model should be in the format <provider>/<model_name>")
+    provider = model.split("/")[0]
+    model_name = model.split("/")[1]
+    if provider not in [e.value for e in ModelProvider]:
+        raise ValueError(f"Unsupported model provider: {provider}")
