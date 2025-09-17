@@ -26,11 +26,11 @@ class Permission(str, Enum):
 class LocalDocker(Environment):
     BASE_PATH: Final[str] = "/app"
 
-    def _get_mount_args(
+    def _validate_permission_args(
         self,
         folder_to_mount: Optional[str],
         permission: Optional[Permission],
-    ) -> str:
+    ):
         if folder_to_mount is None and permission is not None:
             raise ValueError("permission provided but folder_to_mount is None")
         if permission is None and folder_to_mount is not None:
@@ -43,6 +43,13 @@ class LocalDocker(Environment):
                 "permission must be Permission.READ_ONLY or Permission.READ_WRITE when provided"
             )
 
+    def _get_mount_args(
+        self,
+        folder_to_mount: Optional[str],
+        permission: Optional[Permission],
+    ) -> str:
+        self._validate_permission_args(folder_to_mount, permission)
+
         mount_args = ""
         if folder_to_mount and permission:
             sanitized = os.path.abspath(folder_to_mount).strip()
@@ -53,15 +60,10 @@ class LocalDocker(Environment):
             logger.debug("🗻 Mount args: %r", mount_args)
         return mount_args
 
-    def __init__(
-        self,
-        folder_to_mount: Optional[str] = None,
-        permission: Optional[Permission] = Permission.READ_WRITE,
-        image: str = PYTHON_IMAGE,
-    ):
-        mount_args = self._get_mount_args(folder_to_mount, permission)
+    def _get_docker_args(self, mount_args: str = "") -> list[str]:
         # _get_mount_args returns either "" or a single string beginning with -v; split into tokens for DockerDeployment
         docker_args = []
+
         if mount_args:
             if mount_args.startswith('-v '):
                 # split once: '-v src:dest:mode'
@@ -69,6 +71,17 @@ class LocalDocker(Environment):
                 docker_args.extend([flag, rest])
             else:
                 docker_args.append(mount_args)
+
+        return docker_args
+
+    def __init__(
+        self,
+        folder_to_mount: Optional[str] = None,
+        permission: Optional[Permission] = Permission.READ_WRITE,
+        image: str = PYTHON_IMAGE,
+    ):
+        mount_args = self._get_mount_args(folder_to_mount, permission)
+        docker_args = self._get_docker_args(mount_args)
         self.deployment = DockerDeployment(image=image, docker_args=docker_args)
         asyncio.run(self.deployment.start())
         self.start()
