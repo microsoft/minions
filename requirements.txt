@@ -4,3 +4,5 @@ docker
 fastapi
 uvicorn
 pydantic
+swe-rex
+aiohttp
