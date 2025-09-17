@@ -1,7 +1,6 @@
 import json
 import os
-import sys
-from pathlib import Path
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
@@ -9,19 +8,16 @@ load_dotenv()
 
 from openai import OpenAI
 
-# sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-# from agent_utils import llm_output_format
-
 endpoint = os.getenv("OPEN_AI_END_POINT")
 deployment_name = os.getenv("OPEN_AI_DEPLOYMENT_NAME")
 api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
 
 
+@dataclass
 class llmAskResponse:
-    def __init__(self):
-        self.task_done: bool = False
-        self.command: str = ""
-        self.result: str | None = None
+    task_done: bool = False
+    command: str = ""
+    result: str | None = None
 
 
 def validate_llm_response(response: dict) -> bool:
@@ -55,7 +51,11 @@ class OpenAIApi:
 
         self.messages.append({"role": "assistant", "content": response.output_text})
 
-        return return_value
+        return llmAskResponse(
+            task_done=return_value["task_done"],
+            result=return_value["result"],
+            command=return_value["command"],
+        )
 
     def clear_history(self):
         self.messages = [
@@ -65,19 +65,3 @@ class OpenAIApi:
             }
         ]
         return True
-
-
-# Do a quick test
-# if __name__ == "__main__":
-#     openai_api = OpenAIApi(
-#         system_prompt="""You are a helpful assistant.
-#         I will give you a task to achieve using the shell.
-#         "You will provide the result of the task in this particular below json format
-#         {llm_output_format}
-#         if the task is completed change task_done to true
-#         """
-#     )
-#     response = openai_api.ask(
-#         "The task is give me the command to list all files in current directory"
-#     )
-#     print(response)
