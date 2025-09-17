@@ -14,7 +14,6 @@ class LocalDockerEnvironment:
         folder_to_mount: Optional[str] = None,
         permission: Optional[str] = None,
         image: str = "kavyasree261002/shell_server:latest",
-        
     ):
         if folder_to_mount is None and permission is not None:
             raise ValueError("permission provided but folder_to_mount is None")
