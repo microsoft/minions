@@ -44,7 +44,7 @@ class LocalDockerEnvironment:
                 "mode": mode_map[self.permission],
             }
             logger.debug(
-                "Volume mapping: %s -> /app/%s",
+                "📦 Volume mapping: %s → /app/%s",
                 self.folder_to_mount,
                 os.path.basename(self.folder_to_mount),
             )
@@ -61,7 +61,7 @@ class LocalDockerEnvironment:
             environment={"AGENT_PORT": str(self.container_port)},
         )
         logger.info(
-            "Started container %s with image %s on host port %s",
+            "🚀 Started container %s with image %s on host port %s",
             self.container.id[:12],
             self.image,
             self.port,
@@ -85,14 +85,14 @@ class LocalDockerEnvironment:
             response.raise_for_status()
             return response.json().get("output", "")
         except requests.exceptions.ConnectionError:
-            logger.warning("Connection error when executing command; checking container status")
+            logger.warning("⚠️ Connection error when executing command; checking container status…")
             self.container.reload()
-            logger.info("Container status: %s", self.container.status)
+            logger.info("ℹ️ Container status: %s", self.container.status)
             if self.container.status != "running":
                 logs = self.container.logs().decode("utf-8", errors="replace")
-                logger.error("Container not running. Recent logs below:\n%s", logs)
+                logger.error("🛑 Container not running. Recent logs below:\n%s", logs)
             return f"Error: Could not connect"
         except requests.exceptions.RequestException as e:
-            logger.exception("Request failed while executing command: %s", e)
+            logger.exception("❌ Request failed while executing command: %s", e)
             return f"Error: Request failed"
 
