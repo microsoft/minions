@@ -15,7 +15,7 @@ NOTES:
   - Error handling here is minimal; in production wrap execute calls and inspect return values.
 
 USAGE:
-    python -m Environment.test
+    python -m Environment.LocalDockerEnvironment
 
 Clean Up Manually (example):
     docker ps | grep shell_server
@@ -25,8 +25,9 @@ Clean Up Manually (example):
 from Environment import LocalDockerEnvironment
 
 
-def test():
+def Test_LocalDockerEnvironment():
     # Environment 1: Read-write mount of /home/kkaitepalli/MAP on host port 8085
+    # Provide absolute path to a directory on your host machine
     env1 = LocalDockerEnvironment(
         port=8085,
         folder_to_mount="/home/kkaitepalli/MAP",
@@ -78,5 +79,5 @@ def test():
         # env1.stop(); env2.stop(); env3.stop()
 
 
-if __name__ == "__main__":  # Allows running via: python -m Environment.test
-    test()
+if __name__ == "__main__":  # Allows running via: python -m Environment.LocalDockerEnvironment
+    Test_LocalDockerEnvironment()

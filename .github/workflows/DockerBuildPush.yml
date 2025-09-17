@@ -1,0 +1,34 @@
+name: Build and Push to Docker Hub
+
+on:
+  push:
+    paths:
+      - 'Environment/Image/Dockerfile'
+      - 'Environment/Image/docker_shell.py'
+      - '.github/workflows/docker-build-push.yml'
+    branches:
+      - kkaitepalli/test-push
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
+          TAG=${{ github.sha }}
+
+          # build with both commit SHA and latest tag
+          docker build -f Environment/Image/Dockerfile -t $IMAGE_NAME:$TAG -t $IMAGE_NAME:latest .
+          docker push $IMAGE_NAME:$TAG
+          docker push $IMAGE_NAME:latest
