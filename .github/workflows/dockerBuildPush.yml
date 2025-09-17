@@ -5,7 +5,7 @@ on:
     paths:
       - 'Environment/Image/Dockerfile'
       - 'Environment/Image/docker_shell.py'
-      - '.github/workflows/docker-build-push.yml'
+      - '.github/workflows/dockerBuildPush.yml'
     branches:
       - kkaitepalli/test-push
 
