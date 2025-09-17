@@ -13,7 +13,6 @@ from types_and_constants.agent import (
     PermissionLabels,
     PermissionMapping,
 )
-from utils.logger import logger
 from utils.agent_utils import (
     assign_permission_based_on_agent_type,
     get_default_tools,
@@ -23,6 +22,7 @@ from utils.agent_utils import (
     validate_agent_type_and_permission,
     validate_agent_type_and_system_prompt,
 )
+from utils.logger import logger
 
 
 class Minion:
@@ -60,7 +60,7 @@ class Minion:
 
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> AgentRunResult:
 
-        iteration_count = 0
+        iteration_count = 1
         # start timer
         start_time = time.time()
         timeout = timeout_in_seconds
