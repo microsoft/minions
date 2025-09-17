@@ -26,20 +26,20 @@ from Environment import LocalDockerEnvironment
 
 
 def TestLocalDockerEnvironment():
-    # Environment 1: Read-write mount of /home/kkaitepalli/MAP on host port 8095
+    # Environment 1: Read-write mount of /home/kkaitepalli/MAP on host port 8085
     # Provide absolute path to a directory on your host machine
     env1 = LocalDockerEnvironment(
-        port=8095,
+        port=8085,
         folder_to_mount="/home/kkaitepalli/MAP",
         permission="READ_WRITE",
     )
 
-    # Environment 2: No mount (isolated filesystem view) on host port 8096
-    env2 = LocalDockerEnvironment(port=8096)
+    # Environment 2: No mount (isolated filesystem view) on host port 8086
+    env2 = LocalDockerEnvironment(port=8086)
 
-    # Environment 3: Read-only mount of /home/kkaitepalli/telescope on host port 8097
+    # Environment 3: Read-only mount of /home/kkaitepalli/telescope on host port 8087
     env3 = LocalDockerEnvironment(
-        port=8097,
+        port=8087,
         folder_to_mount="/home/kkaitepalli/telescope",
         permission="READ_ONLY",
     )
