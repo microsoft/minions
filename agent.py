@@ -7,7 +7,7 @@ from logging import getLogger
 from typing import Optional
 
 from constants import ModelProvider, PermissionLabels, PermissionMapping
-from environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from Environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 from utils.logger import LogLevelEmoji, dividerString
