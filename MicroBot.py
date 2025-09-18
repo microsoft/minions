@@ -12,8 +12,6 @@ from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 from utils.logger import LogLevelEmoji, dividerString
 from utils.network import get_free_port
-from utils.logger import LogLevelEmoji, dividerString
-from utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
@@ -99,8 +97,7 @@ class MicroBot:
                 " %s LLM Iteration Count : %d", LogLevelEmoji.INFO, iteration_count
             )
             logger.info(
-                " %s LLM tool call : %s",
-                LogLevelEmoji.INFO,
+                " ➡️  LLM tool call : %s",
                 json.dumps(llm_response.command),
             )
             # increment iteration count
@@ -124,13 +121,12 @@ class MicroBot:
 
             llm_command_output = self.environment.execute(llm_response.command)
             logger.info(
-                " %s Command Execution Output : %s",
-                LogLevelEmoji.INFO,
+                " ⬅️  Command Execution Output : %s",
                 llm_command_output,
             )
             llm_response = self.llm.ask(llm_command_output)
 
-        logger.info("%s TASK COMPLETED : %s...", LogLevelEmoji.COMPLETED, task[0:15])
+        logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.result, error=None)
 
     def _create_environment(self, folder_to_mount):

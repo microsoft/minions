@@ -1,5 +1,5 @@
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from constants import PermissionLabels
 from MicroBot import BotType, MicroBot, system_prompt_common
@@ -25,8 +25,8 @@ class ReadingBot(MicroBot):
         {system_prompt_common}
         You are a reading bot. 
         You are only provided access to read files inside the mounted directory.
-        The directory is mounted at /app/{base_name} in your current environment.
-        You can access files using paths like /app/{base_name}/filename.txt or by changing to that directory first.
+        The directory is mounted at /workdir/{base_name} in your current environment.
+        You can access files using paths like /workdir/{base_name}/filename.txt or by changing to that directory first.
         Once all the commands are done, and task is verified finally give me the result.
         """
 
