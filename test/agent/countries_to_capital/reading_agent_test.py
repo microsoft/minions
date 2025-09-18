@@ -1,6 +1,10 @@
 import os
 import sys
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 from agent import AgentRunResult
@@ -12,7 +16,7 @@ myAgent = ReadingAgent(
 )
 
 response: AgentRunResult = myAgent.run(
-    "Read the /countries_dir/countries.txt give me the capitals of each country.",
+    "Read the /app/countries_dir/countries.txt give me the capitals of each country.",
     timeout_in_seconds=300,
 )
 

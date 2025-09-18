@@ -7,18 +7,18 @@ from logging import getLogger
 from typing import Optional
 
 from constants import ModelProvider, PermissionLabels, PermissionMapping
-from Environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 from utils.logger import LogLevelEmoji, dividerString
 from utils.network import get_free_port
 
-logger = getLogger(__name__)
+logger = getLogger(" Minion ")
 
 llm_output_format = """```json
 {
-    task_done: true | false, 
-    command: "<command to run> | null", 
+    task_done: true | false,
+    command: "<command to run> | null",
     result: str | null
 }
 ```
@@ -94,7 +94,7 @@ class Minion:
                 " %s LLM Iteration Count : %d", LogLevelEmoji.INFO, iteration_count
             )
             logger.info(
-                " %s After LLM Communication Response : %s",
+                " %s LLM tool call : %s",
                 LogLevelEmoji.INFO,
                 json.dumps(llm_response.command),
             )
@@ -118,6 +118,11 @@ class Minion:
                 return return_value
 
             llm_command_output = self.environment.execute(llm_response.command)
+            logger.info(
+                " %s Command Execution Output : %s",
+                LogLevelEmoji.INFO,
+                llm_command_output,
+            )
             llm_response = self.llm.ask(llm_command_output)
 
         logger.info("%s TASK COMPLETED : %s...", LogLevelEmoji.COMPLETED, task[0:15])
