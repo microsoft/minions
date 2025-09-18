@@ -22,14 +22,3 @@ class PermissionMapping:
     }
 
 
-class AgentType(StrEnum):
-    READING_AGENT = "READING_AGENT"
-    WRITING_AGENT = "WRITING_AGENT"
-    BROWSING_AGENT = "BROWSING_AGENT"
-    CUSTOM_AGENT = "CUSTOM_AGENT"
-
-
-class AgentRunResult(TypedDict):
-    status: bool
-    result: str | None
-    error: Optional[str]

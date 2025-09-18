@@ -57,8 +57,3 @@
     tool definition will accept "installation_command", "verification_command", "usage_instructions"
 
 Whenever I am writing code 
-```py
-import logging
-logger = logging.getLogger(__name__)
-logger.info("This is an info message")
-```
