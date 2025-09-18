@@ -65,7 +65,7 @@ class OpenAIApi:
     def clear_history(self):
         self.messages = [
             {
-                "role": "user",
+                "role": "system",
                 "content": self.system_prompt,
             }
         ]
