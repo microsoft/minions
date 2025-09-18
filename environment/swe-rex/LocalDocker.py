@@ -52,6 +52,7 @@ class LocalDocker(Environment):
 
         mount_args = ""
         if folder_to_mount and permission:
+            # TODO: Make overlay mount for read-only to allow llm to create intermediate files
             sanitized = os.path.abspath(folder_to_mount).strip()
             target_path = f"{LocalDocker.BASE_PATH}/{os.path.basename(sanitized)}"
             mode = "ro" if permission == Permission.READ_ONLY else "rw"
