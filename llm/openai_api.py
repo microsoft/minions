@@ -1,33 +1,29 @@
 import json
 import os
-import sys
-from pathlib import Path
+from dataclasses import dataclass
+from logging import getLogger
 
 from dotenv import load_dotenv
+from openai import OpenAI
+from utils.logger import LogLevelEmoji
+
+logger = getLogger(__name__)
+
 
 load_dotenv()
 
 from openai import OpenAI
-
-# sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-# from agent_utils import llm_output_format
 
 endpoint = os.getenv("OPEN_AI_END_POINT")
 deployment_name = os.getenv("OPEN_AI_DEPLOYMENT_NAME")
 api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
 
 
+@dataclass
 class llmAskResponse:
-    def __init__(self):
-        self.task_done: bool = False
-        self.command: str = ""
-        self.result: str | None = None
-
-
-def validate_llm_response(response: dict) -> bool:
-    if "task_done" in response and "command" in response and "result" in response:
-        return True
-    return False
+    task_done: bool = False
+    command: str = ""
+    result: str | None = None
 
 
 class OpenAIApi:
@@ -38,10 +34,10 @@ class OpenAIApi:
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
 
-    def ask(self, message) -> dict:
+    def ask(self, message) -> llmAskResponse:
         self.messages.append({"role": "user", "content": message})
         return_value = {}
-        while validate_llm_response(return_value) is False:
+        while self._validate_llm_response(return_value) is False:
             response = self.ai_client.responses.create(
                 model=self.deployment_name,
                 input=self.messages,
@@ -49,13 +45,22 @@ class OpenAIApi:
             try:
                 return_value = json.loads(response.output_text)
             except Exception as e:
-                print(f"Error occurred while dumping JSON: {e}")
-                print("Failed to parse JSON from LLM response and the response is")
-                print(response.output_text)
+                logger.error(
+                    f"%s Error occurred while dumping JSON: {e}", LogLevelEmoji.ERROR
+                )
+                logger.error(
+                    "%s Failed to parse JSON from LLM response and the response is",
+                    LogLevelEmoji.ERROR,
+                )
+                logger.error(response.output_text)
 
-        self.messages.append({"role": "assistant", "content": response.output_text})
+        self.messages.append({"role": "assistant", "content": json.dumps(return_value)})
 
-        return return_value
+        return llmAskResponse(
+            task_done=return_value["task_done"],
+            result=return_value["result"],
+            command=return_value["command"],
+        )
 
     def clear_history(self):
         self.messages = [
@@ -66,18 +71,8 @@ class OpenAIApi:
         ]
         return True
 
-
-# Do a quick test
-# if __name__ == "__main__":
-#     openai_api = OpenAIApi(
-#         system_prompt="""You are a helpful assistant.
-#         I will give you a task to achieve using the shell.
-#         "You will provide the result of the task in this particular below json format
-#         {llm_output_format}
-#         if the task is completed change task_done to true
-#         """
-#     )
-#     response = openai_api.ask(
-#         "The task is give me the command to list all files in current directory"
-#     )
-#     print(response)
+    def _validate_llm_response(self, response: dict) -> bool:
+        if "task_done" in response and "command" in response and "result" in response:
+            logger.info("The llm response is %s ", response)
+            return True
+        return False
