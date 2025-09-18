@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Optional
+from dataclasses import dataclass
 
+@dataclass
 class CmdReturn:
-    def __init__(self, stdout: str, stderr: str, return_code: int):
-        self.stdout = stdout
-        self.stderr = stderr
-        self.return_code = return_code
+    stdout: str
+    stderr: str
+    return_code: int
 
 
 class Environment(ABC):

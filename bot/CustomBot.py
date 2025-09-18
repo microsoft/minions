@@ -1,9 +1,8 @@
-import os
 from typing import Optional
 
 from constants import PermissionLabels
 from MicroBot import BotType, MicroBot
-from tool_definitions.base_tool import BaseTool
+from tools.tool import Tool
 
 
 class BrowserBot(MicroBot):
@@ -14,7 +13,7 @@ class BrowserBot(MicroBot):
         system_prompt: str,
         folder_to_mount: Optional[str] = None,
         environment: Optional[any] = None,
-        additional_tools: Optional[list[BaseTool]] = [],
+        additional_tools: Optional[list[Tool]] = [],
     ):
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT

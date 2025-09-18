@@ -3,7 +3,7 @@ from typing import Optional
 
 from constants import DOCKER_WORKING_DIR, PermissionLabels
 from MicroBot import BotType, MicroBot, system_prompt_common
-from tool_definitions.base_tool import BaseTool
+from tools.tool import Tool
 
 
 class ReadingBot(MicroBot):
@@ -13,7 +13,7 @@ class ReadingBot(MicroBot):
         model: str,
         folder_to_mount: str,
         environment: Optional[any] = None,
-        additional_tools: Optional[list[BaseTool]] = [],
+        additional_tools: Optional[list[Tool]] = [],
     ):
         # validate init values before assigning
         bot_type = BotType.READING_BOT
@@ -23,7 +23,7 @@ class ReadingBot(MicroBot):
 
         system_prompt = f"""
         {system_prompt_common}
-        You are a reading bot. 
+        You are a reading bot.
         You are only provided access to read files inside the mounted directory.
         The directory is mounted at /{DOCKER_WORKING_DIR}/{base_name} in your current environment.
         You can access files using paths like /{DOCKER_WORKING_DIR}/{base_name}/filename.txt or by changing to that directory first.
