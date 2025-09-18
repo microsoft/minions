@@ -15,18 +15,19 @@ NOTES:
   - Error handling here is minimal; in production wrap execute calls and inspect return values.
 
 USAGE:
-    python -m Environment.test
+    python -m test.environment.local_docker.LocalDockerEnvironmentTest
 
 Clean Up Manually (example):
-    docker ps | grep shell_server
+    docker ps | grep <image_name>
     # then stop/remove as needed
 """
 
-from Environment import LocalDockerEnvironment
+from environment.local_docker import LocalDockerEnvironment
 
 
-def test():
+def LocalDockerEnvironmentTest():
     # Environment 1: Read-write mount of /home/kkaitepalli/MAP on host port 8085
+    # Provide absolute path to a directory on your host machine
     env1 = LocalDockerEnvironment(
         port=8085,
         folder_to_mount="/home/kkaitepalli/MAP",
@@ -78,5 +79,5 @@ def test():
         # env1.stop(); env2.stop(); env3.stop()
 
 
-if __name__ == "__main__":  # Allows running via: python -m Environment.test
-    test()
+if __name__ == "__main__":  # Allows running via: python -m test.environment.local_docker.LocalDockerEnvironmentTest
+    LocalDockerEnvironmentTest()

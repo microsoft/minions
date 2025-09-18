@@ -20,7 +20,7 @@ from agent_utils import (
     validate_agent_type_and_permission,
     validate_agent_type_and_system_prompt,
 )
-from Environment.LocalDockerEnvironment import LocalDockerEnvironment
+from environment.local_docker import LocalDockerEnvironment
 from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 
