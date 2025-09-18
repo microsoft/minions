@@ -1,0 +1,39 @@
+name: browser-use
+description: A command-line AI web browser
+parameters:
+  type: str
+  description: The query to fetch information from the Internet.
+  required: true
+
+files_to_copy:
+  src: browser-use/browser.py
+  dest: /sbin/browser
+  permissions: 7  # rwx
+
+install_commands:
+  # Install it system-wide using pip
+  - pip install browser-use==0.5.4 playwright
+  - playwright install --with-deps
+  - playwright install chromium --install-deps --no-shell
+
+env_variables:
+  - AZURE_OPENAI_API_KEY
+  - AZURE_OPENAI_ENDPOINT
+  - AZURE_OPENAI_API_VERSION
+
+uninstall_commands:
+  - playwright uninstall chromium
+  - pip uninstall -y browser-use playwright
+
+usage_instructions_to_llm: |
+  # The `browser` command is a command-line AI web browser that allows you to fetch information from the Internet.
+  # It uses the Playwright library to automate browser actions and the OpenAI API to process your commands.
+
+  # Basic usage:
+  #   browser "<query>"
+  # Example:
+  #   browser "What is the capital of France?"
+  #   browser "Get me the latest release of Curl"
+
+  # Remember the query should be enclosed in quotes.
+  # End of instructions.
