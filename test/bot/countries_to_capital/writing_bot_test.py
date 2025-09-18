@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
-
 from bot.WritingBot import WritingBot
+from constants import DOCKER_WORKING_DIR
 from MicroBot import BotRunResult
 
 myBot = WritingBot(
@@ -17,7 +17,7 @@ myBot = WritingBot(
 )
 
 response: BotRunResult = myBot.run(
-    "Read the /workdir/countries_dir/countries.txt store their capitals in /workdir/countries_dir/capitals.txt file",
+    f"Read the /{DOCKER_WORKING_DIR}/countries_dir/countries.txt store their capitals in /{DOCKER_WORKING_DIR}/countries_dir/capitals.txt file",
     timeout_in_seconds=300,
 )
 

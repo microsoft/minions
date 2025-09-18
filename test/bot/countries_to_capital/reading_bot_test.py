@@ -8,6 +8,7 @@ logging.basicConfig(level=logging.INFO)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 from bot.ReadingBot import ReadingBot
+from constants import DOCKER_WORKING_DIR
 from MicroBot import BotRunResult
 
 myBot = ReadingBot(
@@ -16,7 +17,7 @@ myBot = ReadingBot(
 )
 
 response: BotRunResult = myBot.run(
-    "Read the /workdir/countries_dir/countries.txt give me the capitals of each country.",
+    f"Read the /{DOCKER_WORKING_DIR}/countries_dir/countries.txt give me the capitals of each country.",
     timeout_in_seconds=300,
 )
 

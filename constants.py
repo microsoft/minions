@@ -20,3 +20,6 @@ class PermissionMapping:
         PermissionLabels.READ_ONLY: "ro",
         PermissionLabels.READ_WRITE: "rw",
     }
+
+
+DOCKER_WORKING_DIR = "workdir"
