@@ -1,0 +1,68 @@
+name: cscope
+description: Cscope is a developer's tool for browsing source code.
+
+# llm can use tools only in non-interactive mode. So, give instructions accordingly.
+usage_instructions_to_llm: |
+  # Non-interactive cscope usage only. The cross-reference database has already
+  # been built once with `cscope -R` in the project root (recursively indexing sources).
+  # Do NOT run interactive `cscope` (no curses UI). Use the -L batch mode flags.
+  # General form:
+  #   cscope -L <query_type> <symbol_or_pattern>
+  # Where <query_type> is a single character code defined below.
+
+  # Query type codes (non-interactive):
+  #   -0  Find this C symbol (exact identifier)
+  #   -1  Find this global definition
+  #   -2  Find functions called by this function
+  #   -3  Find functions calling this function
+  #   -4  Find this text string (literal substring search)
+  #   -5  Change this text string (same as -4 but semantically used for refactors)
+  #   -6  Find this egrep pattern (regex)
+  #   -7  Find this file
+  #   -8  Find files #including this file
+  #   -9  Find assignments to this symbol
+
+  # Examples (DO NOT rebuild the database):
+  # 1. Find where a symbol is referenced (reads/writes):
+  #    cscope -L -0 mySymbol
+  # 2. Find its global definition (function or variable definition site):
+  #    cscope -L -1 mySymbol
+  # 3. List functions that the given function calls:
+  #    cscope -L -2 process_request
+  # 4. List functions that call a given function (callers):
+  #    cscope -L -3 process_request
+  # 5. Plain text search (fast substring):
+  #    cscope -L -4 "error: invalid state"
+  # 6. Regex (egrep) search:
+  #    cscope -L -6 "^class\\s+LocalDocker"
+  # 7. Find a file by name (exact match or substring depending on DB):
+  #    cscope -L -7 LocalDocker.py
+  # 8. Show headers that include a given header:
+  #    cscope -L -8 config.h
+  # 9. Assignments to a symbol:
+  #    cscope -L -9 status
+
+  # Output format: each matching line typically includes the filename, function context,
+  # and the line number with the line content. Parse it to gather file paths and lines.
+
+  # Notes / Constraints:
+  # - Rebuild the database using `cscope -R` if you modify/add/remove source files.
+  # - Never invoke the interactive TUI.
+  # - For multi-word text searches that are NOT regex, prefer -4; for patterns, use -6.
+  # - Treat results deterministically; do not guess additional matches.
+
+  # End of non-interactive instructions.
+
+install_commands:
+  - apt-get update
+  - apt-get install -y cscope
+
+verify_commands:
+  - cscope --version
+
+setup_commands:
+  - cscope -R
+
+uninstall_commands:
+  - apt-get remove -y cscope
+  - apt-get autoremove -y

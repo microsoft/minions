@@ -6,3 +6,4 @@ uvicorn
 pydantic
 swe-rex
 aiohttp
+pyyaml
