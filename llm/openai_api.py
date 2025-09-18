@@ -37,7 +37,7 @@ class OpenAIApi:
 
     def ask(self, message) -> llmAskResponse:
         self.messages.append({"role": "user", "content": message})
-        return_value = llmAskResponse(False, "", None)
+        return_value = {}
         while self._validate_llm_response(return_value) is False:
             response = self.ai_client.responses.create(
                 model=self.deployment_name,
@@ -45,11 +45,6 @@ class OpenAIApi:
             )
             try:
                 return_value = json.loads(response.output_text)
-                return_value = llmAskResponse(
-                    task_done=return_value.get("task_done", False),
-                    command=return_value.get("command", ""),
-                    result=return_value.get("result", None),
-                )
             except Exception as e:
                 logger.error(
                     f"%s Error occurred while dumping JSON: {e}", LogLevelEmoji.ERROR
@@ -60,7 +55,7 @@ class OpenAIApi:
                 )
                 logger.error(response.output_text)
 
-        self.messages.append({"role": "assistant", "content": response.output_text})
+        self.messages.append({"role": "assistant", "content": json.dumps(return_value)})
 
         return llmAskResponse(
             task_done=return_value["task_done"],
@@ -79,5 +74,6 @@ class OpenAIApi:
 
     def _validate_llm_response(self, response: dict) -> bool:
         if "task_done" in response and "command" in response and "result" in response:
+            logger.info("The llm response is %s ", response)
             return True
         return False
