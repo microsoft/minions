@@ -7,7 +7,7 @@ from logging import getLogger
 from typing import Optional
 
 from constants import ModelProvider, PermissionLabels, PermissionMapping
-from Environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 from utils.logger import LogLevelEmoji, dividerString
@@ -24,11 +24,11 @@ llm_output_format = """```json
 ```
 """
 
-system_prompt_common = """There is a shell session open for you. 
-                I will provide a task to achieve using the shell. 
+system_prompt_common = """There is a shell session open for you.
+                I will provide a task to achieve using the shell.
                 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
                 {llm_output_format}
-                after each command I will provide the output of the command. 
+                after each command I will provide the output of the command.
                 ensure to run only one command at a time.
                 I won't be able to intervene once I have given task. ."""
 
