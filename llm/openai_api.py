@@ -3,6 +3,12 @@ import os
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
+from openai import OpenAI
+
+from utils.logger import LogLevelEmoji
+
+logger = getLogger(__name__)
+
 
 load_dotenv()
 
@@ -34,20 +40,30 @@ class OpenAIApi:
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
 
-    def ask(self, message) -> dict:
+    def ask(self, message) -> llmAskResponse:
         self.messages.append({"role": "user", "content": message})
-        return_value = {}
-        while validate_llm_response(return_value) is False:
+        return_value = llmAskResponse(False, "", None)
+        while self._validate_llm_response(return_value) is False:
             response = self.ai_client.responses.create(
                 model=self.deployment_name,
                 input=self.messages,
             )
             try:
                 return_value = json.loads(response.output_text)
+                return_value = llmAskResponse(
+                    task_done=return_value.get("task_done", False),
+                    command=return_value.get("command", ""),
+                    result=return_value.get("result", None),
+                )
             except Exception as e:
-                print(f"Error occurred while dumping JSON: {e}")
-                print("Failed to parse JSON from LLM response and the response is")
-                print(response.output_text)
+                logger.error(
+                    f"%s Error occurred while dumping JSON: {e}", LogLevelEmoji.ERROR
+                )
+                logger.error(
+                    "%s Failed to parse JSON from LLM response and the response is",
+                    LogLevelEmoji.ERROR,
+                )
+                logger.error(response.output_text)
 
         self.messages.append({"role": "assistant", "content": response.output_text})
 
