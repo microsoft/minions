@@ -12,6 +12,8 @@ from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 from utils.logger import LogLevelEmoji, dividerString
 from utils.network import get_free_port
+from utils.logger import LogLevelEmoji, dividerString
+from utils.network import get_free_port
 
 logger = getLogger(" Minion ")
 
@@ -24,11 +26,11 @@ llm_output_format = """```json
 ```
 """
 
-system_prompt_common = """There is a shell session open for you.
-                I will provide a task to achieve using the shell.
+system_prompt_common = """There is a shell session open for you. 
+                I will provide a task to achieve using the shell. 
                 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
                 {llm_output_format}
-                after each command I will provide the output of the command.
+                after each command I will provide the output of the command. 
                 ensure to run only one command at a time.
                 I won't be able to intervene once I have given task. ."""
 
@@ -61,13 +63,17 @@ class Minion:
     ):
         # validate init values before assigning
         self.permission = permission
+        self.permission = permission
         if folder_to_mount is not None:
             self.folder_to_mount_base_path = os.path.basename(folder_to_mount)  # TODO
 
         self._validate_model_and_provider(model)
+        self._validate_model_and_provider(model)
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.system_prompt = system_prompt
+        self.system_prompt = system_prompt
         self.model = model
+        self.agent_type = agent_type
         self.agent_type = agent_type
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
