@@ -7,18 +7,19 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+from bot.ReadingBot import ReadingBot
+from MicroBot import BotRunResult
 
-from agent import AgentRunResult
-from agents.WritingAgent import WritingAgent
-
-myAgent = WritingAgent(
+myBot = ReadingBot(
     model="openai/mini-swe-agent-gpt5",
     folder_to_mount=str(Path(__file__).parent / "countries_dir"),
 )
 
-response: AgentRunResult = myAgent.run(
-    "Read the /workdir/countries_dir/countries.txt store their capitals in /app/countries_dir/capitals.txt file",
+response: BotRunResult = myBot.run(
+    "Read the /workdir/countries_dir/countries.txt give me the capitals of each country.",
     timeout_in_seconds=300,
 )
 
-print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")
+print(
+    f"Status: {response.status}\n***Result:***\n{response.result}\n===\nError: {response.error}"
+)

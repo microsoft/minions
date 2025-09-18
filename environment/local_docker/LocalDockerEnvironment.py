@@ -1,15 +1,17 @@
-import docker
-from typing import Optional, Dict, Any
-import time
-import os
-import requests
 import logging
+import os
+import time
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import docker
+import requests
 
 logger = logging.getLogger(__name__)
 
 WORKING_DIR = str(Path.home() / "MICROBOT_WORKDIR")
 DOCKER_WORKING_DIR = "/workdir"
+
 
 class LocalDockerEnvironment:
     def __init__(
@@ -24,7 +26,9 @@ class LocalDockerEnvironment:
         elif permission is None and folder_to_mount is not None:
             raise ValueError("folder_to_mount provided but permission is None")
         if permission is not None and permission not in ["READ_ONLY", "READ_WRITE"]:
-            raise ValueError("permission must be 'READ_ONLY' or 'READ_WRITE' when provided")
+            raise ValueError(
+                "permission must be 'READ_ONLY' or 'READ_WRITE' when provided"
+            )
 
         self.image = image
         self.folder_to_mount = folder_to_mount
@@ -44,13 +48,8 @@ class LocalDockerEnvironment:
             logger.info("🗂️ Working directory already exists at %s", WORKING_DIR)
 
     def start(self):
-        mode_map = {
-        "READ_ONLY": "ro",
-        "READ_WRITE": "rw"
-        }
-        volumes_config = {
-            WORKING_DIR: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}
-        }
+        mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}
+        volumes_config = {WORKING_DIR: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}}
         if self.folder_to_mount and self.permission:
             if self.permission == "READ_ONLY":
                 volumes_config[self.folder_to_mount] = {
@@ -82,8 +81,8 @@ class LocalDockerEnvironment:
             ports=port_mapping,
             detach=True,
             working_dir="/app",
-            environment={"AGENT_PORT": str(self.container_port)},
             privileged=True,  # Required for mounting overlayfs
+            environment={"BOT_PORT": str(self.container_port)},
         )
         logger.info(
             "🚀 Started container %s with image %s on host port %s",
@@ -91,7 +90,7 @@ class LocalDockerEnvironment:
             self.image,
             self.port,
         )
-        time.sleep(2) # Give some time for the server to start
+        time.sleep(2)  # Give some time for the server to start
 
         if self.permission == "READ_ONLY":
             self._setup_overlay_mount(self.folder_to_mount)
@@ -105,7 +104,10 @@ class LocalDockerEnvironment:
             f"mount -t overlay overlay -o lowerdir=/ro/{path_name},upperdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/upper,workdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/work /{DOCKER_WORKING_DIR}/{path_name}"
         )
         self.execute(mount_command)
-        logger.info("🔒 Set up overlay mount for read-only directory at /{DOCKER_WORKING_DIR}/%s", path_name)
+        logger.info(
+            "🔒 Set up overlay mount for read-only directory at /{DOCKER_WORKING_DIR}/%s",
+            path_name,
+        )
 
     def stop(self):
         """Stop and remove the container"""
@@ -118,6 +120,7 @@ class LocalDockerEnvironment:
         if os.path.exists(WORKING_DIR):
             try:
                 import shutil
+
                 shutil.rmtree(WORKING_DIR)
                 logger.info("🗑️ Removed working directory at %s", WORKING_DIR)
             except Exception as e:
@@ -135,7 +138,9 @@ class LocalDockerEnvironment:
             logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
             return response.json().get("output", "")
         except requests.exceptions.ConnectionError:
-            logger.warning("⚠️ Connection error when executing command; checking container status…")
+            logger.warning(
+                "⚠️ Connection error when executing command; checking container status…"
+            )
             self.container.reload()
             logger.info("ℹ️ Container status: %s", self.container.status)
             if self.container.status != "running":
@@ -148,4 +153,3 @@ class LocalDockerEnvironment:
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
             return f"Error: Unexpected error"
-

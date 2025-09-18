@@ -15,7 +15,7 @@ from utils.network import get_free_port
 from utils.logger import LogLevelEmoji, dividerString
 from utils.network import get_free_port
 
-logger = getLogger(" Minion ")
+logger = getLogger(" MicroBot ")
 
 llm_output_format = """```json
 {
@@ -35,25 +35,25 @@ system_prompt_common = """There is a shell session open for you.
                 I won't be able to intervene once I have given task. ."""
 
 
-class AgentType(StrEnum):
-    READING_AGENT = "READING_AGENT"
-    WRITING_AGENT = "WRITING_AGENT"
-    BROWSING_AGENT = "BROWSING_AGENT"
-    CUSTOM_AGENT = "CUSTOM_AGENT"
+class BotType(StrEnum):
+    READING_BOT = "READING_BOT"
+    WRITING_BOT = "WRITING_BOT"
+    BROWSING_BOT = "BROWSING_BOT"
+    CUSTOM_BOT = "CUSTOM_BOT"
 
 
 @dataclass
-class AgentRunResult:
+class BotRunResult:
     status: bool
     result: str | None
     error: Optional[str]
 
 
-class Minion:
+class MicroBot:
 
     def __init__(
         self,
-        agent_type: AgentType,
+        bot_type: BotType,
         model: str,
         system_prompt: Optional[str] = None,
         environment: Optional[any] = None,
@@ -73,22 +73,21 @@ class Minion:
         self.system_prompt = system_prompt
         self.system_prompt = system_prompt
         self.model = model
-        self.agent_type = agent_type
-        self.agent_type = agent_type
+        self.bot_type = bot_type
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
         self.environment = environment
         self._create_environment(folder_to_mount)
         self._create_llm()
 
-    def run(self, task, max_iterations=20, timeout_in_seconds=200) -> AgentRunResult:
+    def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:
 
         iteration_count = 1
         # start timer
         start_time = time.time()
         timeout = timeout_in_seconds
         llm_response = self.llm.ask(task)
-        return_value = AgentRunResult(
+        return_value = BotRunResult(
             status=False,
             result=None,
             error="Did not complete",
@@ -132,7 +131,7 @@ class Minion:
             llm_response = self.llm.ask(llm_command_output)
 
         logger.info("%s TASK COMPLETED : %s...", LogLevelEmoji.COMPLETED, task[0:15])
-        return AgentRunResult(status=True, result=llm_response.result, error=None)
+        return BotRunResult(status=True, result=llm_response.result, error=None)
 
     def _create_environment(self, folder_to_mount):
         if self.environment is None:
