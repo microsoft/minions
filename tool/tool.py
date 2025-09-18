@@ -1,14 +1,30 @@
 from dataclasses import dataclass
 from typing import Optional, List
 from pathlib import Path
+from enum import IntEnum
 import yaml
+
+
+class FILE_PERMISSION(IntEnum):
+    READ = 4
+    WRITE = 2
+    EXECUTE = 1
+
+
+@dataclass
+class EnvFileCopies:
+    src: Path
+    dest: Path
+    permissions: int  # Use FILE_PERMISSION enum to set permissions
+
 
 @dataclass
 class Tool:
     # TODO: Handle different instructions based on the platform (linux flavours, windows, mac)
     # TODO: Add versioning to tools
-    name: Optional[str]
-    description: Optional[str]
+    name: str
+    description: str
+    parameters: dict | None
 
     # This is the set of instructions that will be provided to the LLM on how to use this tool.
     # This string will be appended to the LLM's system prompt.
@@ -18,6 +34,12 @@ class Tool:
     # This set of commands will be executed once the environment is up and running.
     # These commands will be executed in the order they are provided.
     install_commands: List[str]
+
+    # Mention what are the environment variables that need to be copied from your current environment
+    env_variables: Optional[str] = None
+
+    # Any files to be copied to the environment before the tool is installed.
+    files_to_copy: Optional[List[EnvFileCopies]] = None
 
     # This set of commands will be executed to verify if the tool is installed correctly.
     # If any of these commands fail, the tool installation is considered to have failed.
