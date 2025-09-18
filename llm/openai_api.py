@@ -1,10 +1,10 @@
 import json
 import os
 from dataclasses import dataclass
+from logging import getLogger
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from logging import getLogger
 
 from utils.logger import LogLevelEmoji
 
@@ -25,12 +25,6 @@ class llmAskResponse:
     task_done: bool = False
     command: str = ""
     result: str | None = None
-
-
-def validate_llm_response(response: dict) -> bool:
-    if "task_done" in response and "command" in response and "result" in response:
-        return True
-    return False
 
 
 class OpenAIApi:
@@ -82,3 +76,8 @@ class OpenAIApi:
             }
         ]
         return True
+
+    def _validate_llm_response(self, response: dict) -> bool:
+        if "task_done" in response and "command" in response and "result" in response:
+            return True
+        return False
