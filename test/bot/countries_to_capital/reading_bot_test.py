@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+from constants import DOCKER_WORKING_DIR
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -16,7 +18,7 @@ myBot = ReadingBot(
 )
 
 response: BotRunResult = myBot.run(
-    "Read the /workdir/countries_dir/countries.txt give me the capitals of each country.",
+    f"Read the /{DOCKER_WORKING_DIR}/countries_dir/countries.txt give me the capitals of each country.",
     timeout_in_seconds=300,
 )
 
