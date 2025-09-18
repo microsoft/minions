@@ -1,7 +1,8 @@
 from typing import Optional
 
 from constants import PermissionLabels
-from MicroBot import BotType, MicroBot, system_prompt_common
+from MicroBot import BotType, MicroBot, BotRunResult
+from environment.Environment import Environment
 from tools.tool import Tool, parse_tool_definition
 
 
@@ -13,7 +14,7 @@ class BrowsingBot(MicroBot):
     def __init__(
         self,
         model: str,
-        environment: Optional[any] = None,
+        environment: Optional[Environment] = None,
         additional_tools: Optional[list[Tool]] = [],
     ):
         # validate init values before assigning
@@ -29,3 +30,21 @@ class BrowsingBot(MicroBot):
             environment=environment,
             additional_tools=additional_tools + [BROWSER_USE_TOOL],
         )
+
+    def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:
+        # browser-use will run inside the docker. So, single command to env should be sufficient
+        browser_output = self.environment.execute(f"python3 /sbin/browser '{task}'", timeout=timeout_in_seconds)
+        if browser_output.return_code != 0:
+            return f"Failed to run browser command. Error: {browser_output.stderr}"
+
+        browser_stdout = browser_output.stdout
+        # print("Browser stdout:", browser_stdout)
+        # final_result = browser_stdout.split("Final result:")[-1].strip() if "Final result:" in browser_stdout else browser_stdout.strip()
+        final_result = browser_stdout["Final result:"] if "Final result:" in browser_stdout else browser_stdout
+
+        return BotRunResult(
+            status=browser_output.return_code == 0,
+            result=final_result,
+            error=browser_output.stderr if browser_output.return_code != 0 else None,
+        )
+

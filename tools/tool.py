@@ -74,16 +74,28 @@ def parse_tool_definition(yaml_path: str) -> Tool:
 
     with open(yaml_path, "r") as f:
         tool_dict = yaml.safe_load(f)
+
+    for file_to_copy in tool_dict.get("files_to_copy", []) or []:
+        file_to_copy["src"] = Path(file_to_copy["src"])
+        file_to_copy["dest"] = Path(file_to_copy["dest"])
+        if "permissions" not in file_to_copy:
+            raise ValueError(f"permissions not provided for file copy {file_to_copy}")
+        if not isinstance(file_to_copy["permissions"], int) or not (0 <= file_to_copy["permissions"] <= 7):
+            raise ValueError(f"permissions must be an integer between 0 and 7 for file copy {file_to_copy}")
+        file_to_copy["permissions"] = file_to_copy.pop("permissions")
+
+    tool_dict["files_to_copy"] = [EnvFileCopies(**file_to_copy) for file_to_copy in tool_dict.get("files_to_copy", []) or []]
+
     return Tool(**tool_dict)
 
 
 def _install_tool(env: Environment, tool: Tool):
-    logger.info("Installing tool: %s", tool.name)
+    logger.debug("Installing tool: %s", tool.name)
     for command in tool.install_commands:
         output = env.execute(command)
         logger.debug("Tool install command: %s", output)
         logger.debug("Tool install command output: %s", output)
-        if output.get("return_code", 1) != 0:
+        if output.return_code != 0:
             logger.error(
                 "❌ Failed to install tool: %s with command: %s",
                 tool.name,
@@ -92,6 +104,7 @@ def _install_tool(env: Environment, tool: Tool):
             raise RuntimeError(
                 f"Failed to install tool {tool.name} with command {command}. Output: {output}"
             )
+    logger.info("✅ Successfully installed tool: %s", tool.name)
 
 def _copy_env_variable(env: Environment, env_variable: str):
     if env_variable not in os.environ:
@@ -111,7 +124,7 @@ def _copy_env_variable(env: Environment, env_variable: str):
 def _copy_file(env: Environment, file_copy: EnvFileCopies):
     # If not abs path, append to TOOL_FILE_BASE_PATH
     if not file_copy.src.is_absolute():
-        file_copy.src = TOOL_FILE_BASE_PATH / file_copy.src
+        file_copy.src = str(TOOL_FILE_BASE_PATH / file_copy.src)
 
     # We con't have copy functionality yet. Read source file and write to dest
     if not os.path.exists(file_copy.src):
@@ -125,11 +138,13 @@ def _copy_file(env: Environment, file_copy: EnvFileCopies):
 
     with open(file_copy.src, "r") as src_file:
         content = src_file.read()
+        # escape all quotes in content
+        content = content.replace('"', '\\"')
     dest_path_in_container = f"/{file_copy.dest}"
     output = env.execute(
         f'echo """{content}""" > {dest_path_in_container}'
     )
-    if output.get("return_code", 1) != 0:
+    if output.return_code != 0:
         logger.error(
             "❌ Failed to copy file to container: %s to: %s",
             file_copy.src,
@@ -139,17 +154,18 @@ def _copy_file(env: Environment, file_copy: EnvFileCopies):
             f"Failed to copy file to container {file_copy.dest}. Output: {output}"
         )
     _setup_file_permission(env, file_copy)
+    logger.info("✅ Copied file to container: %s to: %s", file_copy.src, dest_path_in_container)
 
 def _setup_file_permission(env: Environment, file_copy: EnvFileCopies):
     permission_command = ""
-    if file_copy.permission - 4 >= 0:
+    if file_copy.permissions - 4 >= 0:
         permission_command += f"chmod +r {file_copy.dest} && "
-    if file_copy.permission - 2 >= 0:
+    if file_copy.permissions - 2 >= 0:
         permission_command += f"chmod +w {file_copy.dest} && "
-    if file_copy.permission - 1 >= 0:
+    if file_copy.permissions - 1 >= 0:
         permission_command += f"chmod +x {file_copy.dest}"
     output = env.execute(permission_command)
-    if output.get("return_code", 1) != 0:
+    if output.return_code != 0:
         logger.error(
             "❌ Failed to set permission for file in container: %s to: %s",
             file_copy.src,
@@ -167,7 +183,7 @@ def _verify_tool_installation(env: Environment, tool: Tool):
     for command in tool.verify_commands:
         output = env.execute(command)
         logger.debug("Tool verify command: %s", output)
-        if output.get("return_code", 1) != 0:
+        if output.return_code != 0:
             logger.error(
                 "❌ Failed to verify tool: %s with command: %s",
                 tool.name,
@@ -185,7 +201,6 @@ def install_tools(env: Environment, tools: List[Tool]):
 
         for env_variable in tool.env_variables:
             _copy_env_variable(env, env_variable)
-
 
         for file_copy in tool.files_to_copy or []:
             _copy_file(env, file_copy)
@@ -208,7 +223,7 @@ def setup_tools(env: Environment, tools: List[Tool]):
         for command in tool.setup_commands:
             output = env.execute(command)
             logger.debug("Tool setup command: %s", output)
-            if output.get("return_code", 1) != 0:
+            if output.return_code != 0:
                 logger.error(
                     "❌ Failed to setup tool: %s with command: %s",
                     tool.name,

@@ -6,6 +6,9 @@ import sys
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+from dotenv import load_dotenv
+load_dotenv()
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 from bot.BrowsingBot import BrowsingBot
 from MicroBot import BotRunResult
@@ -19,4 +22,8 @@ response: BotRunResult = myBot.run(
     timeout_in_seconds=300,
 )
 
-logger.info("Status: %s, Result: %s, Error: %s", response.status, response.result, response.error)
+final_result = response.result["stdout"].split("Final Result:")[-1].strip()
+# logger.info(f"Response: {response}")
+logger.debug("Status: %s\n, Error: %s\n\n\n, ***Result:***\n %s\n", response.status, response.error, response.result)
+
+print("Final Result: %s", final_result)

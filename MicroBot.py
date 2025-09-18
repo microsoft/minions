@@ -67,7 +67,6 @@ class MicroBot:
             self.folder_to_mount_base_path = os.path.basename(folder_to_mount)  # TODO
 
         self._validate_model_and_provider(model)
-        self._validate_model_and_provider(model)
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.system_prompt = system_prompt
         self.system_prompt = system_prompt

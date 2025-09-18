@@ -45,9 +45,9 @@ class LocalDockerEnvironment(Environment):
     def _create_working_dir(self):
         if not os.path.exists(WORKING_DIR):
             os.makedirs(WORKING_DIR)
-            logger.info("🗂️ Created working directory at %s", WORKING_DIR)
+            logger.info("🗂️  Created working directory at %s", WORKING_DIR)
         else:
-            logger.info("🗂️ Working directory already exists at %s", WORKING_DIR)
+            logger.info("🗂️  Working directory already exists at %s", WORKING_DIR)
 
     def start(self):
         mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}
@@ -128,7 +128,7 @@ class LocalDockerEnvironment(Environment):
             except Exception as e:
                 logger.error("❌ Failed to remove working directory: %s", e)
 
-    def execute(self, command: str, timeout: Optional[int] = 10) -> CmdReturn: # TODO: Need proper return value
+    def execute(self, command: str, timeout: Optional[int] = 300) -> CmdReturn: # TODO: Need proper return value
         logger.debug("➡️  Executing command in container: %s", command)
         try:
             response = requests.post(
