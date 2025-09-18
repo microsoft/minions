@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from logging import getLogger
 
 from utils.logger import LogLevelEmoji
 
