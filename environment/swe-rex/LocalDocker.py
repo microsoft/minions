@@ -24,7 +24,7 @@ class Permission(str, Enum):
 
 
 class LocalDocker(Environment):
-    BASE_PATH: Final[str] = "/app"
+    BASE_PATH: Final[str] = "/workdir"
 
     def _validate_permission_args(
         self,

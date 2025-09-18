@@ -16,7 +16,7 @@ myAgent = ReadingAgent(
 )
 
 response: AgentRunResult = myAgent.run(
-    "Read the /app/countries_dir/countries.txt give me the capitals of each country.",
+    "Read the /workdir/countries_dir/countries.txt give me the capitals of each country.",
     timeout_in_seconds=300,
 )
 

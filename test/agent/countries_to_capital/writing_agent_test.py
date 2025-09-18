@@ -17,7 +17,7 @@ myAgent = WritingAgent(
 )
 
 response: AgentRunResult = myAgent.run(
-    "Read the /app/countries_dir/countries.txt store their capitals in /app/countries_dir/capitals.txt file",
+    "Read the /workdir/countries_dir/countries.txt store their capitals in /app/countries_dir/capitals.txt file",
     timeout_in_seconds=300,
 )
 

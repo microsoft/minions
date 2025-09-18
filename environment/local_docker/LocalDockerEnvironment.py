@@ -4,8 +4,12 @@ import time
 import os
 import requests
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+WORKING_DIR = str(Path.home() / "MICROBOT_WORKDIR")
+DOCKER_WORKING_DIR = "/workdir"
 
 class LocalDockerEnvironment:
     def __init__(
@@ -29,32 +33,42 @@ class LocalDockerEnvironment:
         self.client = docker.from_env()
         self.port = port  # required host port
         self.container_port = 8080
+        self._create_working_dir()
         self.start()
+
+    def _create_working_dir(self):
+        if not os.path.exists(WORKING_DIR):
+            os.makedirs(WORKING_DIR)
+            logger.info("🗂️ Created working directory at %s", WORKING_DIR)
+        else:
+            logger.info("🗂️ Working directory already exists at %s", WORKING_DIR)
 
     def start(self):
         mode_map = {
         "READ_ONLY": "ro",
         "READ_WRITE": "rw"
         }
-        volumes_config = {}
+        volumes_config = {
+            WORKING_DIR: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}
+        }
         if self.folder_to_mount and self.permission:
             if self.permission == "READ_ONLY":
                 volumes_config[self.folder_to_mount] = {
                     "bind": f"/ro/{os.path.basename(self.folder_to_mount)}",
                     "mode": mode_map[self.permission],
                 }
-                logger.debug(
+                logger.info(
                     "📦 Volume mapping: %s → /ro/%s",
                     self.folder_to_mount,
                     os.path.basename(self.folder_to_mount),
                 )
             else:
                 volumes_config[self.folder_to_mount] = {
-                    "bind": f"/app/{os.path.basename(self.folder_to_mount)}",
+                    "bind": f"/{DOCKER_WORKING_DIR}/{os.path.basename(self.folder_to_mount)}",
                     "mode": mode_map[self.permission],
                 }
                 logger.debug(
-                    "📦 Volume mapping: %s → /app/%s",
+                    "📦 Volume mapping: %s → /{DOCKER_WORKING_DIR}/%s",
                     self.folder_to_mount,
                     os.path.basename(self.folder_to_mount),
                 )
@@ -69,6 +83,7 @@ class LocalDockerEnvironment:
             detach=True,
             working_dir="/app",
             environment={"AGENT_PORT": str(self.container_port)},
+            privileged=True,  # Required for mounting overlayfs
         )
         logger.info(
             "🚀 Started container %s with image %s on host port %s",
@@ -83,13 +98,14 @@ class LocalDockerEnvironment:
 
     def _setup_overlay_mount(self, folder_to_mount: str):
         path_name = os.path.basename(os.path.abspath(folder_to_mount))
-        # Mount /ro/path_name to /app/path_name using overlayfs
+        # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
-            f"mkdir -p /app/{path_name} && "
-            f"mount -t overlay overlay -o lowerdir=/ro/{path_name},upperdir=/app/{path_name},workdir=/tmp/work /app/{path_name}"
+            f"mkdir -p /overlaydir && "
+            f"mkdir -p /{DOCKER_WORKING_DIR}/{path_name} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && "
+            f"mount -t overlay overlay -o lowerdir=/ro/{path_name},upperdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/upper,workdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/work /{DOCKER_WORKING_DIR}/{path_name}"
         )
         self.execute(mount_command)
-        logger.info("🔒 Set up overlay mount for read-only directory at /app/%s", folder_to_mount)
+        logger.info("🔒 Set up overlay mount for read-only directory at /{DOCKER_WORKING_DIR}/%s", path_name)
 
     def stop(self):
         """Stop and remove the container"""
@@ -98,7 +114,17 @@ class LocalDockerEnvironment:
             self.container.remove()
             self.container = None
 
+        # Remove working directory
+        if os.path.exists(WORKING_DIR):
+            try:
+                import shutil
+                shutil.rmtree(WORKING_DIR)
+                logger.info("🗑️ Removed working directory at %s", WORKING_DIR)
+            except Exception as e:
+                logger.error("❌ Failed to remove working directory: %s", e)
+
     def execute(self, command: str, timeout: Optional[int] = 10) -> Dict[str, Any]:
+        logger.debug("➡️  Executing command in container: %s", command)
         try:
             response = requests.post(
                 f"http://localhost:{self.port}/",
@@ -106,6 +132,7 @@ class LocalDockerEnvironment:
                 timeout=timeout,
             )
             response.raise_for_status()
+            logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
             return response.json().get("output", "")
         except requests.exceptions.ConnectionError:
             logger.warning("⚠️ Connection error when executing command; checking container status…")
@@ -118,4 +145,7 @@ class LocalDockerEnvironment:
         except requests.exceptions.RequestException as e:
             logger.exception("❌ Request failed while executing command: %s", e)
             return f"Error: Request failed"
+        except Exception as e:
+            logger.exception("❌ Unexpected error while executing command: %s", e)
+            return f"Error: Unexpected error"
 
