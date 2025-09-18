@@ -13,8 +13,15 @@ import threading
 import time
 import logging
 from typing import Callable, List, Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class CmdReturn:
+    stdout: str
+    stderr: str
+    return_code: int
 
 
 class ShellCommunicator:
@@ -123,7 +130,7 @@ class ShellCommunicator:
 
     def send_command(
         self, command: str, wait_for_output: bool = True, timeout: float = 5.0
-    ) -> List[str]:
+    ) -> CmdReturn:
         """
         Send a command to the shell session.
 
@@ -137,7 +144,7 @@ class ShellCommunicator:
         """
         if not self.is_running or not self.process:
             logger.warning("⚠️ No active shell session")
-            return []
+            return CmdReturn(stdout="", stderr="No active shell session", return_code=1)
 
         try:
             self.process.stdin.write(command + "\n")
@@ -145,7 +152,7 @@ class ShellCommunicator:
             logger.debug("➡️ Sent command: %s", command)
 
             if not wait_for_output:
-                return []
+                return CmdReturn(stdout="", stderr="", return_code=0)
 
             output_lines = []
             start_time = time.time()
@@ -177,11 +184,11 @@ class ShellCommunicator:
             except queue.Empty:
                 pass
 
-            return output_lines
+            return CmdReturn(stdout="\n".join(output_lines), stderr="", return_code=0)
 
         except Exception as e:
             logger.exception("❌ Failed to send command: %s", e)
-            return []
+            return CmdReturn(stdout="", stderr=str(e), return_code=1)
 
 
     def is_alive(self) -> bool:
