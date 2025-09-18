@@ -10,16 +10,16 @@ from utils.logger import LogLevelEmoji, dividerString
 from utils.network import get_free_port
 
 from constants import ModelProvider, PermissionLabels, PermissionMapping
-from Environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from llm.openai_api import OpenAIApi
 from tool_definitions.base_tool import BaseTool
 
-logger = getLogger(__name__)
+logger = getLogger(" Minion ")
 
 llm_output_format = """```json
 {
-    task_done: true | false, 
-    command: "<command to run> | null", 
+    task_done: true | false,
+    command: "<command to run> | null",
     result: str | null
 }
 ```
@@ -92,7 +92,7 @@ class Minion:
                 " %s LLM Iteration Count : %d", LogLevelEmoji.INFO, iteration_count
             )
             logger.info(
-                " %s After LLM Communication Response : %s",
+                " %s LLM tool call : %s",
                 LogLevelEmoji.INFO,
                 json.dumps(llm_response.command),
             )
@@ -116,6 +116,11 @@ class Minion:
                 return return_value
 
             llm_command_output = self.environment.execute(llm_response.command)
+            logger.info(
+                " %s Command Execution Output : %s",
+                LogLevelEmoji.INFO,
+                llm_command_output,
+            )
             llm_response = self.llm.ask(llm_command_output)
 
         logger.info("%s TASK COMPLETED : %s...", LogLevelEmoji.COMPLETED, task[0:15])
@@ -152,24 +157,24 @@ class Minion:
     ) -> str:
 
         # Create system prompt based on agent_type and permission mapping
-        system_prompt_common = """There is a shell session open for you. 
-                I will provide a task to achieve using the shell. 
+        system_prompt_common = """There is a shell session open for you.
+                I will provide a task to achieve using the shell.
                 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
                 {llm_output_format}
-                after each command I will provide the output of the command. 
+                after each command I will provide the output of the command.
                 ensure to run only one command at a time.
                 I won't be able to intervene once I have given task. ."""
 
         system_prompts = {
             AgentType.READING_AGENT: f"""
         {system_prompt_common}
-        You are a reading agent. 
+        You are a reading agent.
         You are only provided access only read files inside the mounted directory {mounted_directory}.
         Once all the commands are done, and task is verified finally give me .
         """,
             AgentType.WRITING_AGENT: f"""
         {system_prompt_common}
-        You are a writing agent. 
+        You are a writing agent.
         You are provided access to read and write files inside the mounted directory {mounted_directory}.
         """,
             AgentType.BROWSING_AGENT: f"""
