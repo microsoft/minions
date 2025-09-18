@@ -3,9 +3,9 @@ name: Build and Push to Docker Hub
 on:
   push:
     paths:
-      - 'Environment/Image/Dockerfile'
-      - 'Environment/Image/dockerShell.py'
-      - 'Environment/Image/ShellCommunicator.py'
+      - 'environment/local_docker/image_builder/Dockerfile'
+      - 'environment/local_docker/image_builder/dockerShell.py'
+      - 'environment/local_docker/image_builder/ShellCommunicator.py'
       - '.github/workflows/dockerBuildPush.yml'
     branches:
       - main
@@ -30,6 +30,6 @@ jobs:
           TAG=${{ github.sha }}
 
           # build with both commit SHA and latest tag
-          docker build -f Environment/Image/Dockerfile -t $IMAGE_NAME:$TAG -t $IMAGE_NAME:latest .
+          docker build -f environment/local_docker/image_builder/Dockerfile -t $IMAGE_NAME:$TAG -t $IMAGE_NAME:latest .
           docker push $IMAGE_NAME:$TAG
           docker push $IMAGE_NAME:latest
