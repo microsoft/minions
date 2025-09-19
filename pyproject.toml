@@ -8,7 +8,7 @@ version = "0.0.5"
 dynamic = ["dependencies"]
 description = "container-based autonomous agent framework"
 readme = "README.md"
-license = "MIT"
+license = { file = "LICENSE" }
 keywords = ["agent", "bot", "micro"]
 authors = [
     { name = "xxx", email = "xxx@example.com" }
