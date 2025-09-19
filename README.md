@@ -85,10 +85,3 @@ myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid 
 
 ### Containerized Execution
 The Bots run inside a Docker container with the target folder mounted with explicit `read-only` or `read/write` permissions. All the run time dependencies are installed inside the container and as code execution happens inside the container, so your local environment is safe.
-```mermaid
-flowchart TD
-    A[User's Local Environment] -->|Runs Bot| B[Docker Container]
-    B -->|Mounts Target Folder with Permissions| C[Target Folder]
-    B -->|Interacts with LLM| D[LLM Provider]
-```
-
