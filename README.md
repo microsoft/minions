@@ -32,8 +32,8 @@ OpenAI Models
 
 ## Bots & Usage Examples
 
-Pre-requisite for the below example code of Bots: 
-From the root the application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
+Pre-requisite for the below example code of Bots:   
+From the root of your application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
 
 
 ### ReadingBot
