@@ -124,6 +124,15 @@ class MicroBot:
                 " ⬅️  Command Execution Output : %s",
                 llm_command_output,
             )
+            # Convert CmdReturn to string for LLM
+            if llm_command_output.stdout:
+                output_text = llm_command_output.stdout
+            elif llm_command_output.stderr:
+                output_text = f"COMMUNICATION ERROR: {llm_command_output.stderr}"
+            else:
+                output_text = "No output received"
+
+            llm_response = self.llm.ask(output_text)
             llm_response = self.llm.ask(llm_command_output)
 
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
