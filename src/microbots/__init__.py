@@ -1,4 +1,4 @@
-from microbot.bot import ReadingBot, WritingBot, BrowserBot, CustomBot
+from microbots.bot import ReadingBot, WritingBot, BrowserBot, CustomBot
 
 __all__ = [
     "ReadingBot",

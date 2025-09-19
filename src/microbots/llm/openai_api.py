@@ -5,7 +5,7 @@ from logging import getLogger
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from microbot.utils.logger import LogLevelEmoji
+from microbots.utils.logger import LogLevelEmoji
 
 logger = getLogger(__name__)
 

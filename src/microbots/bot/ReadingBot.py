@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Optional
 
-from microbot.constants import DOCKER_WORKING_DIR, PermissionLabels
-from microbot.MicroBot import BotType, MicroBot, system_prompt_common
-from microbot.tool_definitions.base_tool import BaseTool
+from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
+from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.tool_definitions.base_tool import BaseTool
 
 
 class ReadingBot(MicroBot):

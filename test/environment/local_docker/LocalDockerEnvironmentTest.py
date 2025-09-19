@@ -22,7 +22,7 @@ Clean Up Manually (example):
     # then stop/remove as needed
 """
 
-from environment.local_docker import LocalDockerEnvironment
+from microbots.environment.local_docker import LocalDockerEnvironment
 
 
 def LocalDockerEnvironmentTest():

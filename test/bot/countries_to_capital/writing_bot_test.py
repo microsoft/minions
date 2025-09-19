@@ -8,9 +8,9 @@ logging.basicConfig(level=logging.INFO)
 
 # Add src directory to path to import from local source
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src")))
-from microbot.bot.WritingBot import WritingBot
-from microbot.constants import DOCKER_WORKING_DIR
-from microbot.MicroBot import BotRunResult
+from microbots.bot.WritingBot import WritingBot
+from microbots.constants import DOCKER_WORKING_DIR
+from microbots.MicroBot import BotRunResult
 
 myBot = WritingBot(
     model="openai/mini-swe-agent-gpt5",

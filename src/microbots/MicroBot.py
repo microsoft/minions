@@ -6,12 +6,12 @@ from enum import StrEnum
 from logging import getLogger
 from typing import Optional
 
-from microbot.constants import ModelProvider, PermissionLabels, PermissionMapping
-from microbot.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
-from microbot.llm.openai_api import OpenAIApi
-from microbot.tool_definitions.base_tool import BaseTool
-from microbot.utils.logger import LogLevelEmoji, dividerString
-from microbot.utils.network import get_free_port
+from microbots.constants import ModelProvider, PermissionLabels, PermissionMapping
+from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from microbots.llm.openai_api import OpenAIApi
+from microbots.tool_definitions.base_tool import BaseTool
+from microbots.utils.logger import LogLevelEmoji, dividerString
+from microbots.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
