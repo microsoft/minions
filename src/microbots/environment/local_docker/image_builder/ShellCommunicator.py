@@ -128,8 +128,15 @@ class ShellCommunicator:
         except Exception as e:
             output_queue.put((stream_type, f"Monitor error: {e}"))
 
+    def _re_escape(self, command: str) -> str:
+        # Reverse .replace('"', '\\"')
+        command = command.replace('\"', '"')
+        # command = command.replace("&lt;", "<").replace("&gt;", ">")
+        return command
+
+   # TODO: Exit code is not properly captured. Need to fix it.
     def send_command(
-        self, command: str, wait_for_output: bool = True, timeout: float = 5.0
+        self, command: str, wait_for_output: bool = True, timeout: float = 300
     ) -> CmdReturn:
         """
         Send a command to the shell session.
@@ -140,51 +147,109 @@ class ShellCommunicator:
             timeout: Timeout for waiting for output
 
         Returns:
-            List of output lines
+            CmdReturn object with stdout, stderr, and return code
         """
         if not self.is_running or not self.process:
             logger.warning("⚠️ No active shell session")
             return CmdReturn(stdout="", stderr="No active shell session", return_code=1)
 
         try:
+            command = self._re_escape(command)
+            # Send the command
             self.process.stdin.write(command + "\n")
             self.process.stdin.flush()
             logger.debug("➡️ Sent command: %s", command)
 
             if not wait_for_output:
-                return CmdReturn(stdout="", stderr="", return_code=0)
+                return CmdReturn(stdout="ASYNC: Not waiting for completion", stderr="", return_code=0)
 
+            # Generate a unique command completion marker
+            marker = f"__COMMAND_COMPLETE_{int(time.time() * 1000000)}__"
+
+            # Send the marker command based on shell type
+            if self.shell_type in ["bash", "wsl"]:
+                self.process.stdin.write(f"echo '{marker}'; echo $? > /tmp/last_exit_code\n")
+            elif self.shell_type == "powershell":
+                self.process.stdin.write(f"echo '{marker}'; echo $LASTEXITCODE\n")
+            elif self.shell_type == "cmd":
+                self.process.stdin.write(f"echo {marker} & echo %ERRORLEVEL%\n")
+            elif self.shell_type == "python":
+                self.process.stdin.write(f"print('{marker}')\n")
+
+            self.process.stdin.flush()
+
+            # Collect output until marker is found or timeout
             output_lines = []
+            error_lines = []
             start_time = time.time()
+            marker_found = False
+            last_exit_code = 0
 
-            while time.time() - start_time < timeout:
+            while time.time() - start_time < timeout and not marker_found:
                 try:
-                    # Check for output
+                    # Check for output with a small timeout
                     stream_type, line = self.output_queue.get(timeout=0.1)
-                    output_lines.append(f"{line}")
+
+                    # Check if this is our completion marker
+                    if marker in line:
+                        marker_found = True
+                        # For bash/wsl, try to get the exit code from the next line
+                        if self.shell_type in ["bash", "wsl"]:
+                            try:
+                                # Try to get exit code from next output
+                                stream_type, exit_code_line = self.output_queue.get(timeout=0.5)
+                                if exit_code_line.strip().isdigit():
+                                    last_exit_code = int(exit_code_line.strip())
+                            except (queue.Empty, ValueError):
+                                pass
+                        elif self.shell_type in ["powershell", "cmd"]:
+                            try:
+                                # Try to get exit code from next output
+                                stream_type, exit_code_line = self.output_queue.get(timeout=0.5)
+                                if exit_code_line.strip().isdigit():
+                                    last_exit_code = int(exit_code_line.strip())
+                            except (queue.Empty, ValueError):
+                                pass
+                        continue
+
+                    # Add output to appropriate list
                     if stream_type == "ERROR":
-                        logger.error("❌ %s", line)
+                        error_lines.append(line)
+                        logger.debug("❌ %s", line)
                     else:
+                        output_lines.append(line)
                         logger.debug("📤 %s", line)
+
                 except queue.Empty:
+                    # No output available, continue waiting
                     continue
-                except Exception:
-                    logger.exception("❌ Unexpected error while reading output queue")
+                except Exception as e:
+                    logger.exception("❌ Unexpected error while reading output: %s", e)
                     break
 
-            # Check for errors
-            try:
-                while True:
+            # Check for any remaining error output
+            while not self.error_queue.empty():
+                try:
                     stream_type, line = self.error_queue.get_nowait()
-                    output_lines.append(f"{line}")
-                    if stream_type == "ERROR":
-                        logger.error("❌ %s", line)
-                    else:
-                        logger.debug("📤 %s", line)
-            except queue.Empty:
-                pass
+                    error_lines.append(line)
+                    logger.debug("❌ %s", line)
+                except queue.Empty:
+                    break
 
-            return CmdReturn(stdout="\n".join(output_lines), stderr="", return_code=0)
+            # TODO: Final return code is not correct. Need a fix
+            final_return_code = last_exit_code if marker_found else (1 if error_lines else 0)
+
+            # Handle timeout case
+            if not marker_found:
+                logger.warning("⏱️ Command timed out after %s seconds", timeout)
+                error_lines.append(f"Command timed out after {timeout} seconds")
+                final_return_code = 124  # Standard timeout exit code
+
+            return CmdReturn(
+                stdout="\n".join(output_lines) if output_lines else "",
+                stderr="\n".join(error_lines) if error_lines else "",
+                return_code=final_return_code
+            )
 
         except Exception as e:
             logger.exception("❌ Failed to send command: %s", e)

@@ -6,15 +6,18 @@ parameters:
   required: true
 
 files_to_copy:
-  src: browser-use/browser.py
-  dest: /sbin/browser
-  permissions: 7  # rwx
+  - src: browser-use/browser.py
+    dest: /sbin/browser
+    permissions: 7  # rwx
 
 install_commands:
   # Install it system-wide using pip
-  - pip install browser-use==0.5.4 playwright
+  - pip install --no-input browser-use==0.5.4 playwright
   - playwright install --with-deps
-  - playwright install chromium --install-deps --no-shell
+  - playwright install chromium --with-deps --no-shell
+
+setup_commands:
+  - cat /sbin/browser
 
 env_variables:
   - AZURE_OPENAI_API_KEY

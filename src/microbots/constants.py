@@ -1,5 +1,5 @@
-from enum import Enum, StrEnum
-from typing import Optional, TypedDict
+from enum import  StrEnum, IntEnum
+from pathlib import Path
 
 
 class ModelProvider(StrEnum):
@@ -22,4 +22,11 @@ class PermissionMapping:
     }
 
 
+class FILE_PERMISSIONS(IntEnum):
+    READ = 4
+    WRITE = 2
+    EXECUTE = 1
+
+
 DOCKER_WORKING_DIR = "workdir"
+TOOL_FILE_BASE_PATH = Path(__file__).parent / "tools" / "tool_definitions"

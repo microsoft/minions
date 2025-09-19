@@ -2,7 +2,7 @@ from typing import Optional
 
 from microbots.constants import PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
-from microbots.tool_definitions.base_tool import BaseTool
+from microbots.tools.tool import Tool
 
 
 class WritingBot(MicroBot):
@@ -12,7 +12,7 @@ class WritingBot(MicroBot):
         model: str,
         folder_to_mount: str,
         environment: Optional[any] = None,
-        additional_tools: Optional[list[BaseTool]] = [],
+        additional_tools: Optional[list[Tool]] = [],
     ):
         # validate init values before assigning
         bot_type = BotType.WRITING_BOT
@@ -20,7 +20,7 @@ class WritingBot(MicroBot):
 
         system_prompt = f"""
         {system_prompt_common}
-        You are a writing bot. 
+        You are a writing bot.
         You are only provided access to write files inside the mounted directory.
         The directory is mounted at /app/{folder_to_mount} in your current environment.
         You can access files using paths like /app/{folder_to_mount}/filename.txt or by changing to that directory first.

@@ -12,11 +12,11 @@ from browser_use import Agent, AgentHistoryList, Browser, ChatAzureOpenAI
 
 async def main(args: list[str]) -> int:
     if len(args) > 1:
-        print("browse allows only one arg at a time.")
+        print("browse allows only one query at a time.")
         return 1
 
     if not args:
-        print("Usage: browse <arg>")
+        print("Usage: browse 'query_to_search'")
         return 1
 
     what_to_browse = args[0]
