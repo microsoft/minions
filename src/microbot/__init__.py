@@ -7,4 +7,4 @@ __all__ = [
     "CustomBot"
 ]
 
-__version__ = "0.1.9"
+__version__ = "0.0.1"

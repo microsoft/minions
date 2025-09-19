@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "Microbot"  # package name on PyPI (unique)
+name = "microbots"  # package name on PyPI (unique)
 dynamic = ["version", "dependencies"]
 description = "container-based autonomous agent framework"
 readme = "README.md"
