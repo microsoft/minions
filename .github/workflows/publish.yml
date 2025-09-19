@@ -2,9 +2,8 @@ name: Publish to PyPI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "kkaitepalli/publish-test" ]
   workflow_dispatch:
-    inputs:
 
 jobs:
   test:
