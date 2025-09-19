@@ -5,11 +5,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
     inputs:
-      test_pypi:
-        description: 'Set to true to publish to TestPyPI only'
-        required: false
-        default: 'false'
-        type: boolean
 
 jobs:
   test:
@@ -67,7 +62,6 @@ jobs:
           verbose: true
       # Publish to PyPI (on release)
       - name: Publish to PyPI
-        if: ${{ github.event.inputs.test_pypi != 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user:  ${{ secrets.PYPI_USERNAME }}
