@@ -3,9 +3,9 @@ name: Build and Push to Docker Hub
 on:
   push:
     paths:
-      - 'environment/local_docker/image_builder/Dockerfile'
-      - 'environment/local_docker/image_builder/dockerShell.py'
-      - 'environment/local_docker/image_builder/ShellCommunicator.py'
+      - 'src/microbots/environment/local_docker/image_builder/Dockerfile'
+      - 'src/microbots/environment/local_docker/image_builder/dockerShell.py'
+      - 'src/microbots/environment/local_docker/image_builder/ShellCommunicator.py'
       - '.github/workflows/dockerBuildPush.yml'
     branches:
       - main
