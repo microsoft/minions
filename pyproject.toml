@@ -37,6 +37,7 @@ all = [
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
+version = {attr ="microbot.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
