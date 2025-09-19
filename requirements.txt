@@ -1,9 +1,6 @@
-openai
-python-dotenv
-docker
-fastapi
-uvicorn
-pydantic
-swe-rex
-aiohttp
-pyyaml
+# Core dependencies for ReadingBot and WritingBot
+openai>=1.0.0
+python-dotenv>=1.0.0
+docker>=6.0.0
+pyyaml>=6.0
+aiohttp>=3.8.0
