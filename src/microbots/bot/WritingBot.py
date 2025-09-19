@@ -1,7 +1,12 @@
 from typing import Optional
 
-from microbots.constants import PermissionLabels
-from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
+from microbots.MicroBot import (
+    BotType,
+    MicroBot,
+    get_folder_mount_info,
+    system_prompt_common,
+)
 from microbots.tools.tool import Tool
 
 
@@ -18,12 +23,15 @@ class WritingBot(MicroBot):
         bot_type = BotType.WRITING_BOT
         permission = PermissionLabels.READ_WRITE
 
+        folder_mount_info = get_folder_mount_info(folder_to_mount)
+        base_name = folder_mount_info.base_name
+
         system_prompt = f"""
         {system_prompt_common}
         You are a writing bot.
         You are only provided access to write files inside the mounted directory.
-        The directory is mounted at /app/{folder_to_mount} in your current environment.
-        You can access files using paths like /app/{folder_to_mount}/filename.txt or by changing to that directory first.
+        The directory is mounted at  /{DOCKER_WORKING_DIR}/{base_name} in your current environment.
+        You can access files using paths like /{DOCKER_WORKING_DIR}/{base_name}/filename.txt or by changing to that directory first.
         Once all the commands are done, and task is verified finally give me the result.
         """
 

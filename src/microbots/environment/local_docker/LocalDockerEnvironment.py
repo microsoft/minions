@@ -4,10 +4,10 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from microbots.environment.Environment import Environment, CmdReturn
-
 import docker
 import requests
+
+from microbots.environment.Environment import CmdReturn, Environment
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,8 @@ class LocalDockerEnvironment(Environment):
         port: int,
         folder_to_mount: Optional[str] = None,
         permission: Optional[str] = None,
-        # image: str = "kavyasree261002/shell_server:latest",
-        image = "kavya-local",
+        image: str = "kkaitepalliregistry.azurecr.io/shell_server:latest",
+        # image = "kavya-local",
     ):
         if folder_to_mount is None and permission is not None:
             raise ValueError("permission provided but folder_to_mount is None")
@@ -129,7 +129,9 @@ class LocalDockerEnvironment(Environment):
             except Exception as e:
                 logger.error("❌ Failed to remove working directory: %s", e)
 
-    def execute(self, command: str, timeout: Optional[int] = 300) -> CmdReturn: # TODO: Need proper return value
+    def execute(
+        self, command: str, timeout: Optional[int] = 300
+    ) -> CmdReturn:  # TODO: Need proper return value
         logger.debug("➡️  Executing command in container: %s", command)
         try:
             response = requests.post(
@@ -140,9 +142,7 @@ class LocalDockerEnvironment(Environment):
             response.raise_for_status()
             logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
             output = response.json().get("output", "")
-            return CmdReturn(
-                stdout=output, stderr="", return_code=0
-            )
+            return CmdReturn(stdout=output, stderr="", return_code=0)
             self.container.reload()
             logger.info("ℹ️ Container status: %s", self.container.status)
             if self.container.status != "running":
