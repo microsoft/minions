@@ -7,7 +7,7 @@ inspect, refactor, or generate files with least‑privilege access.
 ```py
 from microbots import WritingBot
 myWritingBot = WritingBot(
-    model="azure-openai/gpt5",
+    model="azure-openai/my-gpt5", # model format : <provider/deployment_model_name>
     folder_to_mount=str("myReactApp"),
 )
 data = myWritingBot.run("""when doing npm run build, I get an error. 
@@ -36,7 +36,6 @@ Azure OpenAI Models
 ```env
 OPEN_AI_END_POINT=XXXXXXXXXXXXXXXXXXXXXXXXXX
 OPEN_AI_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-OPEN_AI_DEPLOYMENT_NAME=XXXXXXXXXXXXXXXXXXXX
 ```
 
 ## Bots & Usage Examples
@@ -52,7 +51,7 @@ From the root of your application, Create a folder called  `code` inside which c
 from microbots import ReadingBot
 
 myBot = ReadingBot(
-    model="azure-openai/mini-swe-agent-gpt5",
+    model="azure-openai/my-gpt5",
     folder_to_mount="code"
 )
 
@@ -73,7 +72,7 @@ From the root the application, Create a folder called  `code` inside which clone
 from microbots import WritingBot
 
 myBot = WritingBot(
-    model="azure-openai/mini-swe-agent-gpt5",
+    model="azure-openai/my-gpt5",
     folder_to_mount="code"
 )
 
