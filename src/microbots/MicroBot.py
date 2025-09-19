@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from logging import getLogger
 from typing import Optional
+from pathlib import Path
 
 from microbots.constants import ModelProvider, PermissionLabels, PermissionMapping
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from microbots.llm.openai_api import OpenAIApi
-from microbots.tool_definitions.base_tool import BaseTool
+from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.utils.logger import LogLevelEmoji, dividerString
 from microbots.utils.network import get_free_port
 
@@ -24,11 +25,11 @@ llm_output_format = """```json
 ```
 """
 
-system_prompt_common = """There is a shell session open for you. 
-                I will provide a task to achieve using the shell. 
+system_prompt_common = """There is a shell session open for you.
+                I will provide a task to achieve using the shell.
                 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
                 {llm_output_format}
-                after each command I will provide the output of the command. 
+                after each command I will provide the output of the command.
                 ensure to run only one command at a time.
                 I won't be able to intervene once I have given task. ."""
 
@@ -55,7 +56,7 @@ class MicroBot:
         model: str,
         system_prompt: Optional[str] = None,
         environment: Optional[any] = None,
-        additional_tools: Optional[list[BaseTool]] = [],
+        additional_tools: Optional[list[Tool]] = [],
         folder_to_mount: Optional[str] = None,
         permission: Optional[PermissionLabels] = None,
     ):
@@ -66,7 +67,6 @@ class MicroBot:
             self.folder_to_mount_base_path = os.path.basename(folder_to_mount)  # TODO
 
         self._validate_model_and_provider(model)
-        self._validate_model_and_provider(model)
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.system_prompt = system_prompt
         self.system_prompt = system_prompt
@@ -75,10 +75,15 @@ class MicroBot:
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
         self.environment = environment
+        self.additional_tools = additional_tools
         self._create_environment(folder_to_mount)
         self._create_llm()
 
+        install_tools(self.environment, self.additional_tools)
+
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:
+
+        setup_tools(self.environment, self.additional_tools)
 
         iteration_count = 1
         # start timer
@@ -164,6 +169,7 @@ class MicroBot:
             raise ValueError(f"Unsupported model provider: {provider}")
 
     def __del__(self):
+        return
         if self.environment:
             try:
                 self.environment.stop()

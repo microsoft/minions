@@ -19,7 +19,7 @@ app = FastAPI()
 @app.post("/")
 async def receive_message(message: Message):
     command_output = shell.send_command(message.message)
-    return {"status": "success", "output": "\n".join(command_output)}
+    return {"status": "success", "output": command_output}
 
 
 if __name__ == "__main__":
