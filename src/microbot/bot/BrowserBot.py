@@ -1,9 +1,9 @@
 import os
 from typing import Optional
 
-from constants import PermissionLabels
-from MicroBot import BotType, MicroBot
-from tool_definitions.base_tool import BaseTool
+from microbot.constants import PermissionLabels
+from microbot.MicroBot import BotType, MicroBot, system_prompt_common
+from microbot.tool_definitions.base_tool import BaseTool
 
 
 class BrowserBot(MicroBot):
@@ -11,14 +11,16 @@ class BrowserBot(MicroBot):
     def __init__(
         self,
         model: str,
-        system_prompt: str,
-        folder_to_mount: Optional[str] = None,
         environment: Optional[any] = None,
         additional_tools: Optional[list[BaseTool]] = [],
     ):
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT
         permission = PermissionLabels.READ_WRITE
+        system_prompt = f"""
+        {system_prompt_common}
+        You are also provided access to internet to search for information.
+        """
 
         super().__init__(
             bot_type,
@@ -26,6 +28,5 @@ class BrowserBot(MicroBot):
             system_prompt,
             environment,
             additional_tools,
-            folder_to_mount,
             permission,
         )

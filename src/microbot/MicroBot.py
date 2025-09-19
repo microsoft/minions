@@ -6,12 +6,12 @@ from enum import StrEnum
 from logging import getLogger
 from typing import Optional
 
-from constants import ModelProvider, PermissionLabels, PermissionMapping
-from environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
-from llm.openai_api import OpenAIApi
-from tool_definitions.base_tool import BaseTool
-from utils.logger import LogLevelEmoji, dividerString
-from utils.network import get_free_port
+from microbot.constants import ModelProvider, PermissionLabels, PermissionMapping
+from microbot.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from microbot.llm.openai_api import OpenAIApi
+from microbot.tool_definitions.base_tool import BaseTool
+from microbot.utils.logger import LogLevelEmoji, dividerString
+from microbot.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
@@ -124,7 +124,15 @@ class MicroBot:
                 " ⬅️  Command Execution Output : %s",
                 llm_command_output,
             )
-            llm_response = self.llm.ask(llm_command_output)
+            # Convert CmdReturn to string for LLM
+            if llm_command_output.stdout:
+                output_text = llm_command_output.stdout
+            elif llm_command_output.stderr:
+                output_text = f"COMMUNICATION ERROR: {llm_command_output.stderr}"
+            else:
+                output_text = "No output received"
+
+            llm_response = self.llm.ask(output_text)
 
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.result, error=None)

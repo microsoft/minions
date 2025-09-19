@@ -1,4 +1,4 @@
-from tool_definitions.base_tool import BaseTool
+from microbot.tool_definitions.base_tool import BaseTool
 
 
 class Ctags(BaseTool):

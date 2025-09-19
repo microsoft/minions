@@ -6,8 +6,8 @@ WORKDIR /app
 RUN pip install --no-cache-dir fastapi uvicorn pydantic
 
 # Copy application files
-COPY environment/local_docker/image_builder/dockerShell.py .
-COPY environment/local_docker/image_builder/ShellCommunicator.py .
+COPY src/microbot/environment/local_docker/image_builder/dockerShell.py .
+COPY src/microbot/environment/local_docker/image_builder/ShellCommunicator.py .
 
 EXPOSE 8080
 

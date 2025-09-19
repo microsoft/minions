@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from environment.Environment import Environment, CmdReturn
+from microbot.environment.Environment import Environment, CmdReturn
 
 import docker
 import requests
