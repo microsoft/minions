@@ -3,7 +3,7 @@
 
 # Web server functionality (for LocalDockerEnvironment HTTP shell)
 fastapi>=0.100.0
-uvicorn>=0.20.0
+uvicorn>=2.0.0
 pydantic>=2.0.0
 
 # Additional tools and integrations
