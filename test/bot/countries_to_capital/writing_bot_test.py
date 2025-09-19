@@ -13,7 +13,7 @@ from microbots.constants import DOCKER_WORKING_DIR
 from microbots.MicroBot import BotRunResult
 
 myBot = WritingBot(
-    model="openai/mini-swe-agent-gpt5",
+    model="azure-openai/mini-swe-agent-gpt5",
     folder_to_mount=str(Path(__file__).parent / "countries_dir"),
 )
 

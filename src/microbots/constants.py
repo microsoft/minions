@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 class ModelProvider(StrEnum):
-    OPENAI = "openai"
+    OPENAI = "azure-openai"
 
 
 class ModelEnum(StrEnum):
