@@ -2,7 +2,7 @@ name: Publish to PyPI
 
 on:
   push:
-    branches: [ "kkaitepalli/pypi-publish-test" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -52,19 +52,10 @@ jobs:
       - name: Check package
         run: python -m twine check dist/*
 
-      # Publish to TestPyPI on push
-      - name: Publish to Test PyPI
+      # Publish directly to PyPI
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
-          user: ${{ secrets.TEST_PYPI_USERNAME }}
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true
-
-      # Publish to PyPI (on release)
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     user: ${{ secrets.PYPI_USERNAME }}
-      #     password: ${{ secrets.PYPI_API_TOKEN }}
-      #     verbose: true
