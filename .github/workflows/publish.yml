@@ -60,9 +60,9 @@ jobs:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           verbose: true
       # Publish to PyPI (on release)
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user:  ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          verbose: true
+      # - name: Publish to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     user:  ${{ secrets.PYPI_USERNAME }}
+      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      #     verbose: true
