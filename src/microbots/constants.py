@@ -3,7 +3,7 @@ from typing import Optional, TypedDict
 
 
 class ModelProvider(StrEnum):
-    OPENAI = "openai"
+    OPENAI = "azure-openai"
 
 
 class ModelEnum(StrEnum):

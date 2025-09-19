@@ -1,8 +1,12 @@
-from pathlib import Path
 from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
-from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.MicroBot import (
+    BotType,
+    MicroBot,
+    get_folder_mount_info,
+    system_prompt_common,
+)
 from microbots.tool_definitions.base_tool import BaseTool
 
 
@@ -19,7 +23,8 @@ class ReadingBot(MicroBot):
         bot_type = BotType.READING_BOT
         permission = PermissionLabels.READ_ONLY
 
-        base_name = Path(folder_to_mount).name
+        folder_mount_info = get_folder_mount_info(folder_to_mount)
+        base_name = folder_mount_info.base_name
 
         system_prompt = f"""
         {system_prompt_common}

@@ -10,8 +10,14 @@ from microbots.constants import ModelProvider, PermissionLabels, PermissionMappi
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from microbots.llm.openai_api import OpenAIApi
 from microbots.tool_definitions.base_tool import BaseTool
-from microbots.utils.logger import LogLevelEmoji, dividerString
+from microbots.utils.logger import LogLevelEmoji, LogTextColor, dividerString
 from microbots.utils.network import get_free_port
+from microbots.utils.path import (
+    get_absolute_path,
+    get_base_name,
+    is_absolute_path,
+    is_valid_path,
+)
 
 logger = getLogger(" MicroBot ")
 
@@ -47,6 +53,31 @@ class BotRunResult:
     error: Optional[str]
 
 
+@dataclass
+class FolderMountInfo:
+    path_valid: bool
+    base_name: str
+    abs_path: str
+
+
+def get_folder_mount_info(folder_to_mount: str) -> FolderMountInfo:
+    return_value = FolderMountInfo(
+        path_valid=False,
+        base_name="",
+        abs_path="",
+    )
+    if is_absolute_path(folder_to_mount):
+        return_value.path_valid = is_valid_path(folder_to_mount)
+        return_value.abs_path = folder_to_mount
+        return_value.base_name = get_base_name(folder_to_mount)
+    else:
+        return_value.abs_path = get_absolute_path(folder_to_mount)
+        return_value.path_valid = is_valid_path(return_value.abs_path)
+        return_value.base_name = folder_to_mount
+
+    return return_value
+
+
 class MicroBot:
 
     def __init__(
@@ -61,21 +92,24 @@ class MicroBot:
     ):
         # validate init values before assigning
         self.permission = permission
-        self.permission = permission
         if folder_to_mount is not None:
-            self.folder_to_mount_base_path = os.path.basename(folder_to_mount)  # TODO
+            folder_mount_info = get_folder_mount_info(folder_to_mount)
+            if folder_mount_info.path_valid is False:
+                raise ValueError(
+                    f"Invalid folder to mount: {folder_to_mount} resolved to {folder_mount_info.abs_path}"
+                )
+            else:
+                self.folder_to_mount = folder_mount_info.abs_path
 
         self._validate_model_and_provider(model)
-        self._validate_model_and_provider(model)
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
-        self.system_prompt = system_prompt
         self.system_prompt = system_prompt
         self.model = model
         self.bot_type = bot_type
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
         self.environment = environment
-        self._create_environment(folder_to_mount)
+        self._create_environment(self.folder_to_mount)
         self._create_llm()
 
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:
@@ -93,12 +127,9 @@ class MicroBot:
         logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:15])
         while llm_response.task_done is False:
             print(dividerString)
+            logger.info("%s Iteration : %d", LogLevelEmoji.INFO, iteration_count)
             logger.info(
-                " %s LLM Iteration Count : %d", LogLevelEmoji.INFO, iteration_count
-            )
-            logger.info(
-                " ➡️  LLM tool call : %s",
-                json.dumps(llm_response.command),
+                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
             )
             # increment iteration count
             iteration_count += 1
@@ -120,10 +151,12 @@ class MicroBot:
                 return return_value
 
             llm_command_output = self.environment.execute(llm_response.command)
-            logger.info(
-                " ⬅️  Command Execution Output : %s",
-                llm_command_output,
-            )
+            if llm_command_output.stdout:
+                logger.info(
+                    " ⬅️  Command Execution Output \n%s",
+                    llm_command_output.stdout,
+                )
+
             # Convert CmdReturn to string for LLM
             if llm_command_output.stdout:
                 output_text = llm_command_output.stdout

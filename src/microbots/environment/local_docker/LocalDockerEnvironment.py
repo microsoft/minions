@@ -45,9 +45,9 @@ class LocalDockerEnvironment(Environment):
     def _create_working_dir(self):
         if not os.path.exists(WORKING_DIR):
             os.makedirs(WORKING_DIR)
-            logger.info("🗂️ Created working directory at %s", WORKING_DIR)
+            logger.info("🗂️  Created working directory at %s", WORKING_DIR)
         else:
-            logger.info("🗂️ Working directory already exists at %s", WORKING_DIR)
+            logger.info("🗂️  Working directory already exists at %s", WORKING_DIR)
 
     def start(self):
         mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}
