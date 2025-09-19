@@ -231,7 +231,7 @@ class ShellCommunicator:
                 except queue.Empty:
                     break
 
-            # Determine final return code
+            # TODO: Final return code is not correct. Need a fix
             final_return_code = last_exit_code if marker_found else (1 if error_lines else 0)
 
             # Handle timeout case
