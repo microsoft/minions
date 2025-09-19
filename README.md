@@ -5,30 +5,39 @@ into automation pipelines, mounting a target directory with explicit read-only o
 inspect, refactor, or generate files with least‑privilege access.
 
 ```py
-myWritingAgent = WritingBot(
+from microbots import WritingBot
+myWritingBot = WritingBot(
     model="azure-openai/gpt5",
     folder_to_mount=str("myReactApp"),
 )
-data = myWritingAgent.run("when doing npm run build, I get an error. Fix the error and make sure the build is successful.", timeout_in_seconds=600)
+data = myWritingBot.run("""when doing npm run build, I get an error. 
+Fix the error and make sure the build is successful.""", timeout_in_seconds=600)
 print(data.results)
 ```
 
 ## How to install
+
+### Pre-requisites
+
+- Docker
+- AI LLM Provider and API Key
+
+### Install Microbots
 
 ```bash
 pip install microbots
 ```
 
 
-## Pre-requisites
-
-- Docker
-- AI LLM Provider and API Key (OpenAI, Azure OpenAI etc.,)
-
-
 ## LLM Support
     
-OpenAI Models
+Azure OpenAI Models
+
+```env
+OPEN_AI_END_POINT=XXXXXXXXXXXXXXXXXXXXXXXXXX
+OPEN_AI_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+OPEN_AI_DEPLOYMENT_NAME=XXXXXXXXXXXXXXXXXXXX
+```
 
 ## Bots & Usage Examples
 
@@ -52,7 +61,7 @@ print(runResult)
 
 ```
 
-The `ReadingBot` mounts the `code` folder in `READ_ONLY` mode securely for llm to read and understand the code base.
+The `ReadingBot` will read the files inside `code` folder and will extract information 
 
 
 ### WritingBot
@@ -71,4 +80,14 @@ myBot = WritingBot(
 myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid syntax. Fix the error and make sure the code runs without any errors.", timeout_in_seconds=600)
 ```
 
-The `WritingBot` mounts the `code` folder in `READ_WRITE` mode securely for llm to read and edit the code base.
+## How it works
+
+### Containerized Execution
+The Bots run inside a Docker container with the target folder mounted with explicit `read-only` or `read/write` permissions. All the run time dependencies are installed inside the container and as code execution happens inside the container, so your local environment is safe.
+```mermaid
+flowchart TD
+    A[User's Local Environment] -->|Runs Bot| B[Docker Container]
+    B -->|Mounts Target Folder with Permissions| C[Target Folder]
+    B -->|Interacts with LLM| D[LLM Provider]
+```
+
