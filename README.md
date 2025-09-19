@@ -6,10 +6,12 @@ inspect, refactor, or generate files with least‑privilege access.
 
 ```py
 from microbots import WritingBot
+
 myWritingBot = WritingBot(
     model="azure-openai/my-gpt5", # model format : <provider/deployment_model_name>
     folder_to_mount=str("myReactApp"),
 )
+
 data = myWritingBot.run("""when doing npm run build, I get an error. 
 Fix the error and make sure the build is successful.""", timeout_in_seconds=600)
 print(data.results)
