@@ -2,7 +2,9 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
+
+from environment.Environment import Environment, CmdReturn
 
 import docker
 import requests
@@ -13,7 +15,7 @@ WORKING_DIR = str(Path.home() / "MICROBOT_WORKDIR")
 DOCKER_WORKING_DIR = "/workdir"
 
 
-class LocalDockerEnvironment:
+class LocalDockerEnvironment(Environment):
     def __init__(
         self,
         port: int,
@@ -126,7 +128,7 @@ class LocalDockerEnvironment:
             except Exception as e:
                 logger.error("❌ Failed to remove working directory: %s", e)
 
-    def execute(self, command: str, timeout: Optional[int] = 10) -> Dict[str, Any]:
+    def execute(self, command: str, timeout: Optional[int] = 10) -> CmdReturn: # TODO: Need proper return value
         logger.debug("➡️  Executing command in container: %s", command)
         try:
             response = requests.post(
@@ -136,20 +138,19 @@ class LocalDockerEnvironment:
             )
             response.raise_for_status()
             logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
-            return response.json().get("output", "")
-        except requests.exceptions.ConnectionError:
-            logger.warning(
-                "⚠️ Connection error when executing command; checking container status…"
+            output = response.json().get("output", "")
+            return CmdReturn(
+                stdout=output, stderr="", return_code=0
             )
             self.container.reload()
             logger.info("ℹ️ Container status: %s", self.container.status)
             if self.container.status != "running":
                 logs = self.container.logs().decode("utf-8", errors="replace")
                 logger.error("🛑 Container not running. Recent logs below:\n%s", logs)
-            return f"Error: Could not connect"
+            return CmdReturn(stdout="", stderr="Connection error", return_code=1)
         except requests.exceptions.RequestException as e:
             logger.exception("❌ Request failed while executing command: %s", e)
-            return f"Error: Request failed"
+            return CmdReturn(stdout="", stderr=str(e), return_code=1)
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
-            return f"Error: Unexpected error"
+            return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
