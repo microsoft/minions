@@ -1,8 +1,10 @@
-from .bot import ReadingBot, WritingBot
+from microbot.bot import ReadingBot, WritingBot, BrowserBot, CustomBot
 
 __all__ = [
     "ReadingBot",
-    "WritingBot"
+    "WritingBot",
+    "BrowserBot",
+    "CustomBot"
 ]
 
-__version__ = "0.0.1"
+__version__ = "0.1.2"
