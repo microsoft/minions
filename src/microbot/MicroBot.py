@@ -133,7 +133,6 @@ class MicroBot:
                 output_text = "No output received"
 
             llm_response = self.llm.ask(output_text)
-            llm_response = self.llm.ask(llm_command_output)
 
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.result, error=None)
