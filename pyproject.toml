@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Microbot"  # package name on PyPI (unique)
-version = "0.0.7"
+version = "0.0.8"
 dynamic = ["dependencies"]
 description = "container-based autonomous agent framework"
 readme = "README.md"
