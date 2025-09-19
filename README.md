@@ -30,35 +30,34 @@ pip install microbots
     
 OpenAI Models
 
-## Bots & Usage
+## Bots & Usage Examples
 
-microbots has customized bots for different needs and scope of operations.
-It creates a containerized environment with restricted permissions on the files and folders you want to work. And runs commands inside the container to achieve the task you want.  
+Pre-requisite for the below example code of Bots: 
+From the root the application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
 
 
 ### ReadingBot
 
 
-Pre-requisites : 
-From the root the application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
-
 ```py
-from microbots import WritingBot
+from microbots import ReadingBot
 
-myBot = WritingBot(
+myBot = ReadingBot(
     model="azure-openai/mini-swe-agent-gpt5",
     folder_to_mount="code"
 )
 
-myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid syntax. Find the error and explain me what is the error", timeout_in_seconds=600)
+runResult = myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid syntax. Find the error and explain me what is the error", timeout_in_seconds=600)
+print(runResult)
+
 ```
 
-The `ReadingBot` mounts the folder provided in `READ_ONLY` mode and allows the llm to only read files and folders inside it.
+The `ReadingBot` mounts the `code` folder in `READ_ONLY` mode securely for llm to read and understand the code base.
 
 
 ### WritingBot
 
-Pre-requisites : 
+Pre-requisite for the example code: 
 From the root the application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
 
 ```py
@@ -72,4 +71,4 @@ myBot = WritingBot(
 myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid syntax. Fix the error and make sure the code runs without any errors.", timeout_in_seconds=600)
 ```
 
-The `WritingBot` mounts the folder provided in `READ_WRITE` mode and allows the llm to read and write files and folders inside it.
+The `WritingBot` mounts the `code` folder in `READ_WRITE` mode securely for llm to read and edit the code base.
