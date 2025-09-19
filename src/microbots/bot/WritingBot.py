@@ -1,8 +1,8 @@
 from typing import Optional
 
-from microbot.constants import PermissionLabels
-from microbot.MicroBot import BotType, MicroBot, system_prompt_common
-from microbot.tool_definitions.base_tool import BaseTool
+from microbots.constants import PermissionLabels
+from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.tool_definitions.base_tool import BaseTool
 
 
 class WritingBot(MicroBot):
