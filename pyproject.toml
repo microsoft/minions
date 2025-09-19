@@ -14,7 +14,7 @@ authors = [
     { name = "xxx", email = "xxx@example.com" }
 ]
 classifiers = [
-  "Operating System :: xxxx",
+  "Operating System :: OS Independent",
   # Indicate who your project is intended for
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
