@@ -26,7 +26,7 @@ class TestFileCopy():
         try:
             # Copy to container
             # Give absolute path
-            result = env.copy_to_container("/home/kkaitepalli/minions/README.md")
+            result = env.copy_to_container("/home/kkaitepalli/minions/README.md", "/var/log/README.md")
             
             # Verify
             print(f"Copy result: {result}")

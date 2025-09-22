@@ -160,12 +160,13 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
-    def copy_to_container(self, src_path: str) -> bool:
+    def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
-        Copy a file or folder from the host machine to /var/log/ in the Docker container.
+        Copy a file or folder from the host machine to the Docker container.
         
         Args:
             src_path: Path to the source file/folder on the host machine
+            dest_path: Destination path inside the container
             
         Returns:
             bool: True if copy was successful, False otherwise
@@ -180,10 +181,6 @@ class LocalDockerEnvironment(Environment):
                 logger.error("❌ Source path does not exist: %s", src_path)
                 return False
                 
-            # Extract filename from source path and set destination to /var/log/
-            filename = os.path.basename(src_path)
-            dest_path = f"/var/log/{filename}"
-                
             # Use docker cp command to copy files/folders
             # Escape paths for shell safety
             src_escaped = shlex.quote(src_path)
@@ -192,7 +189,7 @@ class LocalDockerEnvironment(Environment):
             # Build docker cp command
             cmd = f"docker cp {src_escaped} {self.container.id}:{dest_escaped}"
             
-            logger.info("📁 Copying %s to container:/var/log/%s", src_path, filename)
+            logger.info("📁 Copying %s to container:%s", src_path, dest_path)
             
             # Execute the copy command
             result = subprocess.run(
@@ -204,7 +201,7 @@ class LocalDockerEnvironment(Environment):
             )
             
             if result.returncode == 0:
-                logger.info("✅ Successfully copied %s to container:/var/log/%s", src_path, filename)
+                logger.info("✅ Successfully copied %s to container:%s", src_path, dest_path)
                 return True
             else:
                 logger.error("❌ Failed to copy file. Error: %s", result.stderr)
@@ -216,7 +213,7 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.exception("❌ Unexpected error during copy operation: %s", e)
             return False
-    
+
     def copy_from_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the Docker container to the host machine.

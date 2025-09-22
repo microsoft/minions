@@ -22,10 +22,14 @@ class Environment(ABC):
     def execute(self, command: str, timeout: Optional[int] = 300) -> CmdReturn:
         pass
 
-    @abstractmethod
-    def copy_to_container(self, src_path: str) -> bool:
-        pass
+    def copy_to_container(self, src_path: str, dest_path: str) -> bool:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support copying files to container. "
+            f"This is an optional feature - only implement if needed for your use case."
+        )
 
-    @abstractmethod
     def copy_from_container(self, src_path: str, dest_path: str) -> bool:
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support copying files from container. "
+            f"This is an optional feature - only implement if needed for your use case."
+        )
