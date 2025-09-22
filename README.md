@@ -46,7 +46,7 @@ OPEN_AI_END_POINT=XXXXXXXXXXXXXXXXXXXXXXXXXX
 OPEN_AI_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
-## Bots & Usage Examples
+## 🤖 Bots & Usage Examples
 
 Pre-requisite for the below example code of Bots:   
 From the root of your application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
@@ -89,5 +89,7 @@ myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid 
 
 ## ⚙️ How it works
 
-### Containerized Execution
-The Bots run inside a Docker container with the target folder mounted with explicit `read-only` or `read/write` permissions. All the run time dependencies are installed inside the container and as code execution happens inside the container, so your local environment is safe.
+
+![Overall Architecture Image](./docs/images/overall_architecture.png)
+
+The MicroBots create a container environment to install tools and inspect codes on specific access based on the Bot user uses to interact with the codebase. By restricting the permissions to read-only or read/write, it ensures that the AI agents operate within defined boundaries, enhancing security and control over code modifications as well as protecting the local environment.
