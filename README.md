@@ -20,7 +20,7 @@ print(data.results)
 
 ## ⚠️ Caution 
 
-As of now the library is not thoroughly tested with all scenarios. Use it with caution.
+As of now the library is at `beta`. Use it with caution.
 We are adding more features and improving the library.
 
 ## 🚀 How to install
