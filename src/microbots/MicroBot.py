@@ -4,11 +4,13 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from logging import getLogger
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from microbots.constants import ModelProvider, PermissionLabels, PermissionMapping
-from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
+from microbots.environment.local_docker.LocalDockerEnvironment import (
+    LocalDockerEnvironment,
+)
 from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.utils.logger import LogLevelEmoji, dividerString
@@ -169,7 +171,6 @@ class MicroBot:
             raise ValueError(f"Unsupported model provider: {provider}")
 
     def __del__(self):
-        return
         if self.environment:
             try:
                 self.environment.stop()
