@@ -193,8 +193,8 @@ class ShellCommunicator:
                             parts = line.split()
                             if len(parts) >= 2:
                                 exit_code_str = parts[-1].strip()
-                                # Handle both positive and negative exit codes
-                                if exit_code_str.lstrip('-').isdigit():
+                                # Handle bash exit codes (0-255 only)
+                                if exit_code_str.isdigit():
                                     last_exit_code = int(exit_code_str)
                                 else:
                                     last_exit_code = 1
