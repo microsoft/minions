@@ -21,8 +21,7 @@ class LocalDockerEnvironment(Environment):
         port: int,
         folder_to_mount: Optional[str] = None,
         permission: Optional[str] = None,
-        image: str = "kkaitepalliregistry.azurecr.io/shell_server:latest",
-        # image = "kavya-local",
+        image: str = "kavyasree261002/shell_server:latest",
     ):
         if folder_to_mount is None and permission is not None:
             raise ValueError("permission provided but folder_to_mount is None")
@@ -142,7 +141,11 @@ class LocalDockerEnvironment(Environment):
             response.raise_for_status()
             logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
             output = response.json().get("output", "")
-            return CmdReturn(stdout=output, stderr="", return_code=0)
+            return CmdReturn(
+                stdout = output.get("stdout", ""),
+                stderr = output.get("stderr", ""),
+                return_code = output.get("return_code", 0)
+            )
             self.container.reload()
             logger.info("ℹ️ Container status: %s", self.container.status)
             if self.container.status != "running":
