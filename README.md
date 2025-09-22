@@ -18,10 +18,9 @@ Fix the error and make sure the build is successful.""", timeout_in_seconds=600)
 print(data.results)
 ```
 
-## ⚠️ Caution 
-
-As of now the library is at `beta`. Use it with caution.
-We are adding more features and improving the library.
+## ⚠️ Project Status: Highly Unstable
+This project is currently **under active development** and is considered **highly unstable**. Features, APIs, and internal structures are subject to change without notice, and unexpected behavior may occur.
+Please **use with caution** in production environments.
 
 ## 🚀 How to install
 
