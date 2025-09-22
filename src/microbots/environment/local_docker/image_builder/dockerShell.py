@@ -1,9 +1,23 @@
 import os
+import logging
 
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 from ShellCommunicator import ShellCommunicator
+
+# Configure logging to see all logs including ShellCommunicator
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()  # Ensure logs go to stdout
+    ]
+)
+
+# Set specific logger levels
+logging.getLogger('ShellCommunicator').setLevel(logging.DEBUG)
+logging.getLogger('uvicorn').setLevel(logging.INFO)
 
 shell = ShellCommunicator("bash")
 shell.start_session()
