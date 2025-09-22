@@ -1,5 +1,7 @@
 import logging
 import os
+import shlex
+import subprocess
 import time
 from pathlib import Path
 from typing import Optional
@@ -158,3 +160,108 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
+    def copy_to_container(self, src_path: str) -> bool:
+        """
+        Copy a file or folder from the host machine to /var/log/ in the Docker container.
+        
+        Args:
+            src_path: Path to the source file/folder on the host machine
+            
+        Returns:
+            bool: True if copy was successful, False otherwise
+        """
+        if not self.container:
+            logger.error("❌ No active container to copy to")
+            return False
+            
+        try:
+            # Check if source path exists
+            if not os.path.exists(src_path):
+                logger.error("❌ Source path does not exist: %s", src_path)
+                return False
+                
+            # Extract filename from source path and set destination to /var/log/
+            filename = os.path.basename(src_path)
+            dest_path = f"/var/log/{filename}"
+                
+            # Use docker cp command to copy files/folders
+            # Escape paths for shell safety
+            src_escaped = shlex.quote(src_path)
+            dest_escaped = shlex.quote(dest_path)
+            
+            # Build docker cp command
+            cmd = f"docker cp {src_escaped} {self.container.id}:{dest_escaped}"
+            
+            logger.info("📁 Copying %s to container:/var/log/%s", src_path, filename)
+            
+            # Execute the copy command
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            if result.returncode == 0:
+                logger.info("✅ Successfully copied %s to container:/var/log/%s", src_path, filename)
+                return True
+            else:
+                logger.error("❌ Failed to copy file. Error: %s", result.stderr)
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.error("❌ Copy operation timed out after 300 seconds")
+            return False
+        except Exception as e:
+            logger.exception("❌ Unexpected error during copy operation: %s", e)
+            return False
+    
+    def copy_from_container(self, src_path: str, dest_path: str) -> bool:
+        """
+        Copy a file or folder from the Docker container to the host machine.
+        
+        Args:
+            src_path: Path to the source file/folder inside the container
+            dest_path: Destination path on the host machine
+            
+        Returns:
+            bool: True if copy was successful, False otherwise
+        """
+        if not self.container:
+            logger.error("❌ No active container to copy from")
+            return False
+            
+        try:
+            # Escape paths for shell safety
+            src_escaped = shlex.quote(src_path)
+            dest_escaped = shlex.quote(dest_path)
+            
+            # Build docker cp command
+            cmd = f"docker cp {self.container.id}:{src_escaped} {dest_escaped}"
+            
+            logger.info("📁 Copying container:%s to %s", src_path, dest_path)
+            
+            # Execute the copy command
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            if result.returncode == 0:
+                logger.info("✅ Successfully copied container:%s to %s", src_path, dest_path)
+                return True
+            else:
+                logger.error("❌ Failed to copy file. Error: %s", result.stderr)
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.error("❌ Copy operation timed out after 300 seconds")
+            return False
+        except Exception as e:
+            logger.exception("❌ Unexpected error during copy operation: %s", e)
+            return False
+ 
