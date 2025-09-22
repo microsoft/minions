@@ -68,7 +68,7 @@ print(runResult)
 
 ```
 
-The `ReadingBot` will read the files inside `code` folder and will extract information 
+The `ReadingBot` will read the files inside `code` folder and will extract information based on specific instructions given to the bot.
 
 
 ### ✍️ WritingBot
@@ -87,9 +87,11 @@ myBot = WritingBot(
 myBot.run("When I am running missing_colon.py I am getting SyntaxError: invalid syntax. Fix the error and make sure the code runs without any errors.", timeout_in_seconds=600)
 ```
 
+The `WritingBot` will read and write the files inside `code` folder based on specific instructions given to the bot.
+
 ## ⚙️ How it works
 
 
 ![Overall Architecture Image](./docs/images/overall_architecture.png)
 
-The MicroBots create a container environment to install tools and inspect codes on specific access based on the Bot user uses to interact with the codebase. By restricting the permissions to read-only or read/write, it ensures that the AI agents operate within defined boundaries, enhancing security and control over code modifications as well as protecting the local environment.
+The MicroBots create a containerized environment and mount the specified directory with restricting the permissions to read-only or read/write based on Bot used. It ensures that the AI agents operate within defined boundaries which enhances security and control over code modifications as well as protecting the local environment.
