@@ -132,7 +132,6 @@ class ShellCommunicator:
         # command = command.replace("&lt;", "<").replace("&gt;", ">")
         return command
 
-   # TODO: Exit code is not properly captured. Need to fix it.
     def send_command(
         self, command: str, wait_for_output: bool = True, timeout: float = 300
     ) -> CmdReturn:
@@ -231,7 +230,6 @@ class ShellCommunicator:
                 except queue.Empty:
                     break
 
-            # TODO: Final return code is not correct. Need a fix
             final_return_code = last_exit_code if marker_found else (1 if error_lines else 0)
 
             # Handle timeout case
