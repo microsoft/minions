@@ -13,7 +13,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import (
 )
 from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
-from microbots.utils.logger import LogLevelEmoji, LogTextColor, dividerString
+from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
 from microbots.utils.path import (
     get_absolute_path,
@@ -113,6 +113,7 @@ class MicroBot:
         self.deployment_name = model.split("/")[1]
         self.environment = environment
         self.additional_tools = additional_tools
+        self.folder_to_mount = folder_to_mount
         self._create_environment(self.folder_to_mount)
         self._create_llm()
 
@@ -133,9 +134,9 @@ class MicroBot:
             error="Did not complete",
         )
         logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:15])
+
         while llm_response.task_done is False:
-            print(dividerString)
-            logger.info("%s Iteration : %d", LogLevelEmoji.INFO, iteration_count)
+            logger.info("%s Step-%d %s", "-" * 20, iteration_count, "-" * 20)
             logger.info(
                 f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
             )
@@ -161,7 +162,7 @@ class MicroBot:
             llm_command_output = self.environment.execute(llm_response.command)
             if llm_command_output.stdout:
                 logger.info(
-                    " ⬅️  Command Execution Output \n%s",
+                    " ⬅️  Command Execution Output: %s",
                     llm_command_output.stdout,
                 )
 
