@@ -205,7 +205,6 @@ class MicroBot:
             raise ValueError(f"Unsupported model provider: {provider}")
 
     def __del__(self):
-        return
         if self.environment:
             try:
                 self.environment.stop()
