@@ -1,9 +1,9 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "microbots"  # package name on PyPI (unique)
+name = "microbots"
 dynamic = ["version", "dependencies"]
 description = "container-based autonomous agent framework"
 readme = "README.md"
@@ -23,7 +23,9 @@ requires-python = ">=3.11"
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
-version = {attr ="microbots.__version__"}
+
+[tool.setuptools_scm]
+# This tells setuptools-scm to get version from git tags
 
 [tool.setuptools.packages.find]
 where = ["src"]
