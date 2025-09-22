@@ -39,7 +39,7 @@ pip install microbots
 
 ## ✨LLM Support
     
-Azure OpenAI Models
+Azure OpenAI Models - Add the below environment variables in a `.env` file in the root of your application
 
 ```env
 OPEN_AI_END_POINT=XXXXXXXXXXXXXXXXXXXXXXXXXX
