@@ -7,7 +7,6 @@ from microbots.tools.tool import Tool
 from microbots.utils.path import get_file_mount_info, get_folder_mount_info
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 class LogAnalysisBot(MicroBot):
