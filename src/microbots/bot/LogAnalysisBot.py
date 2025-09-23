@@ -1,9 +1,13 @@
+import logging
 from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, LOG_FILE_DIR, PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import Tool
 from microbots.utils.path import get_file_mount_info, get_folder_mount_info
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class LogAnalysisBot(MicroBot):
@@ -43,10 +47,12 @@ class LogAnalysisBot(MicroBot):
             permission,
         )
 
-    def __run__(self, file_name: str):
+    def run(self, file_name: str, timeout_in_seconds: int = 300) -> any:
+
+        print("------------------ Running LogAnalysisBot ------------------")
+        print(file_name, "==================")
 
         # Add the logic to copy the file from the user path to /var/log path in container
-
         file_mount_info = get_file_mount_info(file_name)
         if not file_mount_info.path_valid:
             raise ValueError(f"file name {file_name} is not a valid path")
@@ -55,12 +61,16 @@ class LogAnalysisBot(MicroBot):
         copy_to_container_result = self.environment.copy_to_container(
             file_mount_info.abs_path, f"/var/log/{file_mount_info.base_name}"
         )
+
+        print(copy_to_container_result, "==================")
         if copy_to_container_result is False:
             raise ValueError(
-                f"Failed to copy file to container: {copy_to_container_result.error}"
+                f"Failed to copy file to container: {file_mount_info.base_name}"
             )
+        else:
+            logger.info(f"Copied file to container: {file_mount_info.base_name}")
 
         file_name_prompt = f"""
-        The log file to analyze is {LOG_FILE_DIR}/{file_name}
+        The log file to analyze is {file_name} which is present in {LOG_FILE_DIR} directory.
         """
-        return self.run(file_name_prompt, file_name)
+        return super().run(file_name_prompt, timeout_in_seconds)

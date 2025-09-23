@@ -15,15 +15,17 @@ sys.path.insert(
 )
 
 from microbots.environment.local_docker import LocalDockerEnvironment
+from microbots.utils.path import get_file_mount_info
 
-class TestFileCopy():
+
+class TestFileCopy:
     """Simple test for file copy"""
 
     def test_copy_file(self):
         """Test copying a file to container and from container to host"""
-        # Create environment
-        env = LocalDockerEnvironment(port=8081)
-        
+        # Create environment with a different port to avoid conflicts
+        env = LocalDockerEnvironment(port=8083)
+
         try:
             # Copy to container
             # Get path to countries.txt file specifically
