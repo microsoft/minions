@@ -144,9 +144,9 @@ class LocalDockerEnvironment(Environment):
             logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
             output = response.json().get("output", "")
             return CmdReturn(
-                stdout=output.get("stdout", ""),
-                stderr=output.get("stderr", ""),
-                return_code=output.get("return_code", 0),
+                stdout = output.get("stdout", ""),
+                stderr = output.get("stderr", ""),
+                return_code = output.get("return_code", 0)
             )
             self.container.reload()
             logger.info("ℹ️ Container status: %s", self.container.status)
@@ -160,15 +160,14 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
-
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.
-
+        
         Args:
             src_path: Path to the source file/folder on the host machine
             dest_path: Destination path inside the container
-
+            
         Returns:
             bool: True if copy was successful, False otherwise
         """
@@ -183,52 +182,44 @@ class LocalDockerEnvironment(Environment):
                 return False
             # Ensure destination directory exists inside container
             dest_dir = os.path.dirname(dest_path)
-            if dest_dir and dest_dir != "/":
+            if dest_dir and dest_dir != '/':
                 # Check if directory exists inside the container first
                 check_cmd = f"test -d {shlex.quote(dest_dir)}"
                 check_result = self.execute(check_cmd)
 
                 if check_result.return_code != 0:
-                    logger.debug(
-                        "📁 Creating destination directory inside container: %s",
-                        dest_dir,
-                    )
+                    logger.debug("📁 Creating destination directory inside container: %s", dest_dir)
                     mkdir_cmd = f"mkdir -p {shlex.quote(dest_dir)}"
                     mkdir_result = self.execute(mkdir_cmd)
 
                     if mkdir_result.return_code != 0:
-                        logger.error(
-                            "❌ Failed to create destination directory %s: %s",
-                            dest_dir,
-                            mkdir_result.stderr,
-                        )
+                        logger.error("❌ Failed to create destination directory %s: %s", 
+                                   dest_dir, mkdir_result.stderr)
                         return False
                     else:
                         logger.debug("✅ Destination directory created: %s", dest_dir)
                 else:
-                    logger.debug(
-                        "✅ Destination directory already exists: %s", dest_dir
-                    )
+                    logger.debug("✅ Destination directory already exists: %s", dest_dir)
 
             # Use docker cp command to copy files/folders
             # Escape paths for shell safety
-            src_escaped = shlex.quote(src_path)
-            dest_escaped = shlex.quote(dest_path)
 
             # Build docker cp command
-            cmd = f"docker cp {src_escaped} {self.container.id}:{dest_escaped}"
+            cmd = ["docker", "cp", src_path, f"{self.container.id}:{dest_path}"]
 
             logger.debug("📁 Copying %s to container:%s", src_path, dest_path)
 
             # Execute the copy command
             result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=300
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300
             )
 
             if result.returncode == 0:
-                logger.info(
-                    "✅ Successfully copied %s to container:%s", src_path, dest_path
-                )
+                logger.info("✅ Successfully copied %s to container:%s", src_path, dest_path)
                 return True
             else:
                 logger.error("❌ Failed to copy file. Error: %s", result.stderr)
@@ -244,11 +235,11 @@ class LocalDockerEnvironment(Environment):
     def copy_from_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the Docker container to the host machine.
-
+        
         Args:
             src_path: Path to the source file/folder inside the container
             dest_path: Destination path on the host machine
-
+            
         Returns:
             bool: True if copy was successful, False otherwise
         """
@@ -268,29 +259,26 @@ class LocalDockerEnvironment(Environment):
             # Check if destination directory exists on host machine
             dest_dir = os.path.dirname(dest_path)
             if not os.path.exists(dest_dir):
-                logger.error(
-                    "❌ Destination directory does not exist on host: %s", dest_dir
-                )
+                logger.error("❌ Destination directory does not exist on host: %s", dest_dir)
                 return False
 
+            cmd = ["docker", "cp", f"{self.container.id}:{src_path}", dest_path]
+
             # Build docker cp command
-            cmd = ["docker", "cp", src_path, f"{self.container.id}:{dest_path}"]
-
-
 
             logger.debug("📁 Copying container:%s to %s", src_path, dest_path)
 
-            # Execute the copy command, subprocess.run internall validates the command using
+            # Execute the copy command
             result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=300
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300
             )
 
             if result.returncode == 0:
-                logger.info(
-                    "✅ Successfully copied from container:%s to %s",
-                    src_path,
-                    dest_path,
-                )
+                logger.info("✅ Successfully copied from container:%s to %s", src_path, dest_path)
                 return True
             else:
                 logger.error("❌ Failed to copy file. Error: %s", result.stderr)
