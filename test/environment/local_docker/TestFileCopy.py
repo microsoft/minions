@@ -10,6 +10,9 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 # Add src directory to path to import from local source
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src"))
+)
 
 from microbots.environment.local_docker import LocalDockerEnvironment
 
@@ -37,6 +40,8 @@ class TestFileCopy():
             # Test copying from container to host
             # Use /tmp/ which is available and writable on all systems
             result_back = env.copy_from_container("/var/log/countries.txt", "/tmp/")
+            print(f"Copy back result: {result_back}")
+            if result_back:
                 print("✅ Copy back succeeded")
             else:
                 print("❌ Copy back failed")
@@ -44,6 +49,10 @@ class TestFileCopy():
         finally:
             # Cleanup
             # os.unlink(test_file)
+            # env.stop()
+            print("Not stopping environment for debug")
+
+
 if __name__ == "__main__":
     # Run the tests
     test_instance = TestFileCopy()
