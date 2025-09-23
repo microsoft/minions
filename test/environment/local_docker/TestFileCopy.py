@@ -4,9 +4,8 @@ Simple test for file copy functionality
 """
 
 import os
-import tempfile
-import unittest
 import sys
+from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -27,8 +26,9 @@ class TestFileCopy():
         
         try:
             # Copy to container
-            # Give absolute path
-            result = env.copy_to_container("/home/kkaitepalli/minions/README.md", "/kavyasree/README.md")
+            # Get path to countries.txt file specifically
+            countries_file_path = Path(__file__).parent.parent.parent / "bot" / "countries_to_capital" / "countries_dir" / "countries.txt"
+            result = env.copy_to_container(str(countries_file_path), "/var/log/")
             
             # Verify
             print(f"Copy result: {result}")
@@ -38,7 +38,8 @@ class TestFileCopy():
                 print("❌ Copy failed")
             
             # Test copying from container to host
-            result_back = env.copy_from_container("/kavyasree/README.md", "/home/kkaitepalli/temp/README_copied.md")
+            # Use /tmp/ which is available and writable on all systems
+            result_back = env.copy_from_container("/var/log/countries.txt", "/tmp/")
             print(f"Copy back result: {result_back}")
             if result_back:
                 print("✅ Copy back succeeded")
