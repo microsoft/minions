@@ -180,7 +180,27 @@ class LocalDockerEnvironment(Environment):
             if not os.path.exists(src_path):
                 logger.error("❌ Source path does not exist: %s", src_path)
                 return False
-                
+            # Ensure destination directory exists inside container
+            dest_dir = os.path.dirname(dest_path)
+            if dest_dir and dest_dir != '/':
+                # Check if directory exists inside the container first
+                check_cmd = f"test -d {shlex.quote(dest_dir)}"
+                check_result = self.execute(check_cmd)
+
+                if check_result.return_code != 0:
+                    logger.debug("📁 Creating destination directory inside container: %s", dest_dir)
+                    mkdir_cmd = f"mkdir -p {shlex.quote(dest_dir)}"
+                    mkdir_result = self.execute(mkdir_cmd)
+ 
+                    if mkdir_result.return_code != 0:
+                        logger.error("❌ Failed to create destination directory %s: %s", 
+                                   dest_dir, mkdir_result.stderr)
+                        return False
+                    else:
+                        logger.debug("✅ Destination directory created: %s", dest_dir)
+                else:
+                    logger.debug("✅ Destination directory already exists: %s", dest_dir)
+
             # Use docker cp command to copy files/folders
             # Escape paths for shell safety
             src_escaped = shlex.quote(src_path)
@@ -189,7 +209,7 @@ class LocalDockerEnvironment(Environment):
             # Build docker cp command
             cmd = f"docker cp {src_escaped} {self.container.id}:{dest_escaped}"
             
-            logger.info("📁 Copying %s to container:%s", src_path, dest_path)
+            logger.debug("📁 Copying %s to container:%s", src_path, dest_path)
             
             # Execute the copy command
             result = subprocess.run(
@@ -230,6 +250,20 @@ class LocalDockerEnvironment(Environment):
             return False
             
         try:
+            # Check if source path exists inside the container
+            check_cmd = f"test -e {shlex.quote(src_path)}"
+            check_result = self.execute(check_cmd)
+
+            if check_result.return_code != 0:
+                logger.error("❌ Source path does not exist in container: %s", src_path)
+                return False
+
+            # Check if destination directory exists on host machine
+            dest_dir = os.path.dirname(dest_path)
+            if not os.path.exists(dest_dir):
+                logger.error("❌ Destination directory does not exist on host: %s", dest_dir)
+                return False
+
             # Escape paths for shell safety
             src_escaped = shlex.quote(src_path)
             dest_escaped = shlex.quote(dest_path)
@@ -237,7 +271,7 @@ class LocalDockerEnvironment(Environment):
             # Build docker cp command
             cmd = f"docker cp {self.container.id}:{src_escaped} {dest_escaped}"
             
-            logger.info("📁 Copying container:%s to %s", src_path, dest_path)
+            logger.debug("📁 Copying container:%s to %s", src_path, dest_path)
             
             # Execute the copy command
             result = subprocess.run(
@@ -249,7 +283,7 @@ class LocalDockerEnvironment(Environment):
             )
             
             if result.returncode == 0:
-                logger.info("✅ Successfully copied container:%s to %s", src_path, dest_path)
+                logger.info("✅ Successfully copied from container:%s to %s", src_path, dest_path)
                 return True
             else:
                 logger.error("❌ Failed to copy file. Error: %s", result.stderr)

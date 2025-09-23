@@ -34,10 +34,12 @@ class ShellCommunicator:
         Initialize the shell communicator.
 
         Args:
-            shell_type: Type of shell ("powershell", "cmd", "bash", "python")
+            shell_type: Type of shell (only "bash" is supported)
             encoding: Text encoding for communication
         """
         self.shell_type = shell_type.lower()
+        if self.shell_type != "bash":
+            raise ValueError(f"Unsupported shell type: {shell_type}. Only 'bash' is supported.")
         self.encoding = encoding
         self.process: Optional[subprocess.Popen] = None
         self.output_queue = queue.Queue()
@@ -47,13 +49,9 @@ class ShellCommunicator:
         self.error_thread: Optional[threading.Thread] = None
         self.output_callback: Optional[Callable] = None
 
-        # Define shell commands
+        # Define shell commands - only supporting bash
         self.shell_commands = {
-            "powershell": ["powershell.exe", "-NoLogo", "-NoExit"],
-            "cmd": ["cmd.exe", "/k"],
             "bash": ["bash"],
-            "python": [sys.executable, "-i"],
-            "wsl": ["wsl.exe"],
         }
 
     def start_session(self) -> bool:
@@ -134,7 +132,6 @@ class ShellCommunicator:
         # command = command.replace("&lt;", "<").replace("&gt;", ">")
         return command
 
-   # TODO: Exit code is not properly captured. Need to fix it.
     def send_command(
         self, command: str, wait_for_output: bool = True, timeout: float = 300
     ) -> CmdReturn:
@@ -155,28 +152,24 @@ class ShellCommunicator:
 
         try:
             command = self._re_escape(command)
-            # Send the command
-            self.process.stdin.write(command + "\n")
-            self.process.stdin.flush()
-            logger.debug("➡️ Sent command: %s", command)
-
+            
             if not wait_for_output:
+                # Send the command without marker for async execution
+                self.process.stdin.write(command + "\n")
+                self.process.stdin.flush()
+                logger.debug("➡️ Sent async command: %s", command)
                 return CmdReturn(stdout="ASYNC: Not waiting for completion", stderr="", return_code=0)
 
             # Generate a unique command completion marker
             marker = f"__COMMAND_COMPLETE_{int(time.time() * 1000000)}__"
 
-            # Send the marker command based on shell type
-            if self.shell_type in ["bash", "wsl"]:
-                self.process.stdin.write(f"echo '{marker}'; echo $? > /tmp/last_exit_code\n")
-            elif self.shell_type == "powershell":
-                self.process.stdin.write(f"echo '{marker}'; echo $LASTEXITCODE\n")
-            elif self.shell_type == "cmd":
-                self.process.stdin.write(f"echo {marker} & echo %ERRORLEVEL%\n")
-            elif self.shell_type == "python":
-                self.process.stdin.write(f"print('{marker}')\n")
-
+            # For bash only: Send command + marker in a single line to capture correct exit code
+            combined_command = f"{command}; echo '{marker}' $?"
+            
+            # Send the combined command
+            self.process.stdin.write(combined_command + "\n")
             self.process.stdin.flush()
+            logger.debug("➡️ Sent command: %s", command)
 
             # Collect output until marker is found or timeout
             output_lines = []
@@ -193,23 +186,24 @@ class ShellCommunicator:
                     # Check if this is our completion marker
                     if marker in line:
                         marker_found = True
-                        # For bash/wsl, try to get the exit code from the next line
-                        if self.shell_type in ["bash", "wsl"]:
-                            try:
-                                # Try to get exit code from next output
-                                stream_type, exit_code_line = self.output_queue.get(timeout=0.5)
-                                if exit_code_line.strip().isdigit():
-                                    last_exit_code = int(exit_code_line.strip())
-                            except (queue.Empty, ValueError):
-                                pass
-                        elif self.shell_type in ["powershell", "cmd"]:
-                            try:
-                                # Try to get exit code from next output
-                                stream_type, exit_code_line = self.output_queue.get(timeout=0.5)
-                                if exit_code_line.strip().isdigit():
-                                    last_exit_code = int(exit_code_line.strip())
-                            except (queue.Empty, ValueError):
-                                pass
+                        # For bash, the exit code is on the same line after the marker
+                        try:
+                            # Extract exit code from the same line as the marker
+                            # Format: "__COMMAND_COMPLETE_xxxxx__ exit_code"
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                exit_code_str = parts[-1].strip()
+                                # Handle bash exit codes (0-255 only)
+                                if exit_code_str.isdigit():
+                                    last_exit_code = int(exit_code_str)
+                                else:
+                                    last_exit_code = 1
+                            else:
+                                last_exit_code = 1
+                        except (ValueError, AttributeError, IndexError):
+                            # Default to 1 if parsing fails
+                            last_exit_code = 1
+                        logger.debug("🔍 Found marker with exit code: %s", last_exit_code)
                         continue
 
                     # Add output to appropriate list
@@ -236,7 +230,6 @@ class ShellCommunicator:
                 except queue.Empty:
                     break
 
-            # TODO: Final return code is not correct. Need a fix
             final_return_code = last_exit_code if marker_found else (1 if error_lines else 0)
 
             # Handle timeout case
@@ -295,13 +288,8 @@ class ShellCommunicator:
 
         if self.process:
             try:
-                # Try to terminate gracefully
-                if self.shell_type == "powershell":
-                    self.send_command("exit", wait_for_output=False)
-                elif self.shell_type == "cmd":
-                    self.send_command("exit", wait_for_output=False)
-                else:
-                    self.send_command("exit", wait_for_output=False)
+                # Try to terminate gracefully with bash exit command
+                self.send_command("exit", wait_for_output=False)
 
                 # Wait a bit for graceful shutdown
                 time.sleep(1)
