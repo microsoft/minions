@@ -21,7 +21,7 @@ myBot = LogAnalysisBot(
 )
 
 response: BotRunResult = myBot.run(
-    "calculator.log",
+    str(Path(__file__).parent / "calculator.log"),
     timeout_in_seconds=300,
 )
 
