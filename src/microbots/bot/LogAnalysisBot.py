@@ -49,9 +49,6 @@ class LogAnalysisBot(MicroBot):
 
     def run(self, file_name: str, timeout_in_seconds: int = 300) -> any:
 
-        print("------------------ Running LogAnalysisBot ------------------")
-        print(file_name, "==================")
-
         # Add the logic to copy the file from the user path to /var/log path in container
         file_mount_info = get_file_mount_info(file_name)
         if not file_mount_info.path_valid:
@@ -61,8 +58,6 @@ class LogAnalysisBot(MicroBot):
         copy_to_container_result = self.environment.copy_to_container(
             file_mount_info.abs_path, f"/var/log/{file_mount_info.base_name}"
         )
-
-        print(copy_to_container_result, "==================")
         if copy_to_container_result is False:
             raise ValueError(
                 f"Failed to copy file to container: {file_mount_info.base_name}"

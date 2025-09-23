@@ -203,12 +203,8 @@ class LocalDockerEnvironment(Environment):
                     logger.debug("✅ Destination directory already exists: %s", dest_dir)
 
             # Use docker cp command to copy files/folders
-            # Escape paths for shell safety
-            src_escaped = shlex.quote(src_path)
-            dest_escaped = shlex.quote(dest_path)
-            
-            # Build docker cp command
-            cmd = f"docker cp {src_escaped} {self.container.id}:{dest_escaped}"
+            # Build docker cp command (no need to quote when using command list)
+            cmd = ["docker", "cp", src_path, f"{self.container.id}:{dest_path}"]
             
             logger.debug("📁 Copying %s to container:%s", src_path, dest_path)
             
@@ -261,13 +257,9 @@ class LocalDockerEnvironment(Environment):
                 logger.error("❌ Destination directory does not exist on host: %s", dest_dir)
                 return False
 
-            # Escape paths for shell safety
-            src_escaped = shlex.quote(src_path)
-            dest_escaped = shlex.quote(dest_path)
-            
-            # Build docker cp command
-            cmd = f"docker cp {self.container.id}:{src_escaped} {dest_escaped}"
-            
+            # Build command as list to avoid shell escaping issues on Windows
+            cmd = ["docker", "cp", f"{self.container.id}:{src_path}", dest_path]
+
             logger.debug("📁 Copying container:%s to %s", src_path, dest_path)
             
             # Execute the copy command
