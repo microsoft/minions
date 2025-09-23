@@ -15,7 +15,7 @@ from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
-from microbots.utils.path import get_file_mount_info, get_folder_mount_info
+from microbots.utils.path import get_folder_mount_info
 
 logger = getLogger(" MicroBot ")
 
