@@ -7,7 +7,9 @@ import os
 import tempfile
 import unittest
 import sys
-
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 # Add src directory to path to import from local source
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src"))
@@ -26,7 +28,7 @@ class TestFileCopy():
         try:
             # Copy to container
             # Give absolute path
-            result = env.copy_to_container("/home/kkaitepalli/minions/README.md", "/var/log/README.md")
+            result = env.copy_to_container("/home/kkaitepalli/minions/README.md", "/kavyasree/README.md")
             
             # Verify
             print(f"Copy result: {result}")
@@ -36,7 +38,7 @@ class TestFileCopy():
                 print("❌ Copy failed")
             
             # Test copying from container to host
-            result_back = env.copy_from_container("/var/log/README.md", "/home/kkaitepalli/temp/README_copied.md")
+            result_back = env.copy_from_container("/kavyasree/README.md", "/home/kkaitepalli/temp/README_copied.md")
             print(f"Copy back result: {result_back}")
             if result_back:
                 print("✅ Copy back succeeded")
