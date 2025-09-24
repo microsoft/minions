@@ -27,13 +27,11 @@ class LogAnalysisBot(MicroBot):
 
         system_prompt = f"""
         {system_prompt_common}
-        You are a log analysis bot.
-        You are only provided access to read files inside the mounted directory which will be related to log file.
-        The directory is mounted at /{DOCKER_WORKING_DIR}/{base_name} in your current environment.
-        You can access files using paths like /{DOCKER_WORKING_DIR}/{base_name}/filename.txt or by changing to that directory first.
-        As part of the task you will be given a log file to analyze.
-        Once all the commands are done, and task is verified finally give me the result.
-        In the upcoming prompts you will be given a specific log file to which will be residing in the {LOG_FILE_DIR}
+        You are a helpful log analysis bot. Your job is to analyze a log file and identify the root-cause if there are any failure. You'll be given read-only access to the code from where the log is generated. The read-only code is available at /{DOCKER_WORKING_DIR}/{base_name}.
+
+The log file to analyze will be given in the user prompt. You can find the provided log file under the directory /{LOG_FILE_DIR}/
+
+Only when you have run all necessary commands and identified the root cause, you should give me the final result.
         """
 
         super().__init__(
