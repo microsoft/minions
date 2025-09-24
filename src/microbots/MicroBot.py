@@ -4,7 +4,6 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from logging import getLogger
-from pathlib import Path
 from typing import Optional
 
 from microbots.constants import ModelProvider, PermissionLabels, PermissionMapping
@@ -15,7 +14,7 @@ from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
-from microbots.utils.path import get_folder_mount_info
+from microbots.utils.path import get_path_info
 
 logger = getLogger(" MicroBot ")
 
@@ -67,7 +66,7 @@ class MicroBot:
         # validate init values before assigning
         self.permission = permission
         if folder_to_mount is not None:
-            folder_mount_info = get_folder_mount_info(folder_to_mount)
+            folder_mount_info = get_path_info(folder_to_mount)
             if folder_mount_info.path_valid is False:
                 raise ValueError(
                     f"Invalid folder to mount: {folder_to_mount} resolved to {folder_mount_info.abs_path}"

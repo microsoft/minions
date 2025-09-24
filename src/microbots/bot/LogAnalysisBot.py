@@ -4,7 +4,7 @@ from typing import Optional
 from microbots.constants import DOCKER_WORKING_DIR, LOG_FILE_DIR, PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import Tool
-from microbots.utils.path import get_file_mount_info, get_folder_mount_info
+from microbots.utils.path import get_path_info
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class LogAnalysisBot(MicroBot):
         bot_type = BotType.LOG_ANALYSIS_BOT
         permission = PermissionLabels.READ_ONLY
 
-        folder_mount_info = get_folder_mount_info(folder_to_mount)
+        folder_mount_info = get_path_info(folder_to_mount)
         base_name = folder_mount_info.base_name
 
         system_prompt = f"""
@@ -49,7 +49,7 @@ class LogAnalysisBot(MicroBot):
     def run(self, file_name: str, timeout_in_seconds: int = 300) -> any:
 
         # Add the logic to copy the file from the user path to /var/log path in container
-        file_mount_info = get_file_mount_info(file_name)
+        file_mount_info = get_path_info(file_name)
         if not file_mount_info.path_valid:
             raise ValueError(f"file name {file_name} is not a valid path")
 
