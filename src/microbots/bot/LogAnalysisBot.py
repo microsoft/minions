@@ -61,8 +61,6 @@ class LogAnalysisBot(MicroBot):
             raise ValueError(
                 f"Failed to copy file to container: {file_mount_info.base_name}"
             )
-        else:
-            logger.info(f"Copied file to container: {file_mount_info.base_name}")
 
         file_name_prompt = f"""
         The log file to analyze is {file_name} which is present in {LOG_FILE_DIR} directory.
