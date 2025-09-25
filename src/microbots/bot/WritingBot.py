@@ -28,6 +28,7 @@ class WritingBot(MicroBot):
         The directory is mounted at  /{DOCKER_WORKING_DIR}/{base_name} in your current environment.
         You can access files using paths like /{DOCKER_WORKING_DIR}/{base_name}/filename.txt or by changing to that directory first.
         Once all the commands are done, and task is verified finally give me the result.
+        For editing a file use `sed` command with replacement string.
         """
 
         super().__init__(
