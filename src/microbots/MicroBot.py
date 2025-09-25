@@ -4,7 +4,6 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from logging import getLogger
-from pathlib import Path
 from typing import Optional
 
 from microbots.constants import ModelProvider, PermissionLabels, PermissionMapping
@@ -15,12 +14,7 @@ from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
-from microbots.utils.path import (
-    get_absolute_path,
-    get_base_name,
-    is_absolute_path,
-    is_valid_path,
-)
+from microbots.utils.path import get_path_info
 
 logger = getLogger(" MicroBot ")
 
@@ -47,6 +41,7 @@ class BotType(StrEnum):
     WRITING_BOT = "WRITING_BOT"
     BROWSING_BOT = "BROWSING_BOT"
     CUSTOM_BOT = "CUSTOM_BOT"
+    LOG_ANALYSIS_BOT = "LOG_ANALYSIS_BOT"
 
 
 @dataclass
@@ -54,31 +49,6 @@ class BotRunResult:
     status: bool
     result: str | None
     error: Optional[str]
-
-
-@dataclass
-class FolderMountInfo:
-    path_valid: bool
-    base_name: str
-    abs_path: str
-
-
-def get_folder_mount_info(folder_to_mount: str) -> FolderMountInfo:
-    return_value = FolderMountInfo(
-        path_valid=False,
-        base_name="",
-        abs_path="",
-    )
-    if is_absolute_path(folder_to_mount):
-        return_value.path_valid = is_valid_path(folder_to_mount)
-        return_value.abs_path = folder_to_mount
-        return_value.base_name = get_base_name(folder_to_mount)
-    else:
-        return_value.abs_path = get_absolute_path(folder_to_mount)
-        return_value.path_valid = is_valid_path(return_value.abs_path)
-        return_value.base_name = folder_to_mount
-
-    return return_value
 
 
 class MicroBot:
@@ -96,7 +66,7 @@ class MicroBot:
         # validate init values before assigning
         self.permission = permission
         if folder_to_mount is not None:
-            folder_mount_info = get_folder_mount_info(folder_to_mount)
+            folder_mount_info = get_path_info(folder_to_mount)
             if folder_mount_info.path_valid is False:
                 raise ValueError(
                     f"Invalid folder to mount: {folder_to_mount} resolved to {folder_mount_info.abs_path}"

@@ -174,7 +174,7 @@ class LocalDockerEnvironment(Environment):
         if not self.container:
             logger.error("❌ No active container to copy to")
             return False
-            
+
         try:
             # Check if source path exists
             if not os.path.exists(src_path):
@@ -191,7 +191,7 @@ class LocalDockerEnvironment(Environment):
                     logger.debug("📁 Creating destination directory inside container: %s", dest_dir)
                     mkdir_cmd = f"mkdir -p {shlex.quote(dest_dir)}"
                     mkdir_result = self.execute(mkdir_cmd)
- 
+
                     if mkdir_result.return_code != 0:
                         logger.error("❌ Failed to create destination directory %s: %s", 
                                    dest_dir, mkdir_result.stderr)
@@ -203,14 +203,12 @@ class LocalDockerEnvironment(Environment):
 
             # Use docker cp command to copy files/folders
             # Escape paths for shell safety
-            src_escaped = shlex.quote(src_path)
-            dest_escaped = shlex.quote(dest_path)
-            
+
             # Build docker cp command
-            cmd = f"docker cp {src_escaped} {self.container.id}:{dest_escaped}"
-            
+            cmd = ["docker", "cp", src_path, f"{self.container.id}:{dest_path}"]
+
             logger.debug("📁 Copying %s to container:%s", src_path, dest_path)
-            
+
             # Execute the copy command
             result = subprocess.run(
                 cmd,
@@ -219,14 +217,14 @@ class LocalDockerEnvironment(Environment):
                 text=True,
                 timeout=300
             )
-            
+
             if result.returncode == 0:
                 logger.info("✅ Successfully copied %s to container:%s", src_path, dest_path)
                 return True
             else:
                 logger.error("❌ Failed to copy file. Error: %s", result.stderr)
                 return False
-                
+
         except subprocess.TimeoutExpired:
             logger.error("❌ Copy operation timed out after 300 seconds")
             return False
@@ -248,7 +246,7 @@ class LocalDockerEnvironment(Environment):
         if not self.container:
             logger.error("❌ No active container to copy from")
             return False
-            
+
         try:
             # Check if source path exists inside the container
             check_cmd = f"test -e {shlex.quote(src_path)}"
@@ -264,15 +262,12 @@ class LocalDockerEnvironment(Environment):
                 logger.error("❌ Destination directory does not exist on host: %s", dest_dir)
                 return False
 
-            # Escape paths for shell safety
-            src_escaped = shlex.quote(src_path)
-            dest_escaped = shlex.quote(dest_path)
-            
+            cmd = ["docker", "cp", f"{self.container.id}:{src_path}", dest_path]
+
             # Build docker cp command
-            cmd = f"docker cp {self.container.id}:{src_escaped} {dest_escaped}"
-            
+
             logger.debug("📁 Copying container:%s to %s", src_path, dest_path)
-            
+
             # Execute the copy command
             result = subprocess.run(
                 cmd,
@@ -281,18 +276,17 @@ class LocalDockerEnvironment(Environment):
                 text=True,
                 timeout=300
             )
-            
+
             if result.returncode == 0:
                 logger.info("✅ Successfully copied from container:%s to %s", src_path, dest_path)
                 return True
             else:
                 logger.error("❌ Failed to copy file. Error: %s", result.stderr)
                 return False
-                
+
         except subprocess.TimeoutExpired:
             logger.error("❌ Copy operation timed out after 300 seconds")
             return False
         except Exception as e:
             logger.exception("❌ Unexpected error during copy operation: %s", e)
             return False
- 
