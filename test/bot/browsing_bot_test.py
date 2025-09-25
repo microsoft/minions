@@ -2,11 +2,11 @@ import logging
 import os
 import sys
 
-
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
@@ -24,6 +24,11 @@ response: BotRunResult = myBot.run(
 
 final_result = response.result
 # logger.info(f"Response: {response}")
-logger.debug("Status: %s\n, Error: %s\n\n\n, ***Result:***\n %s\n", response.status, response.error, response.result)
+logger.debug(
+    "Status: %s\n, Error: %s\n\n\n, ***Result:***\n %s\n",
+    response.status,
+    response.error,
+    response.result,
+)
 
 print("Final Result: ", final_result)
