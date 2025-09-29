@@ -28,7 +28,7 @@ class LogAnalysisBot(MicroBot):
 
         system_prompt = f"""
         {system_prompt_common}
-        You are a helpful log analysis bot. Your job is to analyze a log file and identify the root-cause if there are any failure. You'll be given read-only access to the code from where the log is generated. The read-only code is available at /{DOCKER_WORKING_DIR}/{base_name}.
+        You are a helpful log analysis bot. Your job is to analyze a log file and identify the root-cause if there are any failure. You'll be given read-only access to the code from where the log is generated. The read-only code is available at /{DOCKER_WORKING_DIR}/{folder_mount_info.host_path_info.base_name}.
 
 The log file to analyze will be given in the user prompt. You can find the provided log file under the directory /{LOG_FILE_DIR}/
 

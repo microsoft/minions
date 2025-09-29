@@ -21,14 +21,13 @@ class WritingBot(MicroBot):
         folder_mount_info = Mount(
             folder_to_mount, f"/{DOCKER_WORKING_DIR}", PermissionLabels.READ_WRITE
         )
-        base_name = folder_mount_info.host_path_info.base_name
 
         system_prompt = f"""
         {system_prompt_common}
         You are a writing bot.
         You are only provided access to write files inside the mounted directory.
-        The directory is mounted at  /{DOCKER_WORKING_DIR}/{base_name} in your current environment.
-        You can access files using paths like /{DOCKER_WORKING_DIR}/{base_name}/filename.txt or by changing to that directory first.
+        The directory is mounted at  /{DOCKER_WORKING_DIR}/{folder_mount_info.host_path_info.base_name} in your current environment.
+        You can access files using paths like /{DOCKER_WORKING_DIR}/{folder_mount_info.host_path_info.base_name}/filename.txt or by changing to that directory first.
         Once all the commands are done, and task is verified finally give me the result.
         """
 
