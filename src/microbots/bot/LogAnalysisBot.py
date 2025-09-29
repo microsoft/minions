@@ -67,6 +67,6 @@ Only when you have run all necessary commands and identified the root cause, you
             )
 
         file_name_prompt = f"""
-            Analyze the log file `/{LOG_FILE_DIR}/{file_name}`
+            Analyze the log file `{LOG_FILE_DIR}/{file_name}`
         """
         return super().run(file_name_prompt, timeout_in_seconds)
