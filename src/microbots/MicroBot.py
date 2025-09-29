@@ -142,6 +142,7 @@ class MicroBot:
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.result, error=None)
 
+    # TODO : pass the sandbox path
     def _create_environment(self, folder_to_mount: Optional[Mount]):
         if self.environment is None:
             # check for a free port in the system and assign to environment
