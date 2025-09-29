@@ -13,7 +13,7 @@ class MountType(StrEnum):
 @dataclass
 class Mount:
     host_path: str
-    container_path: str
+    sandbox_path: str
     permission: PermissionLabels
     mount_type: MountType = MountType.MOUNT
 
@@ -24,9 +24,7 @@ class Mount:
     def __post_init__(self):
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.host_path_info = get_path_info(self.host_path)
-        if not self.host_path_info.path_valid:
-            raise ValueError(f"Path {self.host_path} is not a valid path")
 
     @property
-    def container_full_path(self):
-        return f"{self.container_path}/{self.host_path_info.base_name}"
+    def sandbox_full_path(self):
+        return f"{self.sandbox_path}/{self.host_path_info.base_name}"
