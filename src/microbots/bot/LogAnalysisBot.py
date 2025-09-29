@@ -25,7 +25,6 @@ class LogAnalysisBot(MicroBot):
         folder_mount_info = Mount(
             folder_to_mount, DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
         )
-        base_name = folder_mount_info.host_path_info.base_name
 
         system_prompt = f"""
         {system_prompt_common}
