@@ -150,8 +150,10 @@ class MicroBot:
 
             self.environment = LocalDockerEnvironment(
                 port=free_port,
-                folder_to_mount=folder_to_mount.host_path_info.abs_path,
-                permission=folder_to_mount.permission,
+                folder_to_mount=(
+                    folder_to_mount.host_path_info.abs_path if folder_to_mount else None
+                ),
+                permission=folder_to_mount.permission if folder_to_mount else None,
             )
 
     def _create_llm(self):
