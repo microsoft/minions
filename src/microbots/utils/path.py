@@ -14,7 +14,7 @@ def is_valid_path(path: str) -> bool:
     try:
         return Path(path).exists()
     except Exception:
-        return False
+        raise ValueError(f"Path {path} does not exist!")
 
 
 def is_absolute_path(path: str) -> bool:

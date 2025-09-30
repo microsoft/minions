@@ -12,6 +12,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import (
 )
 from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
+from microbots.utils.env_mount import Mount
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
 from microbots.utils.path import get_path_info
@@ -60,22 +61,24 @@ class MicroBot:
         system_prompt: Optional[str] = None,
         environment: Optional[any] = None,
         additional_tools: Optional[list[Tool]] = [],
-        folder_to_mount: Optional[str] = None,
-        permission: Optional[PermissionLabels] = None,
+        folder_to_mount: Optional[Mount] = None,
     ):
-        # validate init values before assigning
-        self.permission = permission
+
+        self.folder_to_mount = folder_to_mount
+
+        # TODO : Need to check on the purpose of variable `mounted`
+        # 1. If we allow user to mount multiple directories,
+        # we should able to get it as an argument and store them in self.mounted.
+        # This require changes in _create_environment to handle multiple mount directories or files.
+        #
+        # 2. We should let user to mount only one directory. In that case self.mounted may not be required.
+        # Just one self.folder_to_mount and necessary extra mounts at the derived class similar to LogAnalyticsBot.
+
+        self.mounted = []
         if folder_to_mount is not None:
-            folder_mount_info = get_path_info(folder_to_mount)
-            if folder_mount_info.path_valid is False:
-                raise ValueError(
-                    f"Invalid folder to mount: {folder_to_mount} resolved to {folder_mount_info.abs_path}"
-                )
-            else:
-                self.folder_to_mount = folder_mount_info.abs_path
+            self.mounted.append(folder_to_mount)
 
         self._validate_model_and_provider(model)
-        self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.system_prompt = system_prompt
         self.model = model
         self.bot_type = bot_type
@@ -83,7 +86,6 @@ class MicroBot:
         self.deployment_name = model.split("/")[1]
         self.environment = environment
         self.additional_tools = additional_tools
-        self.folder_to_mount = folder_to_mount
         self._create_environment(self.folder_to_mount)
         self._create_llm()
 
@@ -149,7 +151,8 @@ class MicroBot:
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.result, error=None)
 
-    def _create_environment(self, folder_to_mount):
+    # TODO : pass the sandbox path
+    def _create_environment(self, folder_to_mount: Optional[Mount]):
         if self.environment is None:
             # check for a free port in the system and assign to environment
 
@@ -157,8 +160,10 @@ class MicroBot:
 
             self.environment = LocalDockerEnvironment(
                 port=free_port,
-                folder_to_mount=folder_to_mount,
-                permission=self.permission,
+                folder_to_mount=(
+                    folder_to_mount.host_path_info.abs_path if folder_to_mount else None
+                ),
+                permission=folder_to_mount.permission if folder_to_mount else None,
             )
 
     def _create_llm(self):
