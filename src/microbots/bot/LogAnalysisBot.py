@@ -61,7 +61,7 @@ Only when you have run all necessary commands and identified the root cause, you
         )
         if copy_to_container_result is False:
             raise ValueError(
-                f"Failed to copy file to container: {file_mount_info.host_path_info.base_name}"
+                f"Failed to copy file to container: {file_mount_info.host_path_info.abs_path} -> {file_mount_info.sandbox_path}"
             )
 
         file_name_prompt = f"""
