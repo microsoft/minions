@@ -65,6 +65,15 @@ class MicroBot:
     ):
 
         self.folder_to_mount = folder_to_mount
+
+        # TODO : Need to check on the purpose of variable `mounted`
+        # 1. If we allow user to mount multiple directories,
+        # we should able to get it as an argument and store them in self.mounted.
+        # This require changes in _create_environment to handle multiple mount directories or files.
+        #
+        # 2. We should let user to mount only one directory. In that case self.mounted may not be required.
+        # Just one self.folder_to_mount and necessary extra mounts at the derived class similar to LogAnalyticsBot.
+
         self.mounted = []
         if folder_to_mount is not None:
             self.mounted.append(folder_to_mount)
