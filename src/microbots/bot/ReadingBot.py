@@ -26,8 +26,8 @@ class ReadingBot(MicroBot):
         {system_prompt_common}
         You are a reading bot.
         You are only provided access to read files inside the mounted directory.
-        The directory is mounted at /{DOCKER_WORKING_DIR}/{folder_mount_info.host_path_info.base_name} in your current environment.
-        You can access files using paths like /{DOCKER_WORKING_DIR}/{folder_mount_info.host_path_info.base_name}/filename.txt or by changing to that directory first.
+        The directory is mounted at {folder_mount_info.sandbox_path} in your current environment.
+        You can access files using paths like {folder_mount_info.sandbox_path}/filename.txt or by changing to that directory first.
         Once all the commands are done, and task is verified finally give me the result.
         """
 
