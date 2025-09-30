@@ -24,7 +24,4 @@ class Mount:
     def __post_init__(self):
         self.permission_key = PermissionMapping.MAPPING.get(self.permission)
         self.host_path_info = get_path_info(self.host_path)
-
-    @property
-    def sandbox_full_path(self):
-        return f"{self.sandbox_path}/{self.host_path_info.base_name}"
+        self.sandbox_path = f"{self.sandbox_path}{self.host_path_info.base_name}"
