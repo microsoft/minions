@@ -49,7 +49,7 @@ Only when you have run all necessary commands and identified the root cause, you
         # Add the logic to copy the file from the user path to /var/log path in container
         file_mount_info = Mount(
             file_name,
-            f"{LOG_FILE_DIR}/{file_name}",
+            LOG_FILE_DIR,
             PermissionLabels.READ_ONLY,
             MountType.COPY,
         )
@@ -57,8 +57,7 @@ Only when you have run all necessary commands and identified the root cause, you
 
         # Copy the file to the container
         copy_to_container_result = self.environment.copy_to_container(
-            file_mount_info.host_path_info.abs_path,
-            f"{LOG_FILE_DIR}/{file_mount_info.host_path_info.base_name}",
+            file_mount_info.host_path_info.abs_path, file_mount_info.sandbox_path
         )
         if copy_to_container_result is False:
             raise ValueError(
@@ -66,6 +65,6 @@ Only when you have run all necessary commands and identified the root cause, you
             )
 
         file_name_prompt = f"""
-            Analyze the log file `{LOG_FILE_DIR}/{file_name}`
+            Analyze the log file `{file_mount_info.sandbox_path}`
         """
         return super().run(file_name_prompt, timeout_in_seconds)
