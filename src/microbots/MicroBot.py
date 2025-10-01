@@ -23,16 +23,19 @@ llm_output_format = """```json
 {
     task_done: true | false,
     command: "<command to run> | null",
-    result: str | null
+    result: str | null,
+    reasoning: "Brief explanation of what you're thinking and why you're running this command"
 }
 ```
 """
 
 system_prompt_common = """There is a shell session open for you.
                 I will provide a task to achieve using the shell.
-                You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
+                You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result, reasoning ) are mandatory on each response
                 {llm_output_format}
                 after each command I will provide the output of the command.
+                
+                IMPORTANT: Always include 'reasoning' field to explain your thought process before executing each command.
                 ensure to run only one command at a time.
                 I won't be able to intervene once I have given task. ."""
 
@@ -105,9 +108,28 @@ class MicroBot:
             result=None,
             error="Did not complete",
         )
-        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:15])
+        print(f"\n{'='*80}")
+        print(f"🚀 TASK STARTED: {task}")
+        print(f"{'='*80}")
+        
+        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:50])
 
         while llm_response.task_done is False:
+            print(f"\n{'─'*80}")
+            print(f"🔄 STEP {iteration_count}")
+            print(f"{'─'*80}")
+            
+            # Show LLM's thought process
+            print(f"\n💭 LLM ANALYSIS:")
+            if hasattr(llm_response, 'reasoning') and llm_response.reasoning:
+                print(f"   {llm_response.reasoning}")
+            else:
+                print(f"   Analyzing current situation and determining next action...")
+            
+            # Show the command to execute
+            print(f"\n⚡ COMMAND TO EXECUTE:")
+            print(f"   {LogTextColor.OKBLUE}{llm_response.command}{LogTextColor.ENDC}")
+            
             logger.info("%s Step-%d %s", "-" * 20, iteration_count, "-" * 20)
             logger.info(
                 f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
@@ -132,11 +154,27 @@ class MicroBot:
                 return return_value
 
             llm_command_output = self.environment.execute(llm_response.command)
+            
+            # Show command output clearly
+            print(f"\n📤 COMMAND OUTPUT:")
             if llm_command_output.stdout:
+                print(f"   ✅ STDOUT:")
+                for line in llm_command_output.stdout.split('\n'):
+                    if line.strip():
+                        print(f"      {line}")
                 logger.info(
                     " ⬅️  Command Execution Output: %s",
                     llm_command_output.stdout,
                 )
+            
+            if llm_command_output.stderr:
+                print(f"   ❌ STDERR:")
+                for line in llm_command_output.stderr.split('\n'):
+                    if line.strip():
+                        print(f"      {line}")
+            
+            if not llm_command_output.stdout and not llm_command_output.stderr:
+                print(f"   ℹ️  No output received")
 
             # Convert CmdReturn to string for LLM
             if llm_command_output.stdout:
@@ -146,9 +184,22 @@ class MicroBot:
             else:
                 output_text = "No output received"
 
+            print(f"\n🔄 SENDING OUTPUT TO LLM...")
             llm_response = self.llm.ask(output_text)
 
-        logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
+        print(f"\n{'='*80}")
+        print(f"✅ TASK COMPLETED!")
+        print(f"{'='*80}")
+        print(f"\n🎯 FINAL RESULT:")
+        if llm_response.result:
+            for line in str(llm_response.result).split('\n'):
+                if line.strip():
+                    print(f"   {line}")
+        else:
+            print("   Task completed successfully")
+        print(f"\n{'='*80}")
+        
+        logger.info("🔚 TASK COMPLETED : %s...", task[0:50])
         return BotRunResult(status=True, result=llm_response.result, error=None)
 
     # TODO : pass the sandbox path
@@ -167,7 +218,7 @@ class MicroBot:
             )
 
     def _create_llm(self):
-        if self.model_provider == ModelProvider.OPENAI:
+        if self.model_provider in [ModelProvider.OPENAI, ModelProvider.OPENAI_STANDARD]:
             self.llm = OpenAIApi(
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
