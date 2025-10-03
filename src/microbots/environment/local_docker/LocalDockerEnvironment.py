@@ -113,9 +113,32 @@ class LocalDockerEnvironment(Environment):
             path_name,
         )
 
+    def _teardown_overlay_mount(self, folder_to_mount: str):
+        path_name = os.path.basename(os.path.abspath(folder_to_mount))
+        unmount_command = f"umount /{DOCKER_WORKING_DIR}/{path_name} || true"
+
+        try:
+            self.execute(unmount_command)
+            logger.info(
+                "🛑 Teardown overlay mount for directory at /{DOCKER_WORKING_DIR}/%s",
+                path_name,
+            )
+            remove_dir_command = (
+                f"rm -rf /{DOCKER_WORKING_DIR}/{path_name} && "
+                f"rm -rf /overlaydir && "
+                f"rm -rf /{DOCKER_WORKING_DIR}/overlay/{path_name}"
+            )
+            self.execute(remove_dir_command)
+            logger.info(
+                "🗑️ Removed overlay directories for %s", path_name
+            )
+        except Exception as e:
+            logger.error("❌ Failed to teardown overlay mount: %s", e)
+
     def stop(self):
         """Stop and remove the container"""
         if self.container:
+            self._teardown_overlay_mount(self.folder_to_mount)
             self.container.stop()
             self.container.remove()
             self.container = None
@@ -163,11 +186,11 @@ class LocalDockerEnvironment(Environment):
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.
-        
+
         Args:
             src_path: Path to the source file/folder on the host machine
             dest_path: Destination path inside the container
-            
+
         Returns:
             bool: True if copy was successful, False otherwise
         """
@@ -193,7 +216,7 @@ class LocalDockerEnvironment(Environment):
                     mkdir_result = self.execute(mkdir_cmd)
 
                     if mkdir_result.return_code != 0:
-                        logger.error("❌ Failed to create destination directory %s: %s", 
+                        logger.error("❌ Failed to create destination directory %s: %s",
                                    dest_dir, mkdir_result.stderr)
                         return False
                     else:
@@ -235,11 +258,11 @@ class LocalDockerEnvironment(Environment):
     def copy_from_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the Docker container to the host machine.
-        
+
         Args:
             src_path: Path to the source file/folder inside the container
             dest_path: Destination path on the host machine
-            
+
         Returns:
             bool: True if copy was successful, False otherwise
         """
