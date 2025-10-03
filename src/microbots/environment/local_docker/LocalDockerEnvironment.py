@@ -113,9 +113,32 @@ class LocalDockerEnvironment(Environment):
             path_name,
         )
 
+    def _teardown_overlay_mount(self, folder_to_mount: str):
+        path_name = os.path.basename(os.path.abspath(folder_to_mount))
+        unmount_command = f"umount /{DOCKER_WORKING_DIR}/{path_name} || true"
+
+        try:
+            self.execute(unmount_command)
+            logger.info(
+                "🛑 Teardown overlay mount for directory at /{DOCKER_WORKING_DIR}/%s",
+                path_name,
+            )
+            remove_dir_command = (
+                f"rm -rf /{DOCKER_WORKING_DIR}/{path_name} && "
+                f"rm -rf /overlaydir && "
+                f"rm -rf /{DOCKER_WORKING_DIR}/overlay/{path_name}"
+            )
+            self.execute(remove_dir_command)
+            logger.info(
+                "🗑️ Removed overlay directories for %s", path_name
+            )
+        except Exception as e:
+            logger.error("❌ Failed to teardown overlay mount: %s", e)
+
     def stop(self):
         """Stop and remove the container"""
         if self.container:
+            self._teardown_overlay_mount(self.folder_to_mount)
             self.container.stop()
             self.container.remove()
             self.container = None
