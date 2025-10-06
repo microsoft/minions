@@ -71,6 +71,15 @@ jobs:
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavya-local .
 
       - name: Run ${{ matrix.test-type }} tests
+        env:
+          # OpenAI API Configuration
+          OPEN_AI_KEY: ${{ secrets.OPEN_AI_KEY }}
+          OPEN_AI_DEPLOYMENT_NAME: ${{ secrets.OPEN_AI_DEPLOYMENT_NAME }}
+          OPEN_AI_END_POINT: ${{ secrets.OPEN_AI_END_POINT }}
+          # Azure OpenAI API Configuration
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
         run: |
           python -m pytest ${{ matrix.pytest-args }} \
             --cov=src \
@@ -124,6 +133,15 @@ jobs:
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavya-local .
 
       - name: Run Docker-specific tests
+        env:
+          # OpenAI API Configuration
+          OPEN_AI_KEY: ${{ secrets.OPEN_AI_KEY }}
+          OPEN_AI_DEPLOYMENT_NAME: ${{ secrets.OPEN_AI_DEPLOYMENT_NAME }}
+          OPEN_AI_END_POINT: ${{ secrets.OPEN_AI_END_POINT }}
+          # Azure OpenAI API Configuration
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
         run: |
           python -m pytest -m docker \
             --cov=src \
