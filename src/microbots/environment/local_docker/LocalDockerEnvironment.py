@@ -132,7 +132,7 @@ class LocalDockerEnvironment(Environment):
 
     def execute(
         self, command: str, timeout: Optional[int] = 300
-    ) -> CmdReturn:  # TODO: Need proper return value
+    ) -> CmdReturn:
         logger.debug("➡️  Executing command in container: %s", command)
         try:
             response = requests.post(
@@ -148,12 +148,6 @@ class LocalDockerEnvironment(Environment):
                 stderr = output.get("stderr", ""),
                 return_code = output.get("return_code", 0)
             )
-            self.container.reload()
-            logger.info("ℹ️ Container status: %s", self.container.status)
-            if self.container.status != "running":
-                logs = self.container.logs().decode("utf-8", errors="replace")
-                logger.error("🛑 Container not running. Recent logs below:\n%s", logs)
-            return CmdReturn(stdout="", stderr="Connection error", return_code=1)
         except requests.exceptions.RequestException as e:
             logger.exception("❌ Request failed while executing command: %s", e)
             return CmdReturn(stdout="", stderr=str(e), return_code=1)
@@ -212,7 +206,7 @@ class LocalDockerEnvironment(Environment):
             # Execute the copy command
             result = subprocess.run(
                 cmd,
-                shell=True,
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=300
@@ -271,7 +265,7 @@ class LocalDockerEnvironment(Environment):
             # Execute the copy command
             result = subprocess.run(
                 cmd,
-                shell=True,
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=300
