@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import os
+import platform
 from typing import Optional, List
 from pathlib import Path
 import yaml
@@ -21,8 +22,12 @@ class EnvFileCopies:
 
 @dataclass
 class Tool:
-    # TODO: Handle different instructions based on the platform (linux flavours, windows, mac)
-    # TODO: Add versioning to tools
+    """
+    Tool definition for environment setup and configuration.
+
+    Supports platform-specific commands and versioning for better compatibility
+    across different operating systems and environments.
+    """
     name: str
     description: str
     parameters: dict | None
@@ -35,6 +40,23 @@ class Tool:
     # This set of commands will be executed once the environment is up and running.
     # These commands will be executed in the order they are provided.
     install_commands: List[str]
+
+    # Tool version (semantic versioning recommended, e.g., "1.0.0")
+    version: Optional[str] = None
+
+    # Platform-specific install commands (overrides install_commands if platform matches)
+    # Keys: "linux", "darwin" (macOS), "windows", or specific like "ubuntu", "debian", "alpine"
+    # Example: {"ubuntu": ["apt-get install -y tool"], "alpine": ["apk add tool"]}
+    platform_install_commands: Optional[dict[str, List[str]]] = None
+
+    # Platform-specific verify commands (overrides verify_commands if platform matches)
+    platform_verify_commands: Optional[dict[str, List[str]]] = None
+
+    # Platform-specific setup commands (overrides setup_commands if platform matches)
+    platform_setup_commands: Optional[dict[str, List[str]]] = None
+
+    # Platform-specific uninstall commands (overrides uninstall_commands if platform matches)
+    platform_uninstall_commands: Optional[dict[str, List[str]]] = None
 
     # Mention what are the environment variables that need to be copied from your current environment
     env_variables: Optional[str] = None
@@ -89,11 +111,105 @@ def parse_tool_definition(yaml_path: str) -> Tool:
     return Tool(**tool_dict)
 
 
-def _install_tool(env: Environment, tool: Tool):
-    logger.debug("Installing tool: %s", tool.name)
-    for command in tool.install_commands:
+def _detect_platform(env: Environment) -> str:
+    """
+    Detect the platform/OS of the environment.
+
+    Returns a platform identifier like "ubuntu", "debian", "alpine", "linux", "darwin", "windows".
+    Tries to detect specific Linux distributions first, then falls back to general platform.
+    """
+    # Try to detect Linux distribution
+    try:
+        result = env.execute("cat /etc/os-release 2>/dev/null || echo ''")
+        if result.return_code == 0 and result.stdout:
+            output_lower = result.stdout.lower()
+            if "ubuntu" in output_lower:
+                return "ubuntu"
+            elif "debian" in output_lower:
+                return "debian"
+            elif "alpine" in output_lower:
+                return "alpine"
+            elif "centos" in output_lower or "rhel" in output_lower:
+                return "rhel"
+            elif "fedora" in output_lower:
+                return "fedora"
+    except Exception as e:
+        logger.debug("Could not detect Linux distribution: %s", e)
+
+    # Fall back to general platform detection
+    try:
+        result = env.execute("uname -s")
+        if result.return_code == 0:
+            system = result.stdout.strip().lower()
+            if "linux" in system:
+                return "linux"
+            elif "darwin" in system:
+                return "darwin"
+            elif "windows" in system or "mingw" in system or "cygwin" in system:
+                return "windows"
+    except Exception as e:
+        logger.debug("Could not detect platform: %s", e)
+
+    # Default to linux (most containers are Linux)
+    logger.warning("Could not detect platform, defaulting to 'linux'")
+    return "linux"
+
+
+def _get_platform_specific_commands(
+    tool: Tool,
+    platform_type: str,
+    command_type: str
+) -> Optional[List[str]]:
+    """
+    Get platform-specific commands for a tool, falling back to default if not available.
+
+    Args:
+        tool: The Tool instance
+        platform_type: Detected platform (e.g., "ubuntu", "linux", "darwin")
+        command_type: Type of command ("install", "verify", "setup", "uninstall")
+
+    Returns:
+        List of commands to execute, or None if no commands defined
+    """
+    platform_attr = f"platform_{command_type}_commands"
+    default_attr = f"{command_type}_commands"
+
+    # Try platform-specific commands first
+    platform_commands = getattr(tool, platform_attr, None)
+    if platform_commands and isinstance(platform_commands, dict):
+        # Try exact platform match first
+        if platform_type in platform_commands:
+            logger.debug("Using %s-specific %s commands", platform_type, command_type)
+            return platform_commands[platform_type]
+
+        # Try fallback to broader platform (e.g., ubuntu -> linux)
+        if platform_type in ["ubuntu", "debian", "alpine", "rhel", "fedora"]:
+            if "linux" in platform_commands:
+                logger.debug("Using linux fallback %s commands for %s", command_type, platform_type)
+                return platform_commands["linux"]
+
+    # Fall back to default commands
+    default_commands = getattr(tool, default_attr, None)
+    if default_commands:
+        logger.debug("Using default %s commands", command_type)
+        return default_commands
+
+    return None
+
+
+def _install_tool(env: Environment, tool: Tool, platform_type: str):
+    """Install a tool using platform-specific or default commands."""
+    version_info = f" (v{tool.version})" if tool.version else ""
+    logger.debug("Installing tool: %s%s", tool.name, version_info)
+
+    install_commands = _get_platform_specific_commands(tool, platform_type, "install")
+    if not install_commands:
+        logger.warning("No install commands found for tool: %s", tool.name)
+        return
+
+    for command in install_commands:
         output = env.execute(command)
-        logger.debug("Tool install command: %s", output)
+        logger.debug("Tool install command: %s", command)
         logger.debug("Tool install command output: %s", output)
         if output.return_code != 0:
             logger.error(
@@ -102,9 +218,9 @@ def _install_tool(env: Environment, tool: Tool):
                 command,
             )
             raise RuntimeError(
-                f"Failed to install tool {tool.name} with command {command}. Output: {output}"
+                f"Failed to install tool {tool.name}{version_info} with command {command}. Output: {output}"
             )
-    logger.info("✅ Successfully installed tool: %s", tool.name)
+    logger.info("✅ Successfully installed tool: %s%s", tool.name, version_info)
 
 def _copy_env_variable(env: Environment, env_variable: str):
     if env_variable not in os.environ:
@@ -177,14 +293,17 @@ def _setup_file_permission(env: Environment, file_copy: EnvFileCopies):
             f"Failed to set permission for file in container {file_copy.dest}. Output: {output}"
         )
 
-def _verify_tool_installation(env: Environment, tool: Tool):
-    if not tool.verify_commands:
+def _verify_tool_installation(env: Environment, tool: Tool, platform_type: str):
+    """Verify tool installation using platform-specific or default commands."""
+    verify_commands = _get_platform_specific_commands(tool, platform_type, "verify")
+    if not verify_commands:
         logger.debug("No verify commands provided for tool: %s", tool.name)
         return
 
-    for command in tool.verify_commands:
+    for command in verify_commands:
         output = env.execute(command)
-        logger.debug("Tool verify command: %s", output)
+        logger.debug("Tool verify command: %s", command)
+        logger.debug("Tool verify output: %s", output)
         if output.return_code != 0:
             logger.error(
                 "❌ Failed to verify tool: %s with command: %s",
@@ -197,34 +316,51 @@ def _verify_tool_installation(env: Environment, tool: Tool):
     logger.info("✅ Successfully installed and verified tool: %s", tool.name)
 
 def install_tools(env: Environment, tools: List[Tool]):
-    if tools:
-        for tool in tools:
-            _install_tool(env, tool)
+    """Install and verify tools with platform detection and version support."""
+    if not tools:
+        return
 
-        for env_variable in tool.env_variables:
-            _copy_env_variable(env, env_variable)
+    # Detect platform once for all tools
+    platform_type = _detect_platform(env)
+    logger.info("🔍 Detected platform: %s", platform_type)
 
-        for file_copy in tool.files_to_copy or []:
-            _copy_file(env, file_copy)
+    for tool in tools:
+        _install_tool(env, tool, platform_type)
 
-        for tool in tools:
-            _verify_tool_installation(env, tool)
+        # Copy environment variables if specified
+        if tool.env_variables:
+            for env_variable in tool.env_variables:
+                _copy_env_variable(env, env_variable)
+
+        # Copy files if specified
+        if tool.files_to_copy:
+            for file_copy in tool.files_to_copy:
+                _copy_file(env, file_copy)
+
+        # Verify installation
+        _verify_tool_installation(env, tool, platform_type)
 
 def setup_tools(env: Environment, tools: List[Tool]):
+    """Setup tools using platform-specific or default commands."""
     if not tools:
         logger.debug("No tools provided for setup.")
         return
 
+    # Detect platform once for all tools
+    platform_type = _detect_platform(env)
+
     for tool in tools:
-        if not tool.setup_commands:
+        setup_commands = _get_platform_specific_commands(tool, platform_type, "setup")
+        if not setup_commands:
             logger.debug("No setup commands provided for tool: %s", tool.name)
             continue
 
         env.execute(f"cd /{DOCKER_WORKING_DIR}")
 
-        for command in tool.setup_commands:
+        for command in setup_commands:
             output = env.execute(command)
-            logger.debug("Tool setup command: %s", output)
+            logger.debug("Tool setup command: %s", command)
+            logger.debug("Tool setup output: %s", output)
             if output.return_code != 0:
                 logger.error(
                     "❌ Failed to setup tool: %s with command: %s",
@@ -234,4 +370,4 @@ def setup_tools(env: Environment, tools: List[Tool]):
                 raise RuntimeError(
                     f"Failed to setup tool {tool.name} with command {command}. Output: {output}"
                 )
-    logger.info("✅ Successfully setup tool: %s", tool.name)
+        logger.info("✅ Successfully setup tool: %s", tool.name)
