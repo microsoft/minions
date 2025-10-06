@@ -16,6 +16,9 @@ from microbots.bot.BrowsingBot import BrowsingBot
 from microbots.MicroBot import BotRunResult
 
 
+@pytest.mark.integration
+@pytest.mark.docker
+@pytest.mark.slow
 class TestBrowsingBot:
     """Integration tests for BrowsingBot functionality."""
     

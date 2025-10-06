@@ -3,8 +3,6 @@ name: Run Tests
 on:
   push:
     branches: [ kkaitepalli/tests ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
     # Allow manual triggering
 
@@ -13,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
         test-type: ["unit", "integration"]
         include:
           - test-type: "unit"
@@ -30,10 +27,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
 
       - name: Set up Docker Buildx
         if: matrix.test-type == 'integration'
@@ -85,21 +82,21 @@ jobs:
             --cov=src \
             --cov-report=xml \
             --cov-report=term-missing \
-            --junitxml=test-results-${{ matrix.test-type }}-py${{ matrix.python-version }}.xml \
+            --junitxml=test-results-${{ matrix.test-type }}.xml \
             -v
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.test-type }}-py${{ matrix.python-version }}
+          name: test-results-${{ matrix.test-type }}
           path: test-results-*.xml
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-${{ matrix.test-type }}-py${{ matrix.python-version }}
+          name: coverage-${{ matrix.test-type }}
           path: coverage.xml
 
   docker-tests:
@@ -112,7 +109,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
