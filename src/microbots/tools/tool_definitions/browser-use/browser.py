@@ -28,7 +28,7 @@ async def main(args: list[str]) -> int:
     agent = Agent(
         task=what_to_browse,
         browser=browser,
-        llm=ChatAzureOpenAI(model="gpt-4.1"),
+        llm=ChatAzureOpenAI(model="gpt-5",temperature=1.0),
         use_vision=False,
     )
     history: AgentHistoryList = await agent.run()
