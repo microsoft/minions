@@ -15,7 +15,7 @@ def test_repo(tmpdir):
     except subprocess.CalledProcessError as e:
         pytest.fail(f"Failed to clone repository: {e}")
 
-    repo_path = Path(os.path.abspath(os.listdir(tmpdir)[0]))
+    repo_path = Path(tmpdir / os.listdir(tmpdir)[0])
     yield repo_path
 
     # Cleanup after test
