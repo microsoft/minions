@@ -2,7 +2,6 @@ import logging
 import os
 import sys
 import pytest
-from unittest.mock import patch
 
 # Setup logging for tests
 logger = logging.getLogger(__name__)

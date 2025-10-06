@@ -212,7 +212,6 @@ class LocalDockerEnvironment(Environment):
             # Execute the copy command
             result = subprocess.run(
                 cmd,
-                shell=True,
                 capture_output=True,
                 text=True,
                 timeout=300
@@ -271,7 +270,6 @@ class LocalDockerEnvironment(Environment):
             # Execute the copy command
             result = subprocess.run(
                 cmd,
-                shell=True,
                 capture_output=True,
                 text=True,
                 timeout=300
