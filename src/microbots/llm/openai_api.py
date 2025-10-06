@@ -38,12 +38,13 @@ class OpenAIApi:
         self.messages.append({"role": "user", "content": message})
         return_value = {}
         while self._validate_llm_response(return_value) is False:
-            response = self.ai_client.responses.create(
+            response = self.ai_client.chat.completions.create(
                 model=self.deployment_name,
-                input=self.messages,
+                messages=self.messages,
             )
             try:
-                return_value = json.loads(response.output_text)
+                response_text = response.choices[0].message.content
+                return_value = json.loads(response_text)
             except Exception as e:
                 logger.error(
                     f"%s Error occurred while dumping JSON: {e}", LogLevelEmoji.ERROR
@@ -52,7 +53,7 @@ class OpenAIApi:
                     "%s Failed to parse JSON from LLM response and the response is",
                     LogLevelEmoji.ERROR,
                 )
-                logger.error(response.output_text)
+                logger.error(response.choices[0].message.content if response.choices else "No response")
 
         self.messages.append({"role": "assistant", "content": json.dumps(return_value)})
 
