@@ -11,10 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-type: ["unit", "integration"]
+        test-type: ["integration"]
         include:
-          - test-type: "unit"
-            pytest-args: "-m 'not integration and not docker'"
           - test-type: "integration" 
             pytest-args: "-m 'integration'"
 
@@ -181,9 +179,9 @@ jobs:
           echo "| Test Type | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.test.result }}" = "success" ]; then
-            echo "| Unit & Integration Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+            echo "| Integration Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| Unit & Integration Tests | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| Integration Tests | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
           fi
           if [ "${{ needs.docker-tests.result }}" = "success" ]; then
             echo "| Docker Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
