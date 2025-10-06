@@ -15,8 +15,10 @@ class BrowsingBot(MicroBot):
         self,
         model: str,
         environment: Optional[Environment] = None,
-        additional_tools: Optional[list[Tool]] = [],
+        additional_tools: Optional[list[Tool]] = None,
     ):
+        if additional_tools is None:
+            additional_tools = []
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT
         system_prompt = """
@@ -39,9 +41,11 @@ class BrowsingBot(MicroBot):
             return f"Failed to run browser command. Error: {browser_output.stderr}"
 
         browser_stdout = browser_output.stdout
-        # print("Browser stdout:", browser_stdout)
-        # final_result = browser_stdout.split("Final result:")[-1].strip() if "Final result:" in browser_stdout else browser_stdout.strip()
-        final_result = browser_stdout["Final result:"] if "Final result:" in browser_stdout else browser_stdout
+        # Extract final result from stdout string
+        if "Final result:" in browser_stdout:
+            final_result = browser_stdout.split("Final result:")[-1].strip()
+        else:
+            final_result = browser_stdout.strip()
 
         return BotRunResult(
             status=browser_output.return_code == 0,

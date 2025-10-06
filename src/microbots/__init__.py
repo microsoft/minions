@@ -1,7 +1,15 @@
-from microbots.bot import LogAnalysisBot, ReadingBot, WritingBot
+from microbots.bot import (
+    BrowsingBot,
+    CustomBot,
+    LogAnalysisBot,
+    ReadingBot,
+    WritingBot,
+)
 
 __all__ = [
+    "BrowsingBot",
+    "CustomBot",
+    "LogAnalysisBot",
     "ReadingBot",
     "WritingBot",
-    "LogAnalysisBot",
 ]

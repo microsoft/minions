@@ -1,8 +1,8 @@
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, LOG_FILE_DIR, PermissionLabels
-from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.MicroBot import BotType, MicroBot, SYSTEM_PROMPT_BASE
 from microbots.tools.tool import Tool
 from microbots.utils.env_mount import Mount, MountType
 from microbots.utils.path import get_path_info
@@ -16,9 +16,11 @@ class LogAnalysisBot(MicroBot):
         self,
         model: str,
         folder_to_mount: str,
-        environment: Optional[any] = None,
-        additional_tools: Optional[list[Tool]] = [],
+        environment: Optional[Any] = None,
+        additional_tools: Optional[list[Tool]] = None,
     ):
+        if additional_tools is None:
+            additional_tools = []
         # validate init values before assigning
         bot_type = BotType.LOG_ANALYSIS_BOT
 
@@ -26,14 +28,21 @@ class LogAnalysisBot(MicroBot):
             folder_to_mount, DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
         )
 
-        system_prompt = f"""
-        {system_prompt_common}
-        You are a helpful log analysis bot. Your job is to analyze a log file and identify the root-cause if there are any failure. You'll be given read-only access to the code from where the log is generated. The read-only code is available at {folder_mount_info.sandbox_path}.
+        system_prompt = f"""{SYSTEM_PROMPT_BASE}
 
-The log file to analyze will be given in the user prompt. You can find the provided log file under the directory /{LOG_FILE_DIR}/
+ROLE: You are a log analysis bot specialized in identifying root causes of failures.
 
-Only when you have run all necessary commands and identified the root cause, you should give me the final result.
-        """
+AVAILABLE RESOURCES:
+- Source code (read-only): {folder_mount_info.sandbox_path}
+- Log file location: /{LOG_FILE_DIR}/ (path will be provided in task)
+
+OBJECTIVE:
+Analyze the log file to identify the root cause of any failures by:
+1. Examining the log file for error messages and stack traces
+2. Correlating errors with the source code
+3. Identifying the underlying issue
+
+Only provide the final result after running all necessary commands and identifying the root cause."""
 
         super().__init__(
             bot_type,
