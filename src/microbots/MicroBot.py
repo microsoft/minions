@@ -126,7 +126,8 @@ class MicroBot:
                 logger.error(
                     "Iteration %d with response %s",
                     iteration_count,
-                    json.dumps(llm_response),
+                    llm_response,
+                    "Exiting without running command as timeout reached",
                 )
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
