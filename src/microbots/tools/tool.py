@@ -201,11 +201,11 @@ def install_tools(env: Environment, tools: List[Tool]):
         for tool in tools:
             _install_tool(env, tool)
 
-        for env_variable in tool.env_variables:
-            _copy_env_variable(env, env_variable)
+            for env_variable in tool.env_variables:
+                _copy_env_variable(env, env_variable)
 
-        for file_copy in tool.files_to_copy or []:
-            _copy_file(env, file_copy)
+            for file_copy in tool.files_to_copy or []:
+                _copy_file(env, file_copy)
 
         for tool in tools:
             _verify_tool_installation(env, tool)
