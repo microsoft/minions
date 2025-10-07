@@ -119,6 +119,68 @@ class TestLocalDockerEnvironmentIntegration:
     
     @pytest.mark.integration
     @pytest.mark.docker
+    def test_command_execution_complex(self, shared_env):
+        """Test that heredoc commands are automatically converted to safe alternatives"""
+        import time
+        
+        # Test the specific heredoc command that was causing timeouts
+        heredoc_command = """cat > /tmp/test_heredoc.py << 'EOF'
+        #!/usr/bin/env python3
+        import sys
+
+        def missing_colon_error():
+            # This function demonstrates a syntax error - missing colon after if statement
+            if True
+                print("This will cause a syntax error")
+                return True
+            
+            return False
+
+        if __name__ == "__main__":
+            try:
+                result = missing_colon_error()
+                print(f"Function result: {result}")
+            except SyntaxError as e:
+                print(f"Syntax error caught: {e}")
+                sys.exit(1)
+        EOF"""
+
+        print(f"Testing heredoc command execution...")
+        start_time = time.time()
+        
+        # Execute the heredoc command 
+        result = shared_env.execute(heredoc_command, timeout=60)
+        
+        end_time = time.time()
+        execution_time = end_time - start_time
+        
+        print(f"Heredoc command completed in {execution_time:.2f} seconds")
+        print(f"Return code: {result.return_code}")
+        print(f"Stdout: {result.stdout}")
+        print(f"Stderr: {result.stderr}")
+        
+        # The command should complete successfully (converted automatically)
+        assert result.return_code == 0, f"Heredoc command failed with return code {result.return_code}"
+        
+        # Should complete in reasonable time (less than 30 seconds)
+        assert execution_time < 30, f"Heredoc command took too long: {execution_time:.2f} seconds"
+        
+        # Verify the file was created correctly
+        verify_result = shared_env.execute("cat /tmp/test_heredoc.py")
+        assert verify_result.return_code == 0
+        assert "missing_colon_error" in verify_result.stdout
+        assert "if True" in verify_result.stdout
+        
+        # Test that the Python file has the expected syntax error
+        python_result = shared_env.execute("python3 /tmp/test_heredoc.py")
+        # Should fail due to syntax error (missing colon)
+        assert python_result.return_code != 0
+        assert "SyntaxError" in python_result.stderr or "invalid syntax" in python_result.stderr
+        
+        print("Heredoc command with automatic conversion test passed successfully")
+
+    @pytest.mark.integration
+    @pytest.mark.docker
     def test_read_write_mount(self, test_dir):
         """Test READ_WRITE mount functionality - creates own env because mounting requires initialization-time config"""
         # Get a fresh port for this test since shared_env is using the class-scoped port
