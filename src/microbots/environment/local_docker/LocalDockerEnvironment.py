@@ -130,10 +130,18 @@ class LocalDockerEnvironment(Environment):
             except Exception as e:
                 logger.error("❌ Failed to remove working directory: %s", e)
 
+    # Unused function. Keeping for reference or future use
+    def _escape(self, command: str) -> str:
+        # Escape double quotes and special characters for JSON safety
+        command = command.replace('"', '\\"')
+        command = command.replace("<", "&lt;").replace(">", "&gt;")
+        return command
+
     def execute(
         self, command: str, timeout: Optional[int] = 300
     ) -> CmdReturn:  # TODO: Need proper return value
         logger.debug("➡️  Executing command in container: %s", command)
+        # command = self._escape(command)
         try:
             response = requests.post(
                 f"http://localhost:{self.port}/",
@@ -163,11 +171,11 @@ class LocalDockerEnvironment(Environment):
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.
-        
+
         Args:
             src_path: Path to the source file/folder on the host machine
             dest_path: Destination path inside the container
-            
+
         Returns:
             bool: True if copy was successful, False otherwise
         """
@@ -193,7 +201,7 @@ class LocalDockerEnvironment(Environment):
                     mkdir_result = self.execute(mkdir_cmd)
 
                     if mkdir_result.return_code != 0:
-                        logger.error("❌ Failed to create destination directory %s: %s", 
+                        logger.error("❌ Failed to create destination directory %s: %s",
                                    dest_dir, mkdir_result.stderr)
                         return False
                     else:
@@ -234,11 +242,11 @@ class LocalDockerEnvironment(Environment):
     def copy_from_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the Docker container to the host machine.
-        
+
         Args:
             src_path: Path to the source file/folder inside the container
             dest_path: Destination path on the host machine
-            
+
         Returns:
             bool: True if copy was successful, False otherwise
         """

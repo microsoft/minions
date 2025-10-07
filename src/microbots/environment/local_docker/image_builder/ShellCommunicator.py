@@ -16,6 +16,7 @@ from typing import Callable, List, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', filename='/var/log/shell_communicator.log')
 
 @dataclass
 class CmdReturn:
@@ -126,11 +127,19 @@ class ShellCommunicator:
         except Exception as e:
             output_queue.put((stream_type, f"Monitor error: {e}"))
 
+    # Unused function. Keeping for reference and future use
     def _re_escape(self, command: str) -> str:
         # Reverse .replace('"', '\\"')
         command = command.replace('\"', '"')
-        # command = command.replace("&lt;", "<").replace("&gt;", ">")
+        command = command.replace("&lt;", "<").replace("&gt;", ">")
         return command
+
+    # Unused function. Keeping for reference and future use
+    def _is_heredoc_command(self, command: str) -> bool:
+        """Check if command contains heredoc syntax."""
+        import re
+        # Look for heredoc patterns like <<EOF, <<'END', <<"DELIMITER", etc.
+        return bool(re.search(r'<<\s*[\'"]?[A-Za-z_][A-Za-z0-9_]*[\'"]?', command))
 
     def send_command(
         self, command: str, wait_for_output: bool = True, timeout: float = 300
@@ -151,8 +160,8 @@ class ShellCommunicator:
             return CmdReturn(stdout="", stderr="No active shell session", return_code=1)
 
         try:
-            command = self._re_escape(command)
-            
+            # command = self._re_escape(command)
+
             if not wait_for_output:
                 # Send the command without marker for async execution
                 self.process.stdin.write(command + "\n")
@@ -163,13 +172,14 @@ class ShellCommunicator:
             # Generate a unique command completion marker
             marker = f"__COMMAND_COMPLETE_{int(time.time() * 1000000)}__"
 
-            # For bash only: Send command + marker in a single line to capture correct exit code
-            combined_command = f"{command}; echo '{marker}' $?"
-            
-            # Send the combined command
-            self.process.stdin.write(combined_command + "\n")
+            self.process.stdin.write(command + "\n")
             self.process.stdin.flush()
+            # Send exit code capture on a new line after user command completes
+            self.process.stdin.write(f"echo '{marker}' $?\n")
+            self.process.stdin.flush()
+
             logger.debug("➡️ Sent command: %s", command)
+            logger.debug("🔖 Waiting for marker: %s", marker)
 
             # Collect output until marker is found or timeout
             output_lines = []
@@ -182,6 +192,7 @@ class ShellCommunicator:
                 try:
                     # Check for output with a small timeout
                     stream_type, line = self.output_queue.get(timeout=0.1)
+                    logger.debug("⬅️ Received line from %s: %s", stream_type, line)
 
                     # Check if this is our completion marker
                     if marker in line:
