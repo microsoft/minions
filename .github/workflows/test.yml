@@ -1,8 +1,8 @@
 name: Run Tests
 
 on:
-  pull_request:
-    branches: [ main ]
+  push:
+    branches: [ "kkaitepalli/tests" ]
   workflow_dispatch:
     # Allow manual triggering
 
@@ -94,6 +94,16 @@ jobs:
         with:
           name: coverage-${{ matrix.test-type }}
           path: coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: ${{ matrix.test-type }}
+          name: codecov-${{ matrix.test-type }}
+          fail_ci_if_error: false
 
   test-summary:
     runs-on: ubuntu-latest
