@@ -77,7 +77,7 @@ class TestLogAnalysisBotIntegration:
         # Assertions
         assert response.status == True, f"Bot run failed with error: {response.error}"
         assert response.result is not None, "Bot result should not be None"
-        assert response.error is None, f"Bot should not have errors: {response.error}"
+        assert response.error is None, f"Bot should not have errors! ERROR: {response.error}"
         
         # Check that the result contains analysis of the log
         result_lower = response.result.lower()
