@@ -74,8 +74,8 @@ class TestWritingBotIntegration:
         
         # Run the bot with the fix task
         response: BotRunResult = writing_bot.run(
-            """Inside the mounted directory there is a calculator.log which have execution of code/calculator.py
-            read the log and fix the error.""",
+            """Inside the mounted directory there is a calculator.log which have execution of code/calculator.py.
+               Read the log and fix the error.""",
             timeout_in_seconds=300,
         )
         
