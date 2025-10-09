@@ -16,7 +16,7 @@ from typing import Callable, List, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', filename='/var/log/shell_communicator.log')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', filename='/var/log/ShellCommunicator.log')
 
 @dataclass
 class CmdReturn:
