@@ -103,7 +103,6 @@ class LocalDockerEnvironment(Environment):
         path_name = os.path.basename(os.path.abspath(folder_to_mount))
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
-            f"mkdir -p /overlaydir && "
             f"mkdir -p /{DOCKER_WORKING_DIR}/{path_name} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && "
             f"mount -t overlay overlay -o lowerdir=/ro/{path_name},upperdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/upper,workdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/work /{DOCKER_WORKING_DIR}/{path_name}"
         )
@@ -113,9 +112,31 @@ class LocalDockerEnvironment(Environment):
             path_name,
         )
 
+    def _teardown_overlay_mount(self, folder_to_mount: str):
+        path_name = os.path.basename(os.path.abspath(folder_to_mount))
+        unmount_command = f"umount /{DOCKER_WORKING_DIR}/{path_name} || true"
+
+        try:
+            self.execute(unmount_command)
+            logger.info(
+                "🛑  Teardown overlay mount for directory at /{DOCKER_WORKING_DIR}/%s",
+                path_name,
+            )
+            remove_dir_command = (
+                f"rm -rf /{DOCKER_WORKING_DIR}/{path_name} && "
+                f"rm -rf /{DOCKER_WORKING_DIR}/overlay/"
+            )
+            self.execute(remove_dir_command)
+            logger.info(
+                "🗑️  Removed overlay directories for %s", path_name
+            )
+        except Exception as e:
+            logger.error("❌  Failed to teardown overlay mount: %s", e)
+
     def stop(self):
         """Stop and remove the container"""
         if self.container:
+            self._teardown_overlay_mount(self.folder_to_mount)
             self.container.stop()
             self.container.remove()
             self.container = None
@@ -126,9 +147,9 @@ class LocalDockerEnvironment(Environment):
                 import shutil
 
                 shutil.rmtree(WORKING_DIR)
-                logger.info("🗑️ Removed working directory at %s", WORKING_DIR)
+                logger.info("🗑️  Removed working directory at %s", WORKING_DIR)
             except Exception as e:
-                logger.error("❌ Failed to remove working directory: %s", e)
+                logger.error("❌  Failed to remove working directory: %s", e)
 
     # Unused function. Keeping for reference or future use
     def _escape(self, command: str) -> str:
