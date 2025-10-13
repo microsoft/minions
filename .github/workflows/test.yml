@@ -74,7 +74,7 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           BROWSER_USE_LLM_MODEL: "gpt-5"
-          BROWSER_USE_LLM_TEMPERATURE: "1.0"
+          BROWSER_USE_LLM_TEMPERATURE: 1
         run: |
           python -m pytest ${{ matrix.pytest-args }} \
             --cov=src \

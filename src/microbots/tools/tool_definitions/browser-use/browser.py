@@ -12,6 +12,15 @@ from browser_use import Agent, AgentHistoryList, Browser, ChatAzureOpenAI
 
 MODEL = os.getenv("BROWSER_USE_LLM_MODEL")
 TEMP = os.getenv("BROWSER_USE_LLM_TEMPERATURE", None)
+if not TEMP:
+    pass
+elif "." in str(TEMP):
+    TEMP = float(TEMP)
+elif str(TEMP).isdigit():
+    TEMP = int(TEMP) # Some models only accept integer temperatures
+else:
+    print("BROWSER_USE_LLM_TEMPERATURE must be a number between 0 and 1")
+    sys.exit(1)
 
 
 async def main(args: list[str]) -> int:
