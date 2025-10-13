@@ -3,11 +3,15 @@
 import asyncio
 import sys
 from pprint import pprint
+import os
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from browser_use import Agent, AgentHistoryList, Browser, ChatAzureOpenAI
+
+MODEL = os.getenv("BROWSER_USE_LLM_MODEL")
+TEMP = os.getenv("BROWSER_USE_LLM_TEMPERATURE", None)
 
 
 async def main(args: list[str]) -> int:
@@ -28,7 +32,7 @@ async def main(args: list[str]) -> int:
     agent = Agent(
         task=what_to_browse,
         browser=browser,
-        llm=ChatAzureOpenAI(model="gpt-5",temperature=1.0), # TODO: Gather it from environmental variable instead of hard coding.
+        llm=ChatAzureOpenAI(model=MODEL, temperature=TEMP) if TEMP else ChatAzureOpenAI(model=MODEL),
         use_vision=False,
     )
     history: AgentHistoryList = await agent.run()

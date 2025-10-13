@@ -23,6 +23,8 @@ env_variables:
   - AZURE_OPENAI_API_KEY
   - AZURE_OPENAI_ENDPOINT
   - AZURE_OPENAI_API_VERSION
+  - BROWSER_USE_LLM_MODEL
+  - BROWSER_USE_LLM_TEMPERATURE
 
 uninstall_commands:
   - playwright uninstall chromium

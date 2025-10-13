@@ -36,6 +36,7 @@ class LocalDockerEnvironment(Environment):
 
         self.image = image
         self.folder_to_mount = folder_to_mount
+        self.overlay_mount = False
         self.permission = permission
         self.container = None
         self.client = docker.from_env()
@@ -96,7 +97,7 @@ class LocalDockerEnvironment(Environment):
         )
         time.sleep(2)  # Give some time for the server to start
 
-        if self.permission == "READ_ONLY":
+        if self.permission == "READ_ONLY" and self.folder_to_mount:
             self._setup_overlay_mount(self.folder_to_mount)
 
     def _setup_overlay_mount(self, folder_to_mount: str):
@@ -111,6 +112,7 @@ class LocalDockerEnvironment(Environment):
             "🔒 Set up overlay mount for read-only directory at /{DOCKER_WORKING_DIR}/%s",
             path_name,
         )
+        self.overlay_mount = True
 
     def _teardown_overlay_mount(self, folder_to_mount: str):
         path_name = os.path.basename(os.path.abspath(folder_to_mount))
@@ -136,7 +138,9 @@ class LocalDockerEnvironment(Environment):
     def stop(self):
         """Stop and remove the container"""
         if self.container:
-            self._teardown_overlay_mount(self.folder_to_mount)
+            if self.overlay_mount:
+                self._teardown_overlay_mount(self.folder_to_mount)
+
             self.container.stop()
             self.container.remove()
             self.container = None
