@@ -5,6 +5,8 @@ The issue is a simple syntax correction issue from original SWE-bench's test-rep
 
 import os
 import sys
+
+import pytest
 # Add src directory to path to import from local source
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
@@ -16,6 +18,7 @@ logging.basicConfig(level=logging.INFO)
 from microbots import WritingBot
 from microbots.MicroBot import BotRunResult
 
+@pytest.mark.integration
 def test_writing_bot(test_repo, issue_1):
     issue_text = issue_1[0]
     verify_function = issue_1[1]
