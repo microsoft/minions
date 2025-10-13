@@ -108,13 +108,15 @@ def _install_tool(env: Environment, tool: Tool):
 
 def _copy_env_variable(env: Environment, env_variable: str):
     if env_variable not in os.environ:
-        logger.error(
-            "❌ Environment variable %s not found in current environment",
+        logger.warning(
+            "⚠️  Environment variable %s not found in current environment",
             env_variable,
         )
-        raise ValueError(
-            f"Environment variable {env_variable} not found in current environment"
-        )
+        # TODO: Until we have an option to specify optional env variables, we will not raise an error
+        # raise ValueError(
+        #     f"Environment variable {env_variable} not found in current environment"
+        # )
+        return
 
     env.execute(
         f'export {env_variable}="{os.environ.get(env_variable)}"'
