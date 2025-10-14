@@ -5,7 +5,6 @@ from microbots.constants import DOCKER_WORKING_DIR, LOG_FILE_DIR, PermissionLabe
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import Tool
 from microbots.utils.env_mount import Mount, MountType
-from microbots.utils.path import get_path_info
 
 logger = logging.getLogger(__name__)
 
@@ -53,18 +52,12 @@ Only when you have run all necessary commands and identified the root cause, you
             PermissionLabels.READ_ONLY,
             MountType.COPY,
         )
-        self.mounted.append(file_mount_info)
-
-        # Copy the file to the container
-        copy_to_container_result = self.environment.copy_to_container(
-            file_mount_info.host_path_info.abs_path, file_mount_info.sandbox_path
-        )
-        if copy_to_container_result is False:
-            raise ValueError(
-                f"Failed to copy file to container: {file_mount_info.host_path_info.abs_path} -> {file_mount_info.sandbox_path}"
-            )
 
         file_name_prompt = f"""
             Analyze the log file `{file_mount_info.sandbox_path}`
         """
-        return super().run(file_name_prompt, timeout_in_seconds)
+        return super().run(
+            file_name_prompt,
+            additional_mounts=[file_mount_info],
+            timeout_in_seconds=timeout_in_seconds
+        )

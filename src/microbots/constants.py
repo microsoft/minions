@@ -28,6 +28,6 @@ class FILE_PERMISSIONS(IntEnum):
     EXECUTE = 1
 
 
-DOCKER_WORKING_DIR = "workdir"
+DOCKER_WORKING_DIR = "/workdir"
 LOG_FILE_DIR = "/var/log"
 TOOL_FILE_BASE_PATH = Path(__file__).parent / "tools" / "tool_definitions"

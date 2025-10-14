@@ -1,21 +1,19 @@
 import json
-import os
 import time
 from dataclasses import dataclass
 from enum import StrEnum
 from logging import getLogger
 from typing import Optional
 
-from microbots.constants import ModelProvider, PermissionLabels, PermissionMapping
+from microbots.constants import ModelProvider
 from microbots.environment.local_docker.LocalDockerEnvironment import (
     LocalDockerEnvironment,
 )
 from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
-from microbots.utils.env_mount import Mount
+from microbots.utils.env_mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
-from microbots.utils.path import get_path_info
 
 logger = getLogger(" MicroBot ")
 
@@ -56,8 +54,8 @@ class MicroBot:
 
     def __init__(
         self,
-        bot_type: BotType,
         model: str,
+        bot_type: BotType = BotType.CUSTOM_BOT,
         system_prompt: Optional[str] = None,
         environment: Optional[any] = None,
         additional_tools: Optional[list[Tool]] = [],
@@ -86,14 +84,26 @@ class MicroBot:
         self.deployment_name = model.split("/")[1]
         self.environment = environment
         self.additional_tools = additional_tools
-        self._create_environment(self.folder_to_mount)
+
+        if not self.environment:
+            self._create_environment(self.folder_to_mount)
+
         self._create_llm()
 
         install_tools(self.environment, self.additional_tools)
 
-    def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:
+    def run(
+        self,
+        task: str,
+        additional_mounts: Optional[list[Mount]] = None,
+        max_iterations: int = 20,
+        timeout_in_seconds: int = 200
+    ) -> BotRunResult:
 
         setup_tools(self.environment, self.additional_tools)
+
+        for mount in additional_mounts or []:
+            self._mount_additional(mount)
 
         iteration_count = 1
         # start timer
@@ -152,26 +162,44 @@ class MicroBot:
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.result, error=None)
 
+    def _mount_additional(self, mount: Mount):
+        if mount.mount_type != MountType.COPY:
+            logger.error(
+                "%s Only COPY mount type is supported for additional mounts for now",
+                LogLevelEmoji.ERROR,
+            )
+            raise ValueError(
+                "Only COPY mount type is supported for additional mounts for now"
+            )
+
+        self.mounted.append(mount)
+        copy_to_container_result = self.environment.copy_to_container(
+            mount.host_path_info.abs_path, mount.sandbox_path
+        )
+        if copy_to_container_result is False:
+            raise ValueError(
+                f"Failed to copy additional mount to container: {mount.host_path_info.abs_path} -> {mount.sandbox_path}"
+            )
+
     # TODO : pass the sandbox path
     def _create_environment(self, folder_to_mount: Optional[Mount]):
-        if self.environment is None:
-            # check for a free port in the system and assign to environment
+        free_port = get_free_port()
 
-            free_port = get_free_port()
-
-            self.environment = LocalDockerEnvironment(
-                port=free_port,
-                folder_to_mount=(
-                    folder_to_mount.host_path_info.abs_path if folder_to_mount else None
-                ),
-                permission=folder_to_mount.permission if folder_to_mount else None,
-            )
+        self.environment = LocalDockerEnvironment(
+            port=free_port,
+            folder_to_mount=(
+                folder_to_mount.host_path_info.abs_path if folder_to_mount else None
+            ),
+            permission=folder_to_mount.permission if folder_to_mount else None,
+        )
 
     def _create_llm(self):
         if self.model_provider == ModelProvider.OPENAI:
             self.llm = OpenAIApi(
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
+        else:
+            raise ValueError(f"Unsupported model provider: {self.model_provider}")
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash

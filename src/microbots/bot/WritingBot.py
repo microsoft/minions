@@ -1,7 +1,7 @@
 from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
-from microbots.MicroBot import BotType, MicroBot, get_path_info, system_prompt_common
+from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import Tool
 from microbots.utils.env_mount import Mount
 
@@ -19,7 +19,7 @@ class WritingBot(MicroBot):
         bot_type = BotType.WRITING_BOT
 
         folder_mount_info = Mount(
-            folder_to_mount, f"/{DOCKER_WORKING_DIR}", PermissionLabels.READ_WRITE
+            folder_to_mount, DOCKER_WORKING_DIR, PermissionLabels.READ_WRITE
         )
 
         system_prompt = f"""

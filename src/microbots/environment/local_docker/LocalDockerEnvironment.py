@@ -193,6 +193,7 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
+
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.
