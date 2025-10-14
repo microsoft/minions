@@ -15,8 +15,7 @@ sys.path.insert(
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from microbots import WritingBot
-from microbots.MicroBot import BotRunResult
+from microbots import WritingBot, BotRunResult
 
 @pytest.mark.integration
 def test_writing_bot(test_repo, issue_1):

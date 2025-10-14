@@ -17,8 +17,7 @@ sys.path.insert(
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from microbots import ReadingBot
-from microbots.MicroBot import BotRunResult
+from microbots import ReadingBot, BotRunResult
 
 @pytest.mark.integration
 def test_reading_bot(test_repo, issue_22):
