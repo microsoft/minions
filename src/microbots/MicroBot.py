@@ -19,9 +19,9 @@ logger = getLogger(" MicroBot ")
 
 llm_output_format = """```json
 {
-    task_done: true | false,
-    command: "<command to run> | null",
-    result: str | null
+    "task_done": true | false,
+    "command": <command to run> | null,
+    "result": <result in string> | null
 }
 ```
 """
@@ -147,6 +147,14 @@ class MicroBot:
                 logger.info(
                     " ⬅️  Command Execution Output: %s",
                     llm_command_output.stdout,
+                )
+            else:
+                logger.info(" ⬅️  Command Execution Output: No output")
+
+            if llm_command_output.stderr:
+                logger.error(
+                    " ⬅️  Command Execution Error: %s",
+                    llm_command_output.stderr,
                 )
 
             # Convert CmdReturn to string for LLM

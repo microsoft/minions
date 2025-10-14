@@ -32,10 +32,10 @@ class ReadingBot(MicroBot):
         """
 
         super().__init__(
-            bot_type,
-            model,
-            system_prompt,
-            environment,
-            additional_tools,
-            folder_mount_info,
+            model=model,
+            bot_type=bot_type,
+            system_prompt=system_prompt,
+            environment=environment,
+            additional_tools=additional_tools,
+            folder_to_mount=folder_mount_info,
         )

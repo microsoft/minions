@@ -35,12 +35,12 @@ Only when you have run all necessary commands and identified the root cause, you
         """
 
         super().__init__(
-            bot_type,
-            model,
-            system_prompt,
-            environment,
-            additional_tools,
-            folder_mount_info,
+            model=model,
+            bot_type=bot_type,
+            system_prompt=system_prompt,
+            environment=environment,
+            additional_tools=additional_tools,
+            folder_to_mount=folder_mount_info,
         )
 
     def run(self, file_name: str, timeout_in_seconds: int = 300) -> any:
@@ -57,7 +57,7 @@ Only when you have run all necessary commands and identified the root cause, you
             Analyze the log file `{file_mount_info.sandbox_path}`
         """
         return super().run(
-            file_name_prompt,
+            task=file_name_prompt,
             additional_mounts=[file_mount_info],
             timeout_in_seconds=timeout_in_seconds
         )

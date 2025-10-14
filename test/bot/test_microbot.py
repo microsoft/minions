@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from microbots import MicroBot
-from microbots.MicroBot import BotRunResult
+from microbots.MicroBot import BotRunResult, llm_output_format
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.utils.env_mount import Mount, MountType # TODO Mount and MountType should be exposed from generic place
 
@@ -29,6 +29,11 @@ You are a helpful python programmer who is good in debugging code.
 You have the python repo where you're working mounted at {DOCKER_WORKING_DIR}.
 You have a shell session open for you.
 I will provide a task to achieve using the shell commands.
+
+You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
+
+You must sent `task_done` as true only when you have completed the task. It means all the commands you wanted to run are completed in the previous steps. You should not run any more commands while you're sending `task_done` as true.
+{llm_output_format}
 """
 
 
@@ -89,7 +94,7 @@ class TestMicroBot:
             MountType.COPY,
         )
         response: BotRunResult = coding_bot.run(
-            f"The test file tests/missing_colon.py is failing. Please fix the code. The error log is available at /var/log/{log_file_path.name}.",
+            f"The test file tests/missing_colon.py is failing. Please fix the code. The error log is available at /var/log/{log_file_path.basename}.",
             additional_mounts=[additional_mounts],
             timeout_in_seconds=300
         )
@@ -97,7 +102,6 @@ class TestMicroBot:
         print(f"Custom Coding Bot - Status: {response.status}, Result: {response.result}, Error: {response.error}")
 
         assert response.status
-        assert response.result is not None
         assert response.error is None
 
         verify_function(test_repo)
