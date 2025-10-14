@@ -12,9 +12,7 @@ load_dotenv()
 
 # Add src to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
-from microbots.bot.BrowsingBot import BrowsingBot
-from microbots.MicroBot import BotRunResult
-
+from microbots import BrowsingBot, BotRunResult
 
 @pytest.mark.integration
 @pytest.mark.docker

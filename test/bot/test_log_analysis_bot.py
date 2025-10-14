@@ -18,9 +18,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from microbots import LogAnalysisBot
-from microbots.MicroBot import BotRunResult
-
+from microbots import LogAnalysisBot, BotRunResult
 
 @pytest.mark.integration
 @pytest.mark.docker
