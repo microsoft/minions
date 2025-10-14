@@ -100,6 +100,11 @@ class LocalDockerEnvironment(Environment):
         if self.permission == "READ_ONLY" and self.folder_to_mount:
             self._setup_overlay_mount(self.folder_to_mount)
 
+        if self.folder_to_mount:
+            self.execute(f"cd /{DOCKER_WORKING_DIR}/{os.path.basename(self.folder_to_mount)}")
+        else:
+            self.execute("cd /")
+
     def _setup_overlay_mount(self, folder_to_mount: str):
         path_name = os.path.basename(os.path.abspath(folder_to_mount))
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs

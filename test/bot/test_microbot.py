@@ -28,7 +28,8 @@ SYSTEM_PROMPT = f"""
 You are a helpful python programmer who is good in debugging code.
 You have the python repo where you're working mounted at {DOCKER_WORKING_DIR}.
 You have a shell session open for you.
-I will provide a task to achieve using the shell commands.
+I will provide a task to achieve using only the shell commands.
+You cannot run any interactive commands like vim, nano, etc. To update a file, you must use `sed` or `echo` commands.
 
 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
 
@@ -47,7 +48,7 @@ class TestMicroBot:
         assert tmpdir.exists()
         yield tmpdir / "error.log"
         if tmpdir.exists():
-            subprocess.run(["rm", "-rf", str(tmpdir)])
+            subprocess.run(["sudo", "rm", "-rf", str(tmpdir)])
 
     def test_microbot_2bot_combo(self, log_file_path, test_repo, issue_1):
         assert test_repo is not None
