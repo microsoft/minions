@@ -106,3 +106,55 @@ class TestMicroBot:
         assert response.error is None
 
         verify_function(test_repo)
+
+    def test_incorrect_mount_type(self, log_file_path, test_repo):
+        assert test_repo is not None
+        assert log_file_path is not None
+
+        test_repo_mount_ro = Mount(
+            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+        )
+        testing_bot = MicroBot(
+            model="azure-openai/mini-swe-agent-gpt5",
+            system_prompt=SYSTEM_PROMPT,
+            folder_to_mount=test_repo_mount_ro,
+        )
+
+        additional_mounts = Mount(
+            log_file_path,
+            "/var/log",
+            PermissionLabels.READ_ONLY,
+            MountType.MOUNT, # MOUNT is not supported yet
+        )
+        with pytest.raises(ValueError, match="Only COPY mount type is supported for additional mounts for now"):
+            testing_bot.run(
+                "Execute tests/missing_colon.py and provide the error message",
+                additional_mounts=[additional_mounts],
+                timeout_in_seconds=300
+            )
+
+    def test_incorrect_model_provider(self, test_repo):
+        assert test_repo is not None
+
+        test_repo_mount_ro = Mount(
+            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+        )
+        with pytest.raises(ValueError, match="Unsupported model provider: provider"):
+            MicroBot(
+                model="provider/invalidmodelname",
+                system_prompt=SYSTEM_PROMPT,
+                folder_to_mount=test_repo_mount_ro,
+            )
+
+    def test_incorrect_model_format(self, test_repo):
+        assert test_repo is not None
+
+        test_repo_mount_ro = Mount(
+            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+        )
+        with pytest.raises(ValueError, match="Model should be in the format <provider>/<model_name>"):
+            MicroBot(
+                model="invalidmodelname",
+                system_prompt=SYSTEM_PROMPT,
+                folder_to_mount=test_repo_mount_ro,
+            )

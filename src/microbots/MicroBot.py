@@ -76,14 +76,15 @@ class MicroBot:
         if folder_to_mount is not None:
             self.mounted.append(folder_to_mount)
 
-        self._validate_model_and_provider(model)
         self.system_prompt = system_prompt
         self.model = model
         self.bot_type = bot_type
-        self.model_provider = model.split("/")[0]
-        self.deployment_name = model.split("/")[1]
         self.environment = environment
         self.additional_tools = additional_tools
+
+        self._validate_model_and_provider(model)
+        self.model_provider = model.split("/")[0]
+        self.deployment_name = model.split("/")[1]
 
         if not self.environment:
             self._create_environment(self.folder_to_mount)
@@ -206,8 +207,6 @@ class MicroBot:
             self.llm = OpenAIApi(
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
-        else:
-            raise ValueError(f"Unsupported model provider: {self.model_provider}")
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash
