@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 from microbots import MicroBot
 from microbots.MicroBot import BotRunResult, llm_output_format
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
-from microbots.utils.env_mount import Mount, MountType # TODO Mount and MountType should be exposed from generic place
+from microbots.extras.mount import Mount, MountType
 
 
 SYSTEM_PROMPT = f"""

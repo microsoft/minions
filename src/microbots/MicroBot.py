@@ -11,7 +11,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import (
 )
 from microbots.llm.openai_api import OpenAIApi
 from microbots.tools.tool import Tool, install_tools, setup_tools
-from microbots.utils.env_mount import Mount, MountType
+from microbots.extras.mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
 

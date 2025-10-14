@@ -3,7 +3,7 @@ from typing import Optional
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import Tool
-from microbots.utils.env_mount import Mount
+from microbots.extras.mount import Mount
 
 
 class ReadingBot(MicroBot):
