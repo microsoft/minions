@@ -216,11 +216,11 @@ class MicroBot:
         if provider not in [e.value for e in ModelProvider]:
             raise ValueError(f"Unsupported model provider: {provider}")
 
-    def __del__(self):
-        if self.environment:
-            try:
-                self.environment.stop()
-            except Exception as e:
-                logger.error(
-                    "%s Error while stopping environment: %s", LogLevelEmoji.ERROR, e
-                )
+    # def __del__(self):
+    #     if self.environment:
+    #         try:
+    #             self.environment.stop()
+    #         except Exception as e:
+    #             logger.error(
+    #                 "%s Error while stopping environment: %s", LogLevelEmoji.ERROR, e
+    #             )

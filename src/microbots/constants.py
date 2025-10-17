@@ -28,6 +28,7 @@ class FILE_PERMISSIONS(IntEnum):
     EXECUTE = 1
 
 
+WORKING_DIR = str(Path.home() / "MICROBOTS_WORKDIR")
 DOCKER_WORKING_DIR = "/workdir"
 LOG_FILE_DIR = "/var/log"
 TOOL_FILE_BASE_PATH = Path(__file__).parent / "tools" / "tool_definitions"

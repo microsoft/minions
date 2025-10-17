@@ -5,6 +5,7 @@ This test will create multiple custom bots - a reading bot, a writing bot using 
 """
 
 import os
+from pathlib import Path
 import subprocess
 import sys
 
@@ -22,6 +23,7 @@ from microbots import MicroBot
 from microbots.MicroBot import BotRunResult, llm_output_format
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
+from microbots.environment.Environment import CmdReturn
 
 
 SYSTEM_PROMPT = f"""
@@ -49,6 +51,44 @@ class TestMicroBot:
         yield tmpdir / "error.log"
         if tmpdir.exists():
             subprocess.run(["sudo", "rm", "-rf", str(tmpdir)])
+
+    @pytest.fixture(scope="function")
+    def ro_mount(self, test_repo):
+        assert test_repo is not None
+        return Mount(
+            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+        )
+
+    @pytest.fixture(scope="function")
+    def ro_microBot(self, ro_mount: Mount):
+        bot = MicroBot(
+            model="azure-openai/mini-swe-agent-gpt5",
+            system_prompt=SYSTEM_PROMPT,
+            folder_to_mount=ro_mount,
+        )
+        yield bot
+        del bot
+
+    def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
+        assert test_repo is not None
+
+        result: CmdReturn = ro_microBot.environment.execute(f"cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
+        logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
+        assert result.return_code == 1
+        assert "tests" in result.stdout
+
+        result = ro_microBot.environment.execute("cd tests; ls -la", timeout=60)
+        logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
+        assert result.return_code == 0
+        assert "missing_colon.py" in result.stdout
+
+    def test_microbot_overlay_teardown(self, ro_microBot, caplog):
+        caplog.clear()
+        caplog.set_level(logging.INFO)
+
+        del ro_microBot
+
+        assert "Failed to remove working directory" not in caplog.text
 
     def test_microbot_2bot_combo(self, log_file_path, test_repo, issue_1):
         assert test_repo is not None
