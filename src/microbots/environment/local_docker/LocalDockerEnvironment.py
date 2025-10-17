@@ -10,11 +10,9 @@ import docker
 import requests
 
 from microbots.environment.Environment import CmdReturn, Environment
+from microbots.constants import DOCKER_WORKING_DIR, WORKING_DIR
 
 logger = logging.getLogger(__name__)
-
-WORKING_DIR = str(Path.home() / "MICROBOT_WORKDIR")
-DOCKER_WORKING_DIR = "/workdir"
 
 
 class LocalDockerEnvironment(Environment):
@@ -42,8 +40,13 @@ class LocalDockerEnvironment(Environment):
         self.client = docker.from_env()
         self.port = port  # required host port
         self.container_port = 8080
+        self.deleted = False
         self._create_working_dir()
         self.start()
+
+    def __del__(self):
+        if not self.deleted:
+            self.stop()
 
     def _create_working_dir(self):
         if not os.path.exists(WORKING_DIR):
@@ -100,38 +103,52 @@ class LocalDockerEnvironment(Environment):
         if self.permission == "READ_ONLY" and self.folder_to_mount:
             self._setup_overlay_mount(self.folder_to_mount)
 
+        if self.folder_to_mount:
+            self.execute(f"cd /{DOCKER_WORKING_DIR}/{os.path.basename(self.folder_to_mount)}")
+        else:
+            self.execute("cd /")
+
     def _setup_overlay_mount(self, folder_to_mount: str):
         path_name = os.path.basename(os.path.abspath(folder_to_mount))
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
             f"mkdir -p /{DOCKER_WORKING_DIR}/{path_name} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && "
-            f"mount -t overlay overlay -o lowerdir=/ro/{path_name},upperdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/upper,workdir=/{DOCKER_WORKING_DIR}/overlay/{path_name}/work /{DOCKER_WORKING_DIR}/{path_name}"
+            f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {DOCKER_WORKING_DIR}/{path_name}/"
         )
         self.execute(mount_command)
         logger.info(
-            "🔒 Set up overlay mount for read-only directory at /{DOCKER_WORKING_DIR}/%s",
-            path_name,
+            f"🔒 Set up overlay mount for read-only directory at {DOCKER_WORKING_DIR}/{path_name}"
         )
         self.overlay_mount = True
 
     def _teardown_overlay_mount(self, folder_to_mount: str):
         path_name = os.path.basename(os.path.abspath(folder_to_mount))
-        unmount_command = f"umount /{DOCKER_WORKING_DIR}/{path_name} || true"
 
         try:
-            self.execute(unmount_command)
+            logger.info("🛠️  Tearing down overlay mount for %s", path_name)
+            unmount_command = f"umount -l {DOCKER_WORKING_DIR}/{path_name}/"
+            ret: CmdReturn = self.execute(unmount_command)
+            if ret.return_code != 0:
+                logger.error("❌  Failed to unmount overlay: %s", ret.stderr)
+            else:
+                logger.info("✅  Unmounted overlay for %s", path_name)
+
             logger.info(
-                "🛑  Teardown overlay mount for directory at /{DOCKER_WORKING_DIR}/%s",
-                path_name,
+                f"🛑  Removing overlay dirs at {DOCKER_WORKING_DIR}/{path_name} and {DOCKER_WORKING_DIR}/overlay/"
             )
             remove_dir_command = (
-                f"rm -rf /{DOCKER_WORKING_DIR}/{path_name} && "
-                f"rm -rf /{DOCKER_WORKING_DIR}/overlay/"
+                f"rm -rf {DOCKER_WORKING_DIR}/{path_name} && "
+                f"rm -rf {DOCKER_WORKING_DIR}/overlay/"
             )
-            self.execute(remove_dir_command)
-            logger.info(
-                "🗑️  Removed overlay directories for %s", path_name
-            )
+            ret: CmdReturn = self.execute(remove_dir_command)
+            if ret.return_code != 0:
+                logger.error(
+                    "❌  Failed to remove overlay directories: %s", ret.stderr
+                )
+            else:
+                logger.info(
+                    "🗑️  Removed overlay directories for %s", path_name
+                )
         except Exception as e:
             logger.error("❌  Failed to teardown overlay mount: %s", e)
 
@@ -154,6 +171,8 @@ class LocalDockerEnvironment(Environment):
                 logger.info("🗑️  Removed working directory at %s", WORKING_DIR)
             except Exception as e:
                 logger.error("❌  Failed to remove working directory: %s", e)
+
+        self.deleted = True
 
     # Unused function. Keeping for reference or future use
     def _escape(self, command: str) -> str:
@@ -193,6 +212,7 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.exception("❌ Unexpected error while executing command: %s", e)
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
+
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.

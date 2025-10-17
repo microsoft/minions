@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "envFile": "${workspaceFolder}/.venv",
+            "console": "integratedTerminal",
+            "args": [
+                "-s",
+                "--log-cli-level=DEBUG",
+                "test/bot/test_microbot.py::TestMicroBot::test_microbot_ro_mount"
+            ]
+        },
+    ]
+}
