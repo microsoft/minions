@@ -24,6 +24,7 @@ class llmAskResponse:
     task_done: bool = False
     command: str = ""
     result: str | None = None
+    reasoning: str | None = None
 
 
 class OpenAIApi:
@@ -38,12 +39,12 @@ class OpenAIApi:
         self.messages.append({"role": "user", "content": message})
         return_value = {}
         while self._validate_llm_response(return_value) is False:
-            response = self.ai_client.responses.create(
+            response = self.ai_client.chat.completions.create(
                 model=self.deployment_name,
-                input=self.messages,
+                messages=self.messages,
             )
             try:
-                return_value = json.loads(response.output_text)
+                return_value = json.loads(response.choices[0].message.content)
             except Exception as e:
                 logger.error(
                     f"%s Error occurred while dumping JSON: {e}", LogLevelEmoji.ERROR
@@ -52,7 +53,7 @@ class OpenAIApi:
                     "%s Failed to parse JSON from LLM response and the response is",
                     LogLevelEmoji.ERROR,
                 )
-                logger.error(response.output_text)
+                logger.error(response.choices[0].message.content)
 
         self.messages.append({"role": "assistant", "content": json.dumps(return_value)})
 
@@ -60,6 +61,7 @@ class OpenAIApi:
             task_done=return_value["task_done"],
             result=return_value["result"],
             command=return_value["command"],
+            reasoning=return_value.get("reasoning", "No reasoning provided"),
         )
 
     def clear_history(self):
@@ -72,7 +74,8 @@ class OpenAIApi:
         return True
 
     def _validate_llm_response(self, response: dict) -> bool:
-        if "task_done" in response and "command" in response and "result" in response:
+        required_fields = ["task_done", "command", "result"]
+        if all(field in response for field in required_fields):
             logger.info("The llm response is %s ", response)
             return True
         return False
