@@ -79,7 +79,7 @@ class TestLogAnalysisBot:
 
         fake_log_file = "non_existent.log"
 
-        with pytest.raises(ValueError, match="Failed to copy file to container"):
+        with pytest.raises(ValueError, match="Failed to copy additional mount to container"):
             log_analysis_bot.run(
                 fake_log_file, timeout_in_seconds=60
             )

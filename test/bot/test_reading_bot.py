@@ -36,3 +36,4 @@ def test_reading_bot(test_repo, issue_22):
 
     assert response.status
     assert response.result is not None
+    assert response.error is None
