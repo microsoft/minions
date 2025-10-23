@@ -74,7 +74,7 @@ class TestMicroBot:
 
         result: CmdReturn = ro_microBot.environment.execute(f"cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
         logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
-        assert result.return_code == 1
+        assert result.return_code == 0
         assert "tests" in result.stdout
 
         result = ro_microBot.environment.execute("cd tests; ls -la", timeout=60)
