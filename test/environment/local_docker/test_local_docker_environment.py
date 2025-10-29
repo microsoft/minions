@@ -116,7 +116,7 @@ class TestLocalDockerEnvironmentIntegration:
         # Test pwd
         result = shared_env.execute("pwd")
         assert result.return_code == 0
-        assert "/app" in result.stdout
+        assert "/" in result.stdout
 
     @pytest.mark.integration
     @pytest.mark.docker

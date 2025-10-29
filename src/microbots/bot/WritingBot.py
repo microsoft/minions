@@ -1,9 +1,9 @@
 from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
-from microbots.MicroBot import BotType, MicroBot, get_path_info, system_prompt_common
+from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import Tool
-from microbots.utils.env_mount import Mount
+from microbots.extras.mount import Mount
 
 
 class WritingBot(MicroBot):
@@ -19,7 +19,7 @@ class WritingBot(MicroBot):
         bot_type = BotType.WRITING_BOT
 
         folder_mount_info = Mount(
-            folder_to_mount, f"/{DOCKER_WORKING_DIR}", PermissionLabels.READ_WRITE
+            folder_to_mount, DOCKER_WORKING_DIR, PermissionLabels.READ_WRITE
         )
 
         system_prompt = f"""
@@ -32,10 +32,10 @@ class WritingBot(MicroBot):
         """
 
         super().__init__(
-            bot_type,
-            model,
-            system_prompt,
-            environment,
-            additional_tools,
-            folder_mount_info,
+            model=model,
+            bot_type=bot_type,
+            system_prompt=system_prompt,
+            environment=environment,
+            additional_tools=additional_tools,
+            folder_to_mount=folder_mount_info,
         )
