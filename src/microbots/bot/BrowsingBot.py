@@ -36,7 +36,11 @@ class BrowsingBot(MicroBot):
         # browser-use will run inside the docker. So, single command to env should be sufficient
         browser_output = self.environment.execute(f"browser '{task}'", timeout=timeout_in_seconds)
         if browser_output.return_code != 0:
-            return f"Failed to run browser command. Error: {browser_output.stderr}"
+            return BotRunResult(
+                status=False,
+                result=None,
+                error=f"Failed to run browser command. Error: {browser_output.stderr}",
+            )
 
         browser_stdout = browser_output.stdout
         # print("Browser stdout:", browser_stdout)
