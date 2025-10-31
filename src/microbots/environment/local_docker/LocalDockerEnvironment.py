@@ -200,12 +200,6 @@ class LocalDockerEnvironment(Environment):
                 stderr = output.get("stderr", ""),
                 return_code = output.get("return_code", 0)
             )
-            self.container.reload()
-            logger.info("ℹ️ Container status: %s", self.container.status)
-            if self.container.status != "running":
-                logs = self.container.logs().decode("utf-8", errors="replace")
-                logger.error("🛑 Container not running. Recent logs below:\n%s", logs)
-            return CmdReturn(stdout="", stderr="Connection error", return_code=1)
         except requests.exceptions.RequestException as e:
             logger.exception("❌ Request failed while executing command: %s", e)
             return CmdReturn(stdout="", stderr=str(e), return_code=1)
