@@ -83,7 +83,12 @@ jobs:
             --cov-report=xml \
             --cov-report=term-missing \
             --junitxml=test-results-${{ matrix.test-type }}.xml \
-            -v
+            -v \
+            -o log_cli=true \
+            -o log_cli_level=DEBUG \
+            -o log_cli_format="%(asctime)s [%(levelname)s] %(name)s: %(message)s" \
+            -o log_cli_date_format="%Y-%m-%d %H:%M:%S" \
+            -s
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
