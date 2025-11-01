@@ -11,9 +11,19 @@ def test_repo(tmpdir):
     assert tmpdir.exists()
 
     try:
-        subprocess.run(["git", "-C", str(tmpdir), "clone", TEST_REPO], check=True)
+        result = subprocess.run(
+            ["git", "-C", str(tmpdir), "clone", "--depth", "1", TEST_REPO],
+            check=True,
+            capture_output=True,
+            text=True
+        )
     except subprocess.CalledProcessError as e:
-        pytest.fail(f"Failed to clone repository: {e}")
+        pytest.fail(
+            f"Failed to clone repository: {TEST_REPO}\n"
+            f"Return code: {e.returncode}\n"
+            f"Stdout: {e.stdout}\n"
+            f"Stderr: {e.stderr}"
+        )
 
     repo_path = Path(tmpdir / os.listdir(tmpdir)[0])
     yield repo_path

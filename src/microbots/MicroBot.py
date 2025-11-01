@@ -135,10 +135,9 @@ class MicroBot:
 
             if elapsed_time > timeout:
                 logger.error(
-                    "Iteration %d with response %s",
+                    "Iteration %d with response %s - Exiting without running command as timeout reached",
                     iteration_count,
                     llm_response,
-                    "Exiting without running command as timeout reached",
                 )
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value

@@ -69,35 +69,3 @@ class TestBrowsingBot:
         assert keyword_found, f"None of {expected_keywords} found in result: {response.result}"
         
         logger.info(f"Query '{query}' passed with result: {response.result[:100]}...")
-
-# Manual test runner function (can be called directly)
-def run_browsing_bot_manual_test():
-    """Manual test function that can be run outside pytest"""
-    print("=== Manual BrowsingBot Integration Test ===")
-    
-    try:
-        # Create BrowsingBot instance
-        myBot = BrowsingBot(
-            model="azure-openai/mini-swe-agent-gpt5",
-        )
-        
-        response: BotRunResult = myBot.run(
-            "Find the current weather in New York City.",
-            timeout_in_seconds=300,
-        )
-        
-        print(f"Status: {response.status}")
-        print(f"***Result:***\n{response.result}")
-        print(f"===\nError: {response.error}")
-        
-        print("\n=== Manual Test Completed ===")
-            
-    except Exception as e:
-        print(f"ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    # Allow running the test file directly for manual testing or pytest
-    run_browsing_bot_manual_test()
