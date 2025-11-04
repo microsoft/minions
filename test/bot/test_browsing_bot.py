@@ -20,7 +20,7 @@ from microbots import BrowsingBot, BotRunResult
 class TestBrowsingBot:
     """Integration tests for BrowsingBot functionality."""
     
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="function")
     def browsing_bot(self):
         """Create a BrowsingBot instance for testing."""
         bot = BrowsingBot(model="azure-openai/mini-swe-agent-gpt5")
