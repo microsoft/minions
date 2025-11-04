@@ -125,8 +125,11 @@ def _copy_env_variable(env: Environment, env_variable: str):
 
 def _copy_file(env: Environment, file_copy: EnvFileCopies):
     # If not abs path, append to TOOL_FILE_BASE_PATH
+    # Ensure src is a Path object (defensive check)
+    if isinstance(file_copy.src, str):
+        file_copy.src = Path(file_copy.src)
     if not file_copy.src.is_absolute():
-        file_copy.src = str(TOOL_FILE_BASE_PATH / file_copy.src)
+        file_copy.src = (TOOL_FILE_BASE_PATH / file_copy.src)
 
     # We con't have copy functionality yet. Read source file and write to dest
     if not os.path.exists(file_copy.src):
