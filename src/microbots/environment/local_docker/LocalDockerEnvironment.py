@@ -186,6 +186,8 @@ class LocalDockerEnvironment(Environment):
     ) -> CmdReturn:  # TODO: Need proper return value
         logger.debug("➡️  Executing command in container: %s", command)
         # command = self._escape(command)
+        start_time = time.perf_counter()
+        # command = self._escape(command)
         try:
             response = requests.post(
                 f"http://localhost:{self.port}/",
@@ -194,6 +196,12 @@ class LocalDockerEnvironment(Environment):
             )
             response.raise_for_status()
             logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
+            elapsed = time.perf_counter() - start_time
+            logger.debug(
+                "Command completed in %.2fs with output: %s",
+                elapsed,
+                response.json().get("output", ""),
+            )
             output = response.json().get("output", "")
             return CmdReturn(
                 stdout = output.get("stdout", ""),
@@ -201,12 +209,22 @@ class LocalDockerEnvironment(Environment):
                 return_code = output.get("return_code", 0)
             )
         except requests.exceptions.RequestException as e:
-            logger.exception("❌ Request failed while executing command: %s", e)
+            elapsed = time.perf_counter() - start_time
+            logger.exception(
+                "❌ Request failed after %.2fs while executing command: %s",
+                elapsed,
+                e,
+            )
             return CmdReturn(stdout="", stderr=str(e), return_code=1)
         except Exception as e:
-            logger.exception("❌ Unexpected error while executing command: %s", e)
+            elapsed = time.perf_counter() - start_time
+            logger.exception(
+                "❌ Unexpected error after %.2fs while executing command: %s",
+                elapsed,
+                e,
+            )
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
-
+        
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.
