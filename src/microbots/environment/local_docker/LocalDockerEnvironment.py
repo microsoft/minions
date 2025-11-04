@@ -45,7 +45,7 @@ class LocalDockerEnvironment(Environment):
         self.start()
 
     def __del__(self):
-        if not self.deleted:
+        if hasattr(self, 'deleted') and not self.deleted:
             self.stop()
 
     def _create_working_dir(self):
