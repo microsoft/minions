@@ -208,6 +208,18 @@ class LocalDockerEnvironment(Environment):
                 stderr = output.get("stderr", ""),
                 return_code = output.get("return_code", 0)
             )
+        except requests.exceptions.ConnectTimeout:
+            elapsed = time.perf_counter() - start_time
+            msg = f"Connection timeout after {elapsed:.1f}s (port {self.port})"
+            logger.error("❌ %s", msg)
+            return CmdReturn(stdout="", stderr=msg, return_code=124)
+
+        except requests.exceptions.ReadTimeout:
+            elapsed = time.perf_counter() - start_time
+            msg = f"Read timeout after {elapsed:.1f}s while waiting for command output"
+            logger.error("❌ %s", msg)
+            return CmdReturn(stdout="", stderr=msg, return_code=124)
+
         except requests.exceptions.RequestException as e:
             elapsed = time.perf_counter() - start_time
             logger.exception(
