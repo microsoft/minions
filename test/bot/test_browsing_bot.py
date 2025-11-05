@@ -59,7 +59,7 @@ class TestBrowsingBot:
     ])
     def test_multiple_queries(self, browsing_bot, query, expected_keywords):
         """Test the bot with multiple different queries."""
-        response: BotRunResult = browsing_bot.run(query, timeout_in_seconds=600)
+        response: BotRunResult = browsing_bot.run(query, timeout_in_seconds=300)
         
         assert response.status == True, f"Query '{query}' failed: {response.error}"
         assert response.result is not None, f"No result for query: {query}"
