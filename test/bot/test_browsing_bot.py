@@ -54,8 +54,7 @@ class TestBrowsingBot:
     @pytest.mark.parametrize("query,expected_keywords", [
         ("What is the capital of Germany?", ["berlin"]),
         ("What is 2+2?", ["4", "four"]),
-        ("What time is it in Tokyo?", ["am", "pm", "time"]),
-        ("Who is the current President of the United States?", ["Trump"]),
+        ("Get the description of this CVE-2024-11738 from nvd.nist.gov website", ["Rustls"]),
     ])
     def test_multiple_queries(self, browsing_bot, query, expected_keywords):
         """Test the bot with multiple different queries."""
