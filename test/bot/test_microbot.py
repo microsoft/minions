@@ -32,7 +32,8 @@ You have the python repo where you're working mounted at {DOCKER_WORKING_DIR}.
 You have a shell session open for you.
 I will provide a task to achieve using only the shell commands.
 You cannot run any interactive commands like vim, nano, etc. To update a file, you must use `sed` or `echo` commands.
-
+Do not run recursive `find`, `tree`, or `sed` across the whole repo (especially `.git`). Inspect only directories/files directly related to the failure.
+When running pytest, ONLY test the specific file mentioned in the task - do not run the entire test directory or test suite.
 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
 
 You must send `task_done` as true only when you have completed the task. It means all the commands you wanted to run are completed in the previous steps. You should not run any more commands while you're sending `task_done` as true.

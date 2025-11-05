@@ -34,9 +34,16 @@ async def main(args: list[str]) -> int:
 
     what_to_browse = args[0]
 
+    # Configure browser with anti-detection settings
     browser = Browser(
-        headless=True
-        )
+        headless=True,
+        disable_security=False,  # Keep security enabled (more human-like)
+        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        # Additional args to reduce bot detection
+        args=[
+            "--disable-blink-features=AutomationControlled",  # Hide automation flag
+        ]
+    )
 
     agent = Agent(
         task=what_to_browse,

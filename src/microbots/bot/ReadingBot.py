@@ -28,7 +28,8 @@ class ReadingBot(MicroBot):
         You are only provided access to read files inside the mounted directory.
         The directory is mounted at {folder_mount_info.sandbox_path} in your current environment.
         You can access files using paths like {folder_mount_info.sandbox_path}/filename.txt or by changing to that directory first.
-        Once all the commands are done, and task is verified finally give me the result.
+        Once you have identified the issue or reproduced the problem, set task_done=true and provide your findings in the result field.
+        Do not explore unrelated files. Focus only on files directly related to the task.
         """
 
         super().__init__(
