@@ -65,7 +65,7 @@ class TestLogAnalysisBot:
             log_file.write(result.stderr)
 
         response: BotRunResult = log_analysis_bot.run(
-            log_file_path, timeout_in_seconds=300
+            str(log_file_path), timeout_in_seconds=300
         )
 
         print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")

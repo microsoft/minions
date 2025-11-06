@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, LOG_FILE_DIR, PermissionLabels
@@ -22,7 +23,9 @@ class LogAnalysisBot(MicroBot):
         bot_type = BotType.LOG_ANALYSIS_BOT
 
         folder_mount_info = Mount(
-            folder_to_mount, DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+            folder_to_mount,
+            f"/{DOCKER_WORKING_DIR}/{os.path.basename(folder_to_mount)}",
+            PermissionLabels.READ_ONLY
         )
 
         system_prompt = f"""
