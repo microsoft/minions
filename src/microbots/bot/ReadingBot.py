@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
@@ -18,8 +19,9 @@ class ReadingBot(MicroBot):
         # validate init values before assigning
         bot_type = BotType.READING_BOT
 
+        base_name = os.path.basename(folder_to_mount)
         folder_mount_info = Mount(
-            folder_to_mount, f"/{DOCKER_WORKING_DIR}", PermissionLabels.READ_ONLY
+            folder_to_mount, f"/{DOCKER_WORKING_DIR}/{base_name}", PermissionLabels.READ_ONLY
         )
 
         system_prompt = f"""

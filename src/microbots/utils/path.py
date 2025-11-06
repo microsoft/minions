@@ -37,3 +37,12 @@ def get_path_info(file_or_folder: str) -> PathInfo:
             abs_path=os.path.abspath(file_or_folder),
         )
     return PathInfo(path_valid=False, base_name="", abs_path="")
+
+
+def ends_with_separator(path_str: str) -> bool:
+    # Accept both separators on Windows; only '/' on POSIX
+    seps = {os.sep}
+    if os.altsep:
+        seps.add(os.altsep)
+    return len(path_str) > 0 and path_str[-1] in seps
+

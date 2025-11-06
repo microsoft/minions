@@ -47,17 +47,17 @@ You must send `task_done` as true only when you have completed the task. It mean
 class TestMicroBot:
 
     @pytest.fixture(scope="function")
-    def log_file_path(self, tmpdir):
+    def log_file_path(self, tmpdir: Path):
         assert tmpdir.exists()
         yield tmpdir / "error.log"
         if tmpdir.exists():
             subprocess.run(["sudo", "rm", "-rf", str(tmpdir)])
 
     @pytest.fixture(scope="function")
-    def ro_mount(self, test_repo):
+    def ro_mount(self, test_repo: Path):
         assert test_repo is not None
         return Mount(
-            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
 
     @pytest.fixture(scope="function")
@@ -98,7 +98,9 @@ class TestMicroBot:
         verify_function = issue_1[1]
 
         test_repo_mount_ro = Mount(
-            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+            str(test_repo),
+            f"{DOCKER_WORKING_DIR}/{test_repo.name}",
+            PermissionLabels.READ_ONLY
         )
         testing_bot = MicroBot(
             model="azure-openai/mini-swe-agent-gpt5",
@@ -121,7 +123,7 @@ class TestMicroBot:
             log_file.write(response.result)
 
         test_repo_mount_rw = Mount(
-            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_WRITE
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_WRITE
         )
         coding_bot = MicroBot(
             model="azure-openai/mini-swe-agent-gpt5",
@@ -130,7 +132,7 @@ class TestMicroBot:
         )
 
         additional_mounts = Mount(
-            log_file_path,
+            str(log_file_path),
             "/var/log",
             PermissionLabels.READ_ONLY,
             MountType.COPY,
@@ -148,12 +150,30 @@ class TestMicroBot:
 
         verify_function(test_repo)
 
-    def test_incorrect_mount_type(self, log_file_path, test_repo):
+    def test_incorrect_code_mount_type(self, log_file_path, test_repo):
         assert test_repo is not None
         assert log_file_path is not None
 
         test_repo_mount_ro = Mount(
-            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+            str(test_repo),
+            f"{DOCKER_WORKING_DIR}/{test_repo.name}",
+            PermissionLabels.READ_ONLY,
+            MountType.COPY,
+        )
+
+        with pytest.raises(ValueError, match="Only MOUNT mount type is supported for folder_to_mount"):
+            testing_bot = MicroBot(
+                model="azure-openai/mini-swe-agent-gpt5",
+                system_prompt=SYSTEM_PROMPT,
+                folder_to_mount=test_repo_mount_ro,
+            )
+
+    def test_incorrect_copy_mount_type(self, log_file_path, test_repo):
+        assert test_repo is not None
+        assert log_file_path is not None
+
+        test_repo_mount_ro = Mount(
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
         testing_bot = MicroBot(
             model="azure-openai/mini-swe-agent-gpt5",
@@ -162,7 +182,7 @@ class TestMicroBot:
         )
 
         additional_mounts = Mount(
-            log_file_path,
+            str(log_file_path),
             "/var/log",
             PermissionLabels.READ_ONLY,
             MountType.MOUNT, # MOUNT is not supported yet
@@ -178,7 +198,7 @@ class TestMicroBot:
         assert test_repo is not None
 
         test_repo_mount_ro = Mount(
-            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
         with pytest.raises(ValueError, match="Unsupported model provider: provider"):
             MicroBot(
@@ -191,7 +211,7 @@ class TestMicroBot:
         assert test_repo is not None
 
         test_repo_mount_ro = Mount(
-            str(test_repo), DOCKER_WORKING_DIR, PermissionLabels.READ_ONLY
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
         with pytest.raises(ValueError, match="Model should be in the format <provider>/<model_name>"):
             MicroBot(

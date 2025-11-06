@@ -17,12 +17,19 @@ def test_repo(tmpdir):
             capture_output=True,
             text=True
         )
+
+        if result.returncode != 0:
+            pytest.fail(
+                f"Failed to clone repository: {TEST_REPO}\n"
+                f"Return code: {result.returncode}\n"
+                f"Stdout: {result.stdout}\n"
+                f"Stderr: {result.stderr}"
+            )
+
     except subprocess.CalledProcessError as e:
         pytest.fail(
-            f"Failed to clone repository: {TEST_REPO}\n"
-            f"Return code: {e.returncode}\n"
-            f"Stdout: {e.stdout}\n"
-            f"Stderr: {e.stderr}"
+            f"Exception while cloning repository: {TEST_REPO}\n"
+            f"Exception: {str(e)}\n"
         )
 
     repo_path = Path(tmpdir / os.listdir(tmpdir)[0])

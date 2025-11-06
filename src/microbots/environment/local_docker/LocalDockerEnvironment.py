@@ -10,7 +10,8 @@ import docker
 import requests
 
 from microbots.environment.Environment import CmdReturn, Environment
-from microbots.constants import DOCKER_WORKING_DIR, WORKING_DIR
+from microbots.constants import DOCKER_WORKING_DIR, WORKING_DIR, PermissionLabels
+from microbots.extras.mount import Mount
 
 logger = logging.getLogger(__name__)
 
@@ -19,23 +20,13 @@ class LocalDockerEnvironment(Environment):
     def __init__(
         self,
         port: int,
-        folder_to_mount: Optional[str] = None,
-        permission: Optional[str] = None,
+        folder_to_mount: Optional[Mount] = None,
         image: str = "kavyasree261002/shell_server:latest",
     ):
-        if folder_to_mount is None and permission is not None:
-            raise ValueError("permission provided but folder_to_mount is None")
-        elif permission is None and folder_to_mount is not None:
-            raise ValueError("folder_to_mount provided but permission is None")
-        if permission is not None and permission not in ["READ_ONLY", "READ_WRITE"]:
-            raise ValueError(
-                "permission must be 'READ_ONLY' or 'READ_WRITE' when provided"
-            )
 
         self.image = image
         self.folder_to_mount = folder_to_mount
         self.overlay_mount = False
-        self.permission = permission
         self.container = None
         self.client = docker.from_env()
         self.port = port  # required host port
@@ -58,26 +49,26 @@ class LocalDockerEnvironment(Environment):
     def start(self):
         mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}
         volumes_config = {WORKING_DIR: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}}
-        if self.folder_to_mount and self.permission:
-            if self.permission == "READ_ONLY":
-                volumes_config[self.folder_to_mount] = {
-                    "bind": f"/ro/{os.path.basename(self.folder_to_mount)}",
-                    "mode": mode_map[self.permission],
+        if self.folder_to_mount:
+            if self.folder_to_mount.permission == PermissionLabels.READ_ONLY:
+                volumes_config[self.folder_to_mount.host_path_info.abs_path] = {
+                    "bind": f"/ro/{os.path.basename(self.folder_to_mount.sandbox_path)}",
+                    "mode": mode_map[self.folder_to_mount.permission],
                 }
                 logger.info(
                     "📦 Volume mapping: %s → /ro/%s",
-                    self.folder_to_mount,
-                    os.path.basename(self.folder_to_mount),
+                    self.folder_to_mount.host_path_info.abs_path,
+                    os.path.basename(self.folder_to_mount.sandbox_path),
                 )
             else:
-                volumes_config[self.folder_to_mount] = {
-                    "bind": f"/{DOCKER_WORKING_DIR}/{os.path.basename(self.folder_to_mount)}",
-                    "mode": mode_map[self.permission],
+                volumes_config[self.folder_to_mount.host_path_info.abs_path] = {
+                    "bind": self.folder_to_mount.sandbox_path,
+                    "mode": mode_map[self.folder_to_mount.permission],
                 }
                 logger.debug(
-                    "📦 Volume mapping: %s → /{DOCKER_WORKING_DIR}/%s",
-                    self.folder_to_mount,
-                    os.path.basename(self.folder_to_mount),
+                    "📦 Volume mapping: %s → %s",
+                    self.folder_to_mount.host_path_info.abs_path,
+                    self.folder_to_mount.sandbox_path,
                 )
 
         # Port mapping
@@ -100,20 +91,22 @@ class LocalDockerEnvironment(Environment):
         )
         time.sleep(2)  # Give some time for the server to start
 
-        if self.permission == "READ_ONLY" and self.folder_to_mount:
-            self._setup_overlay_mount(self.folder_to_mount)
+        if self.folder_to_mount and self.folder_to_mount.permission == PermissionLabels.READ_ONLY:
+            self._setup_overlay_mount()
 
         if self.folder_to_mount:
-            self.execute(f"cd /{DOCKER_WORKING_DIR}/{os.path.basename(self.folder_to_mount)}")
+            self.execute(f"cd {self.folder_to_mount.sandbox_path}")
         else:
             self.execute("cd /")
 
-    def _setup_overlay_mount(self, folder_to_mount: str):
-        path_name = os.path.basename(os.path.abspath(folder_to_mount))
+    def _setup_overlay_mount(self):
+        # NOTE: Don't use this for any other read-only mounts except the main code folder.
+
+        path_name = os.path.basename(self.folder_to_mount.sandbox_path)
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
-            f"mkdir -p /{DOCKER_WORKING_DIR}/{path_name} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && "
-            f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {DOCKER_WORKING_DIR}/{path_name}/"
+            f"mkdir -p {self.folder_to_mount.sandbox_path} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
+            f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {self.folder_to_mount.sandbox_path}"
         )
         self.execute(mount_command)
         logger.info(
@@ -121,12 +114,12 @@ class LocalDockerEnvironment(Environment):
         )
         self.overlay_mount = True
 
-    def _teardown_overlay_mount(self, folder_to_mount: str):
-        path_name = os.path.basename(os.path.abspath(folder_to_mount))
+    def _teardown_overlay_mount(self):
+        path_name = os.path.basename(os.path.abspath(self.folder_to_mount.sandbox_path))
 
         try:
             logger.info("🛠️  Tearing down overlay mount for %s", path_name)
-            unmount_command = f"umount -l {DOCKER_WORKING_DIR}/{path_name}/"
+            unmount_command = f"umount -l {self.folder_to_mount.sandbox_path}"
             ret: CmdReturn = self.execute(unmount_command)
             if ret.return_code != 0:
                 logger.error("❌  Failed to unmount overlay: %s", ret.stderr)
@@ -134,10 +127,10 @@ class LocalDockerEnvironment(Environment):
                 logger.info("✅  Unmounted overlay for %s", path_name)
 
             logger.info(
-                f"🛑  Removing overlay dirs at {DOCKER_WORKING_DIR}/{path_name} and {DOCKER_WORKING_DIR}/overlay/"
+                f"🛑  Removing overlay dirs at {self.folder_to_mount.sandbox_path} and {DOCKER_WORKING_DIR}/overlay/"
             )
             remove_dir_command = (
-                f"rm -rf {DOCKER_WORKING_DIR}/{path_name} && "
+                f"rm -rf {self.folder_to_mount.sandbox_path} && "
                 f"rm -rf {DOCKER_WORKING_DIR}/overlay/"
             )
             ret: CmdReturn = self.execute(remove_dir_command)
@@ -156,7 +149,7 @@ class LocalDockerEnvironment(Environment):
         """Stop and remove the container"""
         if self.container:
             if self.overlay_mount:
-                self._teardown_overlay_mount(self.folder_to_mount)
+                self._teardown_overlay_mount()
 
             self.container.stop()
             self.container.remove()
@@ -236,7 +229,7 @@ class LocalDockerEnvironment(Environment):
                 e,
             )
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
-        
+
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
         Copy a file or folder from the host machine to the Docker container.

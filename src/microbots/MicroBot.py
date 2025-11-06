@@ -51,6 +51,33 @@ class BotRunResult:
 
 
 class MicroBot:
+    """
+    The core Microbot class.
+
+    MicroBot class is the core class representing the autonomous agent. Other bots are extensions of this class.
+    If you want to create a custom bot, you can directly use this class or extend it into your own bot class.
+
+    Attributes
+    ----------
+        model : str
+            The model to use for the bot, in the format <provider>/<model_name>.
+        bot_type : BotType
+            The type of bot being created. It's unused. Will be removed soon.
+        system_prompt : Optional[str]
+            The system prompt to guide the bot's behavior.
+        environment : Optional[any]
+            The execution environment for the bot. If not provided, a default
+            LocalDockerEnvironment will be created.
+        additional_tools : Optional[list[Tool]]
+            A list of additional tools to install in the bot's environment.
+        folder_to_mount : Optional[Mount]
+            A folder to mount into the bot's environment. The bot will be given
+            access to this folder based on the specified permissions. This will
+            be the main code folder where the bot will work. Additional folders
+            can be mounted during the run() method. Refer to `Mount` class
+            regarding the directory structure and permission details. Defaults
+            to None.
+    """
 
     def __init__(
         self,
@@ -61,6 +88,33 @@ class MicroBot:
         additional_tools: Optional[list[Tool]] = [],
         folder_to_mount: Optional[Mount] = None,
     ):
+        """
+        Init function for MicroBot class.
+
+        Parameters
+        ----------
+            model :str
+                The model to use for the bot, in the format <provider>/<model_name>.
+            bot_type :BotType
+                The type of bot being created. It's unused. Will be removed soon.
+            system_prompt :Optional[str]
+                The system prompt to guide the bot's behavior. Defaults to None.
+            environment :Optional[any]
+                The execution environment for the bot. If not provided, a default
+                LocalDockerEnvironment will be created.
+            additional_tools :Optional[list[Tool]]
+                A list of additional tools to install in the bot's environment.
+                Defaults to [].
+            folder_to_mount :Optional[Mount]
+                A folder to mount into the bot's environment. The bot will be given
+                access to this folder based on the specified permissions. This will
+                be the main code folder where the bot will work. Additional folders
+                can be mounted using the run() method. Refer to `Mount` class
+                regarding the directory structure and permission details. Defaults
+                to None.
+
+                Note: Supports only mount type MountType.MOUNT for now.
+        """
 
         self.folder_to_mount = folder_to_mount
 
@@ -74,6 +128,7 @@ class MicroBot:
 
         self.mounted = []
         if folder_to_mount is not None:
+            self._validate_folder_to_mount(folder_to_mount)
             self.mounted.append(folder_to_mount)
 
         self.system_prompt = system_prompt
@@ -195,10 +250,7 @@ class MicroBot:
 
         self.environment = LocalDockerEnvironment(
             port=free_port,
-            folder_to_mount=(
-                folder_to_mount.host_path_info.abs_path if folder_to_mount else None
-            ),
-            permission=folder_to_mount.permission if folder_to_mount else None,
+            folder_to_mount=folder_to_mount,
         )
 
     def _create_llm(self):
@@ -215,11 +267,12 @@ class MicroBot:
         if provider not in [e.value for e in ModelProvider]:
             raise ValueError(f"Unsupported model provider: {provider}")
 
-    # def __del__(self):
-    #     if self.environment:
-    #         try:
-    #             self.environment.stop()
-    #         except Exception as e:
-    #             logger.error(
-    #                 "%s Error while stopping environment: %s", LogLevelEmoji.ERROR, e
-    #             )
+    def _validate_folder_to_mount(self, folder_to_mount: Mount):
+        if folder_to_mount.mount_type != MountType.MOUNT:
+            logger.error(
+                "%s Only MOUNT mount type is supported for folder_to_mount",
+                LogLevelEmoji.ERROR,
+            )
+            raise ValueError(
+                "Only MOUNT mount type is supported for folder_to_mount"
+            )
