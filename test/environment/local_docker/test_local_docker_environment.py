@@ -2,19 +2,17 @@
 Integration tests for LocalDockerEnvironment
 """
 import pytest
-import shutil
 import os
-import time
 import socket
-from pathlib import Path
 import re
 
 # Add src to path for imports
 import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src")))
 
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
-from microbots.environment.Environment import CmdReturn
+from microbots.extras.mount import Mount
 
 # Use the correct working directory path
 DOCKER_WORKING_DIR = "workdir"
@@ -81,22 +79,6 @@ class TestLocalDockerEnvironmentIntegration:
         assert result.return_code == 0
         assert "Hello World" in result.stdout
 
-
-    @pytest.mark.integration
-    @pytest.mark.docker
-    def test_initialization_validation_errors(self):
-        """Test that initialization properly validates parameters"""
-        # Test permission without folder
-        with pytest.raises(ValueError, match="permission provided but folder_to_mount is None"):
-            LocalDockerEnvironment(port=8999, permission="READ_ONLY")
-
-        # Test folder without permission
-        with pytest.raises(ValueError, match="folder_to_mount provided but permission is None"):
-            LocalDockerEnvironment(port=8999, folder_to_mount="/some/path")
-
-        # Test invalid permission
-        with pytest.raises(ValueError, match="permission must be 'READ_ONLY' or 'READ_WRITE' when provided"):
-            LocalDockerEnvironment(port=8999, folder_to_mount="/some/path", permission="INVALID")
 
     @pytest.mark.integration
     @pytest.mark.docker
@@ -191,11 +173,15 @@ EOF"""
             mount_port = s.getsockname()[1]
 
         env = None
+        test_dir_mount = Mount(
+            host_path=test_dir,
+            sandbox_path=f"/{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
+            permission="READ_WRITE"
+        )
         try:
             env = LocalDockerEnvironment(
                 port=mount_port,
-                folder_to_mount=test_dir,
-                permission="READ_WRITE"
+                folder_to_mount=test_dir_mount,
             )
 
             folder_name = os.path.basename(test_dir)
@@ -246,11 +232,16 @@ EOF"""
             mount_port = s.getsockname()[1]
 
         env = None
+        test_dir_mount = Mount(
+            host_path=test_dir,
+            sandbox_path=f"/{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
+            permission="READ_ONLY"
+        )
+
         try:
             env = LocalDockerEnvironment(
                 port=mount_port,
-                folder_to_mount=test_dir,
-                permission="READ_ONLY"
+                folder_to_mount=test_dir_mount,
             )
 
             folder_name = os.path.basename(test_dir)
