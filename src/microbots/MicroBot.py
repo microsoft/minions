@@ -24,7 +24,9 @@ system_prompt_common = f"""There is a shell session open for you.
                 {llm_output_format_str}
                 after each command I will provide the output of the command.
                 ensure to run only one command at a time.
-                I won't be able to intervene once I have given task. ."""
+                NEVER use 'ls -R', 'tree', or 'find' without -maxdepth on large repos - use targeted paths like 'ls drivers/block/' to avoid exceeding context limits.
+                Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
+                I won't be able to intervene once I have given task."""
 
 
 class BotType(StrEnum):
