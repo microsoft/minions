@@ -68,6 +68,6 @@ class Mount:
         if not ends_with_separator(self.host_path) and ends_with_separator(self.sandbox_path):
             # If host_path is a file and sandbox_path ends with separator,
             # place the file inside the sandbox_path directory with same base name
-            sandbox_path = str(sandbox_path / sandbox_path.name)
+            sandbox_path = str(sandbox_path / self.host_path_info.base_name)
 
         self.sandbox_path = str(sandbox_path)
