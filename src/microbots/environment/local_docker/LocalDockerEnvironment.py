@@ -187,19 +187,25 @@ class LocalDockerEnvironment(Environment):
                 json={"message": command},
                 timeout=timeout,
             )
-            response.raise_for_status()
-            logger.debug("⬅️  Command output: %s", response.json().get("output", ""))
+
             elapsed = time.perf_counter() - start_time
             logger.debug(
-                "Command completed in %.2fs with output: %s",
+                "Command completed in %.2fs",
                 elapsed,
-                response.json().get("output", ""),
             )
+
             output = response.json().get("output", "")
+            logger.debug("⬅️  Return Code: %d,\nStdout:\n%s\nStderr:\n%s",
+                         output.get("return_code", 0),
+                         output.get("stdout", ""),
+                         output.get("stderr", ""))
+
+            response.raise_for_status()
+
             return CmdReturn(
-                stdout = output.get("stdout", ""),
-                stderr = output.get("stderr", ""),
-                return_code = output.get("return_code", 0)
+                stdout=output.get("stdout", ""),
+                stderr=output.get("stderr", ""),
+                return_code=output.get("return_code", 0)
             )
         except requests.exceptions.ConnectTimeout:
             elapsed = time.perf_counter() - start_time
