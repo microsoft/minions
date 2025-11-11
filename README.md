@@ -1,7 +1,7 @@
 # 🤖 Microbots
 
-MicroBots is a lightweight, extensible AI agent for code comprehension and controlled file edits. It integrates cleanly 
-into automation pipelines, mounting a target directory with explicit read-only or read/write modes so LLMs can safely 
+MicroBots is a lightweight, extensible AI agent for code comprehension and controlled file edits. It integrates cleanly
+into automation pipelines, mounting a target directory with explicit read-only or read/write modes so LLMs can safely
 inspect, refactor, or generate files with least‑privilege access.
 
 
@@ -13,14 +13,14 @@ myWritingBot = WritingBot(
     folder_to_mount=str("myReactApp"),
 )
 
-data = myWritingBot.run("""when doing npm run build, I get an error. 
+data = myWritingBot.run("""when doing npm run build, I get an error.
 Fix the error and make sure the build is successful.""", timeout_in_seconds=600)
 print(data.results)
 ```
 
-## ⚠️ Project Status: Highly Unstable
-This project is currently **under active development** and is considered **highly unstable**. Features, APIs, and internal structures are subject to change without notice, and unexpected behavior may occur.
-Please **use with caution** in production environments.
+## ⚠️ Project Status: Under Fast Development
+
+This project is currently **under active development**. Features, APIs, and internal structures are subject to change across versions without notice, and unexpected behavior may occur. Please **use with caution** in production environments.
 
 ## 🚀 How to install
 
@@ -37,7 +37,7 @@ pip install microbots
 
 
 ## ✨LLM Support
-    
+
 Azure OpenAI Models - Add the below environment variables in a `.env` file in the root of your application
 
 ```env
@@ -47,7 +47,7 @@ OPEN_AI_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 ## 🤖 Bots & Usage Examples
 
-Pre-requisite for the below example code of Bots:   
+Pre-requisite for the below example code of Bots:
 From the root of your application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
 
 
@@ -72,7 +72,7 @@ The `ReadingBot` will read the files inside `code` folder and will extract infor
 
 ### ✍️ WritingBot
 
-Pre-requisite for the example code: 
+Pre-requisite for the example code:
 From the root the application, Create a folder called  `code` inside which clone the repo `https://github.com/swe-agent/test-repo/`. Now run the code
 
 ```py
