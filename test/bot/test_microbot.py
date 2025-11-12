@@ -249,6 +249,34 @@ class TestMicroBot:
         assert not response.status
         assert response.error == "Max iterations 3 reached"
 
+    def test_invalid_max_iterations(self, no_mount_microBot):
+        """Test that ValueError is raised for invalid max_iterations values"""
+        assert no_mount_microBot is not None
+
+        # Test with max_iterations = 0
+        with pytest.raises(ValueError) as exc_info:
+            no_mount_microBot.run(
+                "This is a test task.",
+                max_iterations=0
+            )
+        assert "max_iterations must be greater than 0" in str(exc_info.value)
+
+        # Test with max_iterations = -1
+        with pytest.raises(ValueError) as exc_info:
+            no_mount_microBot.run(
+                "This is a test task.",
+                max_iterations=-1
+            )
+        assert "max_iterations must be greater than 0" in str(exc_info.value)
+
+        # Test with max_iterations = -10
+        with pytest.raises(ValueError) as exc_info:
+            no_mount_microBot.run(
+                "This is a test task.",
+                max_iterations=-10
+            )
+        assert "max_iterations must be greater than 0" in str(exc_info.value)
+
     def test_timeout_handling(self, no_mount_microBot, monkeypatch):
         assert no_mount_microBot is not None
 
