@@ -8,8 +8,6 @@ from microbots.llm.llm import LLMAskResponse, LLMInterface
 
 load_dotenv()
 
-from openai import OpenAI
-
 endpoint = os.getenv("OPEN_AI_END_POINT")
 deployment_name = os.getenv("OPEN_AI_DEPLOYMENT_NAME")
 api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
