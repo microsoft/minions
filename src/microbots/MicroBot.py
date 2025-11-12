@@ -195,7 +195,7 @@ class MicroBot:
             llm_command_output = self.environment.execute(llm_response.command)
 
             logger.info(
-                    " ⬅️  Command executed successfully.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
+                    " ⬅️  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
                     llm_command_output.return_code,
                     llm_command_output.stdout,
                     llm_command_output.stderr,
