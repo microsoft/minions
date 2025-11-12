@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from microbots.llm.llm import llmAskResponse, LLMInterface
+from microbots.llm.llm import LLMAskResponse, LLMInterface
 
 load_dotenv()
 
@@ -27,7 +27,7 @@ class OpenAIApi(LLMInterface):
         self.max_retries = max_retries
         self.retries = 0
 
-    def ask(self, message) -> llmAskResponse:
+    def ask(self, message) -> LLMAskResponse:
         self.retries = 0 # reset retries for each ask. Handled in parent class.
 
         self.messages.append({"role": "user", "content": message})

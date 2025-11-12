@@ -24,7 +24,7 @@ from microbots.MicroBot import BotRunResult
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
 from microbots.environment.Environment import CmdReturn
-from microbots.llm.llm import llm_output_format_str, llmAskResponse
+from microbots.llm.llm import llm_output_format_str, LLMAskResponse
 
 
 SYSTEM_PROMPT = f"""
@@ -234,7 +234,7 @@ class TestMicroBot:
         assert no_mount_microBot is not None
 
         def mock_ask(message: str):
-            return llmAskResponse(command="echo 'Hello World'", task_done=False, result="")
+            return LLMAskResponse(command="echo 'Hello World'", task_done=False, result="")
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -281,7 +281,7 @@ class TestMicroBot:
         assert no_mount_microBot is not None
 
         def mock_ask(message: str):
-            return llmAskResponse(command="sleep 10", task_done=False, result="")
+            return LLMAskResponse(command="sleep 10", task_done=False, result="")
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 

@@ -12,7 +12,7 @@ from dataclasses import asdict
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
 from microbots.llm.openai_api import OpenAIApi
-from microbots.llm.llm import llmAskResponse, LLMInterface
+from microbots.llm.llm import LLMAskResponse, LLMInterface
 
 
 @pytest.fixture(autouse=True)
@@ -100,7 +100,7 @@ class TestOpenAIApiAsk:
         result = api.ask(message)
 
         # Verify the result
-        assert isinstance(result, llmAskResponse)
+        assert isinstance(result, LLMAskResponse)
         assert result.task_done is False
         assert result.command == "echo 'hello'"
         assert result.result is None
@@ -219,7 +219,7 @@ class TestOpenAIApiAsk:
         assert assistant_content["result"] is None
 
     def test_ask_uses_asdict_for_response(self):
-        """Test that ask uses asdict to convert llmAskResponse to dict"""
+        """Test that ask uses asdict to convert LLMAskResponse to dict"""
         system_prompt = "You are a helpful assistant"
         api = OpenAIApi(system_prompt=system_prompt)
 
@@ -363,7 +363,7 @@ class TestOpenAIApiEdgeCases:
         result = api.ask("")
 
         # Verify it still works
-        assert isinstance(result, llmAskResponse)
+        assert isinstance(result, LLMAskResponse)
         assert api.messages[-2]["content"] == ""  # User message
 
     def test_multiple_ask_calls_append_messages(self):

@@ -9,7 +9,7 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from microbots.llm.llm import LLMInterface, llmAskResponse, llm_output_format_str
+from microbots.llm.llm import LLMInterface, LLMAskResponse, llm_output_format_str
 
 
 class ConcreteLLM(LLMInterface):
@@ -20,9 +20,9 @@ class ConcreteLLM(LLMInterface):
         self.retries = 0
         self.messages = []
 
-    def ask(self, message: str) -> llmAskResponse:
+    def ask(self, message: str) -> LLMAskResponse:
         """Simple implementation for testing"""
-        return llmAskResponse(task_done=False, command="test", result=None)
+        return LLMAskResponse(task_done=False, command="test", result=None)
 
     def clear_history(self) -> bool:
         """Simple implementation for testing"""
@@ -31,18 +31,18 @@ class ConcreteLLM(LLMInterface):
 
 
 class TestLlmAskResponse:
-    """Tests for llmAskResponse dataclass"""
+    """Tests for LLMAskResponse dataclass"""
 
     def test_default_values(self):
         """Test that default values are set correctly"""
-        response = llmAskResponse()
+        response = LLMAskResponse()
         assert response.task_done is False
         assert response.command == ""
         assert response.result is None
 
     def test_custom_values(self):
         """Test creating response with custom values"""
-        response = llmAskResponse(
+        response = LLMAskResponse(
             task_done=True,
             command="echo 'hello'",
             result="Task completed successfully"
@@ -53,7 +53,7 @@ class TestLlmAskResponse:
 
     def test_partial_initialization(self):
         """Test partial initialization with some defaults"""
-        response = llmAskResponse(command="ls -la")
+        response = LLMAskResponse(command="ls -la")
         assert response.task_done is False
         assert response.command == "ls -la"
         assert response.result is None
@@ -385,12 +385,12 @@ class TestLlmOutputFormatStr:
 class TestConcreteLLMImplementation:
     """Test the concrete LLM implementation used for testing"""
 
-    def test_ask_returns_llmAskResponse(self):
+    def test_ask_returns_LLMAskResponse(self):
         """Test that ask method returns correct type"""
         llm = ConcreteLLM()
         response = llm.ask("test message")
 
-        assert isinstance(response, llmAskResponse)
+        assert isinstance(response, LLMAskResponse)
 
     def test_clear_history(self):
         """Test that clear_history clears messages"""

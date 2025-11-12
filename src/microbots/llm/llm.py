@@ -6,7 +6,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 @dataclass
-class llmAskResponse:
+class LLMAskResponse:
     task_done: bool = False
     command: str = ""
     result: str | None = None
@@ -21,14 +21,14 @@ llm_output_format_str = """
 
 class LLMInterface(ABC):
     @abstractmethod
-    def ask(self, message: str) -> llmAskResponse:
+    def ask(self, message: str) -> LLMAskResponse:
         pass
 
     @abstractmethod
     def clear_history(self) -> bool:
         pass
 
-    def _validate_llm_response(self, response: str) -> tuple[bool, llmAskResponse]:
+    def _validate_llm_response(self, response: str) -> tuple[bool, LLMAskResponse]:
 
         if self.retries >= self.max_retries:
             logger.error("Maximum retries reached for LLM response validation.")
@@ -42,7 +42,7 @@ class LLMInterface(ABC):
             self.messages.append({"role": "user", "content": "LLM_RES_ERROR: Please respond in the correct JSON format.\n" + llm_output_format_str})
             return False, None
 
-        if all(key in response_dict for key in llmAskResponse.__annotations__.keys()):
+        if all(key in response_dict for key in LLMAskResponse.__annotations__.keys()):
             logger.info("The llm response is %s ", response_dict)
 
             if response_dict.get("task_done") not in [True, False]:
@@ -70,7 +70,7 @@ class LLMInterface(ABC):
                 self.messages.append({"role": "user", "content": "LLM_RES_ERROR: When 'task_done' is true, 'command' should be an empty string.\nYou should set 'task_done' to true only when even the last command got executed successfully.\nExpected output format:\n" + llm_output_format_str})
                 return False, None
 
-            llm_response = llmAskResponse(
+            llm_response = LLMAskResponse(
                 task_done=response_dict["task_done"],
                 command=response_dict["command"],
                 result=response_dict.get("result"),
