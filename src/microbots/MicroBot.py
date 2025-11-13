@@ -10,6 +10,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import (
     LocalDockerEnvironment,
 )
 from microbots.llm.openai_api import OpenAIApi
+from microbots.llm.llm import llm_output_format_str
 from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.extras.mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
@@ -17,19 +18,10 @@ from microbots.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
-llm_output_format = """```json
-{
-    "task_done": true | false,
-    "command": <command to run> | null,
-    "result": <result in string> | null
-}
-```
-"""
-
-system_prompt_common = """There is a shell session open for you.
+system_prompt_common = f"""There is a shell session open for you.
                 I will provide a task to achieve using the shell.
                 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
-                {llm_output_format}
+                {llm_output_format_str}
                 after each command I will provide the output of the command.
                 ensure to run only one command at a time.
                 I won't be able to intervene once I have given task. ."""
@@ -156,6 +148,9 @@ class MicroBot:
         timeout_in_seconds: int = 200
     ) -> BotRunResult:
 
+        if max_iterations <= 0:
+            raise ValueError("max_iterations must be greater than 0")
+
         setup_tools(self.environment, self.additional_tools)
 
         for mount in additional_mounts or []:
@@ -171,7 +166,7 @@ class MicroBot:
             result=None,
             error="Did not complete",
         )
-        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:15])
+        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:60])
 
         while llm_response.task_done is False:
             logger.info("%s Step-%d %s", "-" * 20, iteration_count, "-" * 20)
@@ -198,28 +193,23 @@ class MicroBot:
                 return return_value
 
             llm_command_output = self.environment.execute(llm_response.command)
-            if llm_command_output.stdout:
-                logger.info(
-                    " ⬅️  Command Execution Output: %s",
-                    llm_command_output.stdout,
-                )
-            else:
-                logger.info(" ⬅️  Command Execution Output: No output")
 
-            if llm_command_output.stderr:
-                logger.error(
-                    " ⬅️  Command Execution Error: %s",
+            logger.info(
+                    " ⬅️  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
+                    llm_command_output.return_code,
+                    llm_command_output.stdout,
                     llm_command_output.stderr,
                 )
 
-            # Convert CmdReturn to string for LLM
-            if llm_command_output.stdout:
-                output_text = llm_command_output.stdout
-            elif llm_command_output.stderr:
-                output_text = f"COMMUNICATION ERROR: {llm_command_output.stderr}"
+            if llm_command_output.return_code == 0:
+                if llm_command_output.stdout:
+                    output_text = llm_command_output.stdout
+                else:
+                    output_text = f"Command executed successfully with no output\nreturn code: {llm_command_output.return_code}\nstdout: {llm_command_output.stdout}\nstderr: {llm_command_output.stderr}"
             else:
-                output_text = "No output received"
+                output_text = f"COMMAND EXECUTION FAILED\nreturn code: {llm_command_output.return_code}\nstdout: {llm_command_output.stdout}\nstderr: {llm_command_output.stderr}"
 
+            logger.info("📨  Message to LLM:\n%s", output_text)
             llm_response = self.llm.ask(output_text)
 
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])

@@ -20,10 +20,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from microbots import MicroBot
-from microbots.MicroBot import BotRunResult, llm_output_format
+from microbots.MicroBot import BotRunResult
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
 from microbots.environment.Environment import CmdReturn
+from microbots.llm.llm import llm_output_format_str, LLMAskResponse
 
 
 SYSTEM_PROMPT = f"""
@@ -37,7 +38,7 @@ When running pytest, ONLY test the specific file mentioned in the task - do not 
 You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
 
 You must send `task_done` as true only when you have completed the task. It means all the commands you wanted to run are completed in the previous steps. You should not run any more commands while you're sending `task_done` as true.
-{llm_output_format}
+{llm_output_format_str}
 """
 
 
@@ -66,6 +67,15 @@ class TestMicroBot:
             model="azure-openai/mini-swe-agent-gpt5",
             system_prompt=SYSTEM_PROMPT,
             folder_to_mount=ro_mount,
+        )
+        yield bot
+        del bot
+
+    @pytest.fixture(scope="function")
+    def no_mount_microBot(self):
+        bot = MicroBot(
+            model="azure-openai/mini-swe-agent-gpt5",
+            system_prompt=SYSTEM_PROMPT,
         )
         yield bot
         del bot
@@ -219,3 +229,69 @@ class TestMicroBot:
                 system_prompt=SYSTEM_PROMPT,
                 folder_to_mount=test_repo_mount_ro,
             )
+
+    def test_max_iterations_exceeded(self, no_mount_microBot, monkeypatch):
+        assert no_mount_microBot is not None
+
+        def mock_ask(message: str):
+            return LLMAskResponse(command="echo 'Hello World'", task_done=False, result="")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "This is a test to check max iterations handling.",
+            timeout_in_seconds=120,
+            max_iterations=3
+        )
+
+        print(f"Max Iterations Test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+
+        assert not response.status
+        assert response.error == "Max iterations 3 reached"
+
+    def test_invalid_max_iterations(self, no_mount_microBot):
+        """Test that ValueError is raised for invalid max_iterations values"""
+        assert no_mount_microBot is not None
+
+        # Test with max_iterations = 0
+        with pytest.raises(ValueError) as exc_info:
+            no_mount_microBot.run(
+                "This is a test task.",
+                max_iterations=0
+            )
+        assert "max_iterations must be greater than 0" in str(exc_info.value)
+
+        # Test with max_iterations = -1
+        with pytest.raises(ValueError) as exc_info:
+            no_mount_microBot.run(
+                "This is a test task.",
+                max_iterations=-1
+            )
+        assert "max_iterations must be greater than 0" in str(exc_info.value)
+
+        # Test with max_iterations = -10
+        with pytest.raises(ValueError) as exc_info:
+            no_mount_microBot.run(
+                "This is a test task.",
+                max_iterations=-10
+            )
+        assert "max_iterations must be greater than 0" in str(exc_info.value)
+
+    def test_timeout_handling(self, no_mount_microBot, monkeypatch):
+        assert no_mount_microBot is not None
+
+        def mock_ask(message: str):
+            return LLMAskResponse(command="sleep 10", task_done=False, result="")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "This is a test to check timeout handling.",
+            timeout_in_seconds=5,
+            max_iterations=10
+        )
+
+        print(f"Timeout Handling Test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+
+        assert not response.status
+        assert response.error == "Timeout of 5 seconds reached"

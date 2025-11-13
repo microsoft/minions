@@ -36,12 +36,12 @@ class TestBrowsingBot:
     def test_simple_question_response(self, browsing_bot):
         """Test that the bot can answer a simple factual question."""
         response: BotRunResult = browsing_bot.run(
-            "What is the capital of France? Get this info from https://en.wikipedia.org/wiki/France",
+            "Get capital of France from https://en.wikipedia.org/wiki/France",
             timeout_in_seconds=300,
         )
 
         # Assert the response was successful
-        assert response.status == True, f"Bot failed with error: {response.error}"
+        assert response.status, f"Bot failed with error: {response.error}"
         assert response.result is not None, "Bot returned no result"
         assert isinstance(response.result, str), "Result should be a string"
 
@@ -62,7 +62,7 @@ class TestBrowsingBot:
         """Test the bot with multiple different queries."""
         response: BotRunResult = browsing_bot.run(query, timeout_in_seconds=300)
 
-        assert response.status == True, f"Query '{query}' failed: {response.error}"
+        assert response.status, f"Query '{query}' failed: {response.error}"
         assert response.result is not None, f"No result for query: {query}"
 
         result_lower = response.result.lower()

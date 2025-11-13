@@ -1,66 +1,46 @@
 import json
 import os
-from dataclasses import dataclass
-from logging import getLogger
+from dataclasses import asdict
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from microbots.utils.logger import LogLevelEmoji
-
-logger = getLogger(__name__)
-
+from microbots.llm.llm import LLMAskResponse, LLMInterface
 
 load_dotenv()
-
-from openai import OpenAI
 
 endpoint = os.getenv("OPEN_AI_END_POINT")
 deployment_name = os.getenv("OPEN_AI_DEPLOYMENT_NAME")
 api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
 
 
-@dataclass
-class llmAskResponse:
-    task_done: bool = False
-    command: str = ""
-    result: str | None = None
+class OpenAIApi(LLMInterface):
 
-
-class OpenAIApi:
-
-    def __init__(self, system_prompt, deployment_name=deployment_name):
+    def __init__(self, system_prompt, deployment_name=deployment_name, max_retries=3):
         self.ai_client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
         self.deployment_name = deployment_name
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
 
-    def ask(self, message) -> llmAskResponse:
+        # Set these values here. This logic will be handled in the parent class.
+        self.max_retries = max_retries
+        self.retries = 0
+
+    def ask(self, message) -> LLMAskResponse:
+        self.retries = 0 # reset retries for each ask. Handled in parent class.
+
         self.messages.append({"role": "user", "content": message})
-        return_value = {}
-        while self._validate_llm_response(return_value) is False:
+
+        valid = False
+        while not valid:
             response = self.ai_client.responses.create(
                 model=self.deployment_name,
                 input=self.messages,
             )
-            try:
-                return_value = json.loads(response.output_text)
-            except Exception as e:
-                logger.error(
-                    f"%s Error occurred while dumping JSON: {e}", LogLevelEmoji.ERROR
-                )
-                logger.error(
-                    "%s Failed to parse JSON from LLM response and the response is",
-                    LogLevelEmoji.ERROR,
-                )
-                logger.error(response.output_text)
+            valid, askResponse = self._validate_llm_response(response=response.output_text)
 
-        self.messages.append({"role": "assistant", "content": json.dumps(return_value)})
+        self.messages.append({"role": "assistant", "content": json.dumps(asdict(askResponse))})
 
-        return llmAskResponse(
-            task_done=return_value["task_done"],
-            result=return_value["result"],
-            command=return_value["command"],
-        )
+        return askResponse
 
     def clear_history(self):
         self.messages = [
@@ -71,8 +51,3 @@ class OpenAIApi:
         ]
         return True
 
-    def _validate_llm_response(self, response: dict) -> bool:
-        if "task_done" in response and "command" in response and "result" in response:
-            logger.info("The llm response is %s ", response)
-            return True
-        return False
