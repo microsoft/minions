@@ -1,25 +1,34 @@
-name: Run Tests
+name: Rerun Failed Tests
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
-    # Allow manual triggering
+    inputs:
+      test-type:
+        description: 'Type of tests to run'
+        required: true
+        type: choice
+        options:
+          - unit
+          - integration
+          - all
+        default: 'all'
+      test-path:
+        description: 'Specific test file or test path (e.g., test/bot/test_microbot.py::TestMicroBot::test_microbot_ro_mount). Leave empty to rerun last failed tests.'
+        required: false
+        type: string
+      last-failed-only:
+        description: 'Run only last failed tests (uses pytest --lf)'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
-  test:
+  rerun-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        test-type: ["unit", "integration"]
-        include:
-          - test-type: "unit"
-            pytest-args: "-m 'unit'"
-          - test-type: "integration"
-            pytest-args: "-m 'integration'"
-
+        test-type: ${{ fromJSON(inputs.test-type == 'all' && '["unit", "integration"]' || format('["{0}"]', inputs.test-type)) }}
 
     steps:
       - name: Checkout code
@@ -46,7 +55,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .pytest_cache
-          key: ${{ runner.os }}-pytest-${{ matrix.test-type }}-${{ github.sha }}
+          key: ${{ runner.os }}-pytest-${{ matrix.test-type }}-${{ hashFiles('test/**/*.py') }}
           restore-keys: |
             ${{ runner.os }}-pytest-${{ matrix.test-type }}-
 
@@ -71,6 +80,23 @@ jobs:
           # Build the shell server image needed for Docker tests
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
 
+      - name: Determine test arguments
+        id: test-args
+        run: |
+          PYTEST_ARGS="-m '${{ matrix.test-type }}'"
+          
+          # Add specific test path if provided
+          if [ -n "${{ inputs.test-path }}" ]; then
+            PYTEST_ARGS="$PYTEST_ARGS ${{ inputs.test-path }}"
+          fi
+          
+          # Add --lf flag if last-failed-only is true and no specific path
+          if [ "${{ inputs.last-failed-only }}" = "true" ] && [ -z "${{ inputs.test-path }}" ]; then
+            PYTEST_ARGS="--lf $PYTEST_ARGS"
+          fi
+          
+          echo "pytest_args=$PYTEST_ARGS" >> $GITHUB_OUTPUT
+
       - name: Run ${{ matrix.test-type }} tests
         env:
           # OpenAI API Configuration
@@ -84,10 +110,11 @@ jobs:
           BROWSER_USE_LLM_MODEL: "gpt-5"
           BROWSER_USE_LLM_TEMPERATURE: 1
         run: |
-          python -m pytest ${{ matrix.pytest-args }} \
+          python -m pytest ${{ steps.test-args.outputs.pytest_args }} \
             --cov=src \
             --cov-report=xml \
             --cov-report=term-missing \
+            --cov-append \
             --junitxml=test-results-${{ matrix.test-type }}.xml \
             -v \
             -o log_cli=true \
@@ -100,22 +127,14 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.test-type }}
+          name: rerun-test-results-${{ matrix.test-type }}
           path: test-results-*.xml
-
-      - name: Upload pytest cache
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: pytest-cache-${{ matrix.test-type }}
-          path: .pytest_cache/v/cache/lastfailed
-          if-no-files-found: ignore
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-${{ matrix.test-type }}
+          name: rerun-coverage-${{ matrix.test-type }}
           path: coverage.xml
 
       - name: Upload coverage to Codecov
@@ -124,26 +143,25 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.xml
-          flags: ${{ matrix.test-type }}
-          name: codecov-${{ matrix.test-type }}
+          flags: ${{ matrix.test-type }},rerun
+          name: codecov-rerun-${{ matrix.test-type }}
           fail_ci_if_error: false
 
-  test-summary:
+  rerun-summary:
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [rerun-tests]
     if: always()
     steps:
       - name: Download all test results
         uses: actions/download-artifact@v4
         with:
-          pattern: test-results-*
+          pattern: rerun-test-results-*
           merge-multiple: true
 
       - name: Test Summary
         if: always()
         run: |
-          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Rerun Test Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Test Type | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Integration Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.rerun-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
