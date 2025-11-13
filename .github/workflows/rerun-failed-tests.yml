@@ -25,6 +25,8 @@ on:
 jobs:
   rerun-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -149,6 +151,8 @@ jobs:
 
   rerun-summary:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [rerun-tests]
     if: always()
     steps:
