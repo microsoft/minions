@@ -94,3 +94,14 @@ The `WritingBot` will read and write the files inside `code` folder based on spe
 ![Overall Architecture Image](./docs/images/overall_architecture.png)
 
 The MicroBots create a containerized environment and mount the specified directory with restricting the permissions to read-only or read/write based on Bot used. It ensures that the AI agents operate within defined boundaries which enhances security and control over code modifications as well as protecting the local environment.
+
+## 🧪 Testing
+
+The project supports comprehensive testing capabilities:
+
+- **Run all tests**: `pytest`
+- **Run specific test types**: `pytest -m unit` or `pytest -m integration`
+- **Run individual tests**: `pytest test/bot/test_microbot.py::TestMicroBot::test_microbot_ro_mount`
+- **Rerun failed tests**: `pytest --lf`
+
+For more details on running tests individually, retriggering failed tests in CI, and maintaining coverage reports, see the [Testing Documentation](docs/TESTING.md).
