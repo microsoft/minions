@@ -295,3 +295,58 @@ class TestMicroBot:
 
         assert not response.status
         assert response.error == "Timeout of 5 seconds reached"
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("command,expected_safe", [
+        # Dangerous: Recursive ls commands
+        ("ls -R", False),
+        ("ls -lR", False),
+        ("ls -alR", False),
+        ("ls -Rl", False),
+        ("ls -r /path", False),
+        ("ls -laR /some/path", False),
+        # Dangerous: Tree commands
+        ("tree", False),
+        ("tree /path", False),
+        ("tree -L 3", False),
+        # Dangerous: Recursive rm commands
+        ("rm -r /path", False),
+        ("rm -rf /path", False),
+        ("rm -fr /path", False),
+        ("rm -Rf /path", False),
+        ("rm --recursive /path", False),
+        ("rm -rf .", False),
+        # Dangerous: Find without maxdepth
+        ("find /path -name '*.py'", False),
+        ("find . -type f", False),
+        ("find /home -name 'test*'", False),
+        # Safe: Find with maxdepth
+        ("find /path -name '*.py' -maxdepth 2", True),
+        ("find . -type f -maxdepth 1", True),
+        ("find /home -maxdepth 3 -name 'test*'", True),
+        # Safe: Common commands
+        ("ls -la", True),
+        ("ls /path/to/dir", True),
+        ("rm file.txt", True),
+        ("rm -f file.txt", True),
+        ("cat file.txt", True),
+        ("grep 'pattern' file.txt", True),
+        ("echo 'hello'", True),
+        ("cd /path", True),
+        ("pwd", True),
+        ("python script.py", True),
+        ("git status", True),
+        # Invalid inputs
+        (None, False),
+        ("", False),
+        ("   ", False),
+        (123, False),
+        ([], False),
+        ({}, False),
+    ])
+    def test_is_safe_command(self, command, expected_safe):
+        """Test command safety validation for all scenarios."""
+        # Create a minimal bot instance without environment (no container)
+        bot = MicroBot.__new__(MicroBot)  # Create instance without calling __init__
+        result = bot._is_safe_command(command)
+        assert result == expected_safe, f"Command '{command}' expected safe={expected_safe}, got {result}"

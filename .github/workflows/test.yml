@@ -13,15 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-type: ["integration"]
+        test-type: ["unit", "integration"]
         include:
+          - test-type: "unit"
+            pytest-args: "-m 'unit'"
           - test-type: "integration"
             pytest-args: "-m 'integration'"
 
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
 
     steps:
       - name: Checkout code
@@ -131,8 +129,5 @@ jobs:
           echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Test Type | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.test.result }}" = "success" ]; then
-            echo "| Integration Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Integration Tests | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| Unit Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY

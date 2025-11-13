@@ -280,7 +280,13 @@ class MicroBot:
     def _is_safe_command(self, command: str) -> bool:
         if not command or not isinstance(command, str):
             return False
+ 
         command_lower = command.lower().strip()
+
+        # Empty or whitespace-only commands are invalid
+        if not command_lower:
+            return False
+
         # Define dangerous command patterns with regex
         dangerous_patterns = [
             r'\bls\s+.*-[a-z]*r',          # Matches: ls -R, ls -lR, ls -alR, etc.
