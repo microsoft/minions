@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from dataclasses import dataclass
 from enum import StrEnum
@@ -24,7 +25,9 @@ system_prompt_common = f"""There is a shell session open for you.
                 {llm_output_format_str}
                 after each command I will provide the output of the command.
                 ensure to run only one command at a time.
-                I won't be able to intervene once I have given task. ."""
+                NEVER use 'ls -R', 'tree', or 'find' without -maxdepth on large repos - use targeted paths like 'ls drivers/block/' to avoid exceeding context limits.
+                Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
+                I won't be able to intervene once I have given task."""
 
 
 class BotType(StrEnum):
@@ -192,6 +195,13 @@ class MicroBot:
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
 
+            # Validate command for dangerous operations
+            if not self._is_safe_command(llm_response.command):
+                error_msg = f"Dangerous command detected and blocked: {llm_response.command}"
+                logger.error(" ⚠️  %s", error_msg)
+                llm_response = self.llm.ask(f"COMMAND_ERROR: {error_msg}\nPlease provide a safer alternative command.")
+                continue
+
             llm_command_output = self.environment.execute(llm_response.command)
 
             logger.info(
@@ -266,3 +276,28 @@ class MicroBot:
             raise ValueError(
                 "Only MOUNT mount type is supported for folder_to_mount"
             )
+
+    def _is_safe_command(self, command: str) -> bool:
+        if not command or not isinstance(command, str):
+            return False
+ 
+        command_lower = command.lower().strip()
+
+        # Empty or whitespace-only commands are invalid
+        if not command_lower:
+            return False
+
+        # Define dangerous command patterns with regex
+        dangerous_patterns = [
+            r'\bls\s+.*-[a-z]*r',          # Matches: ls -R, ls -lR, ls -alR, etc.
+            r'\btree\b',                   # Matches: tree command (recursive directory listing)
+            r'\brm\s+.*-[a-z]*r',          # Matches: rm -r, rm -rf, rm -fr, etc.
+            r'\brm\s+--recursive\b',       # Matches: rm --recursive (long form)
+            r'\bfind\b(?!.*-maxdepth)',    # Matches: find without -maxdepth (allows find with -maxdepth)
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, command_lower):
+                return False
+
+        return True

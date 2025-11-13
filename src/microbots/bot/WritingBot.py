@@ -30,6 +30,13 @@ class WritingBot(MicroBot):
         The directory is mounted at  {folder_mount_info.sandbox_path} in your current environment.
         You can access files using paths like {folder_mount_info.sandbox_path}/filename.txt or by changing to that directory first.
         Once all the commands are done, and task is verified finally give me the result.
+
+        COMMAND USAGE RESTRICTIONS:
+        - Use ONLY standard Linux commands: `git`, `sed`, `awk`, `grep`, `patch`, `find`, `cat`, `head`, `tail`, `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `diff` etc.
+        - DO NOT use non-existent commands like `applypatch`, `edit`, `modify` - use `git apply` or `patch` instead
+        - For file editing, use `sed`, `awk`, or direct file operations with standard tools
+        - When using `grep` with special characters, escape them properly
+        - Break complex operations into smaller, verifiable steps
         """
 
         super().__init__(
