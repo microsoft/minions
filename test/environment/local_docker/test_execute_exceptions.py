@@ -14,6 +14,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import LocalDocke
 from microbots.environment.Environment import CmdReturn
 
 
+@pytest.mark.unit
 class TestExecuteExceptionHandling:
     """Unit tests for execute method exception handling"""
 
