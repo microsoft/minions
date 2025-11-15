@@ -19,8 +19,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from microbots import MicroBot
-from microbots.MicroBot import BotRunResult
+from microbots import MicroBot, BotRunResult
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
 from microbots.environment.Environment import CmdReturn
