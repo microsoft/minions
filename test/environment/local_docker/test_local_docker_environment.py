@@ -13,9 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from microbots.extras.mount import Mount
-
-# Use the correct working directory path
-DOCKER_WORKING_DIR = "workdir"
+from microbots.constants import DOCKER_WORKING_DIR
 
 class TestLocalDockerEnvironmentIntegration:
     """Integration tests for LocalDockerEnvironment with real Docker containers"""
