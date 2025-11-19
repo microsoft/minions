@@ -25,6 +25,7 @@ def patch_openai_config():
         yield mock_openai
 
 
+@pytest.mark.unit
 class TestOpenAIApiInitialization:
     """Tests for OpenAIApi initialization"""
 
@@ -78,6 +79,7 @@ class TestOpenAIApiInitialization:
         assert api.ai_client is not None
 
 
+@pytest.mark.unit
 class TestOpenAIApiAsk:
     """Tests for OpenAIApi.ask method"""
 
@@ -267,6 +269,7 @@ class TestOpenAIApiAsk:
         assert api.retries == 0
 
 
+@pytest.mark.unit
 class TestOpenAIApiClearHistory:
     """Tests for OpenAIApi.clear_history method"""
 
@@ -315,6 +318,7 @@ class TestOpenAIApiClearHistory:
         assert api.messages[0]["content"] == system_prompt
 
 
+@pytest.mark.unit
 class TestOpenAIApiInheritance:
     """Tests to verify OpenAIApi correctly inherits from LLMInterface"""
 
@@ -342,6 +346,7 @@ class TestOpenAIApiInheritance:
         assert callable(api.clear_history)
 
 
+@pytest.mark.unit
 class TestOpenAIApiEdgeCases:
     """Tests for edge cases and error scenarios"""
 

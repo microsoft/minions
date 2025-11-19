@@ -19,8 +19,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from microbots import MicroBot
-from microbots.MicroBot import BotRunResult
+from microbots import MicroBot, BotRunResult
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
 from microbots.environment.Environment import CmdReturn
@@ -45,7 +44,7 @@ You must send `task_done` as true only when you have completed the task. It mean
 @pytest.mark.integration
 @pytest.mark.docker
 @pytest.mark.slow
-class TestMicroBot:
+class TestMicrobotIntegration:
 
     @pytest.fixture(scope="function")
     def log_file_path(self, tmpdir: Path):
@@ -296,7 +295,11 @@ class TestMicroBot:
         assert not response.status
         assert response.error == "Timeout of 5 seconds reached"
 
-    @pytest.mark.unit
+
+@pytest.mark.unit
+class TestMicrobotUnit:
+    """Unit tests for MicroBot command safety validation."""
+
     @pytest.mark.parametrize("command,expected_safe", [
         # Dangerous: Recursive ls commands
         ("ls -R", False),
