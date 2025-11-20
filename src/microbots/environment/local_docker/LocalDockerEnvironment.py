@@ -21,8 +21,8 @@ class LocalDockerEnvironment(Environment):
         self,
         port: int,
         folder_to_mount: Optional[Mount] = None,
-        image: str = "kavyasree261002/shell_server:latest",
-        fallback_image: Optional[str] = None,
+        image: str = "microbotsacr.azurecr.io/shell_server:latest",
+        fallback_image: Optional[str] = "kavyasree261002/shell_server:latest",
     ):
 
         self.client = docker.from_env()
@@ -39,7 +39,7 @@ class LocalDockerEnvironment(Environment):
     def _resolve_image(self, primary_image: str, fallback_image: Optional[str]) -> str:
         """Try to pull primary image, fall back to secondary if it fails"""
         try:
-            logger.info("🔍 Attempting to pull primary image: %s", primary_image)
+            logger.debug("🔍 Attempting to pull primary image: %s", primary_image)
             self.client.images.pull(primary_image)
             logger.info("✅ Successfully pulled primary image: %s", primary_image)
             return primary_image
@@ -53,7 +53,7 @@ class LocalDockerEnvironment(Environment):
         # Try fallback image
         if fallback_image:
             try:
-                logger.info("🔍 Attempting to pull fallback image: %s", fallback_image)
+                logger.debug("🔍 Attempting to pull fallback image: %s", fallback_image)
                 self.client.images.pull(fallback_image)
                 logger.info("✅ Successfully pulled fallback image: %s", fallback_image)
                 return fallback_image
