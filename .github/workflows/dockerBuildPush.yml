@@ -1,4 +1,4 @@
-name: Build and Push to Docker Hub
+name: Build and Push to Docker Hub and ACR
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - '.github/workflows/dockerBuildPush.yml'
     branches:
       - main
+      - kkaitepalli/acr-integration
 
 jobs:
   build-and-push:
@@ -24,12 +25,33 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: microbotsacr.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push to Docker Hub
         run: |
-          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
+          DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
           TAG=${{ github.sha }}
 
-          # build with both commit SHA and latest tag
-          docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t $IMAGE_NAME:$TAG -t $IMAGE_NAME:latest .
-          docker push $IMAGE_NAME:$TAG
-          docker push $IMAGE_NAME:latest
+          # Build with both commit SHA and latest tag
+          docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t $DOCKERHUB_IMAGE:$TAG -t $DOCKERHUB_IMAGE:latest .
+          docker push $DOCKERHUB_IMAGE:$TAG
+          docker push $DOCKERHUB_IMAGE:latest
+
+      - name: Tag and push to Azure Container Registry
+        run: |
+          DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
+          ACR_IMAGE=microbotsacr.azurecr.io/shell_server
+          TAG=${{ github.sha }}
+
+          # Tag the existing image for ACR
+          docker tag $DOCKERHUB_IMAGE:$TAG $ACR_IMAGE:$TAG
+          docker tag $DOCKERHUB_IMAGE:latest $ACR_IMAGE:latest
+          
+          # Push to ACR
+          docker push $ACR_IMAGE:$TAG
+          docker push $ACR_IMAGE:latest

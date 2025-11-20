@@ -22,18 +22,47 @@ class LocalDockerEnvironment(Environment):
         port: int,
         folder_to_mount: Optional[Mount] = None,
         image: str = "kavyasree261002/shell_server:latest",
+        fallback_image: Optional[str] = None,
     ):
 
-        self.image = image
+        self.client = docker.from_env()
+        self.image = self._resolve_image(image, fallback_image)
         self.folder_to_mount = folder_to_mount
         self.overlay_mount = False
         self.container = None
-        self.client = docker.from_env()
         self.port = port  # required host port
         self.container_port = 8080
         self.deleted = False
         self._create_working_dir()
         self.start()
+
+    def _resolve_image(self, primary_image: str, fallback_image: Optional[str]) -> str:
+        """Try to pull primary image, fall back to secondary if it fails"""
+        try:
+            logger.info("🔍 Attempting to pull primary image: %s", primary_image)
+            self.client.images.pull(primary_image)
+            logger.info("✅ Successfully pulled primary image: %s", primary_image)
+            return primary_image
+        except docker.errors.ImageNotFound:
+            logger.warning("⚠️  Primary image not found: %s", primary_image)
+        except docker.errors.APIError as e:
+            logger.warning("⚠️  Failed to pull primary image %s: %s", primary_image, e)
+        except Exception as e:
+            logger.warning("⚠️  Unexpected error pulling primary image %s: %s", primary_image, e)
+        
+        # Try fallback image
+        if fallback_image:
+            try:
+                logger.info("🔍 Attempting to pull fallback image: %s", fallback_image)
+                self.client.images.pull(fallback_image)
+                logger.info("✅ Successfully pulled fallback image: %s", fallback_image)
+                return fallback_image
+            except Exception as e:
+                logger.error("❌ Failed to pull fallback image %s: %s", fallback_image, e)
+        
+        # If both fail, try to use local image
+        logger.warning("⚠️  Attempting to use local image: %s", primary_image)
+        return primary_image
 
     def __del__(self):
         if hasattr(self, 'deleted') and not self.deleted:
