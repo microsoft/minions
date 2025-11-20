@@ -9,7 +9,6 @@ on:
       - '.github/workflows/dockerBuildPush.yml'
     branches:
       - main
-      - kkaitepalli/acr-integration
 
 jobs:
   build-and-push:
