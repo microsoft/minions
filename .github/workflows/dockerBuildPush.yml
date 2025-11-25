@@ -12,6 +12,9 @@ on:
 
 jobs:
   build-and-push:
+    permissions:
+      id-token: write # Require write permission to Fetch an OIDC token.
+
     runs-on: ubuntu-latest
 
     steps:
@@ -24,13 +27,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log in to Azure Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: microbotsacr.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
-
       - name: Build and push to Docker Hub
         run: |
           DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
@@ -41,8 +37,18 @@ jobs:
           docker push $DOCKERHUB_IMAGE:$TAG
           docker push $DOCKERHUB_IMAGE:latest
 
+      - name: Azure CLI Login with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Tag and push to Azure Container Registry
         run: |
+          # Login to ACR using Azure CLI (authenticated via OIDC)
+          az acr login --name microbotsacr
+
           DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
           ACR_IMAGE=microbotsacr.azurecr.io/shell_server
           TAG=${{ github.sha }}
