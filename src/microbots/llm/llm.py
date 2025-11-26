@@ -64,11 +64,13 @@ class LLMInterface(ABC):
                 self.messages.append({"role": "user", "content": "LLM_RES_ERROR: Please ensure 'command' is a non-empty string.\n" + llm_output_format_str})
                 return False, None
 
-            if response_dict.get("task_done") is True and response_dict.get("command").strip() != "":
-                self.retries += 1
-                logger.warning("LLM response 'command' should be empty when 'task_done' is true. Retrying... (%d/%d)", self.retries, self.max_retries)
-                self.messages.append({"role": "user", "content": "LLM_RES_ERROR: When 'task_done' is true, 'command' should be an empty string.\nYou should set 'task_done' to true only when even the last command got executed successfully.\nExpected output format:\n" + llm_output_format_str})
-                return False, None
+            if (response_dict.get("task_done") is True):
+                command = response_dict.get("command", None)
+                if command is not None and command.strip() != "":
+                    self.retries += 1
+                    logger.warning("LLM response 'command' should be empty when 'task_done' is true. Retrying... (%d/%d)", self.retries, self.max_retries)
+                    self.messages.append({"role": "user", "content": "LLM_RES_ERROR: When 'task_done' is true, 'command' should be an empty string.\nYou should set 'task_done' to true only when even the last command got executed successfully.\nExpected output format:\n" + llm_output_format_str})
+                    return False, None
 
             llm_response = LLMAskResponse(
                 task_done=response_dict["task_done"],

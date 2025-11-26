@@ -691,3 +691,56 @@ class TestValidateLlmResponseAdditionalCases:
             # Check that format string is in the error message
             if len(llm_test.messages) > 0:
                 assert llm_output_format_str in llm_test.messages[-1]["content"]
+
+    def test_task_done_true_with_missing_command_field(self, llm):
+        """Test validation when task_done is True but command field is missing entirely"""
+        response = json.dumps({
+            "task_done": True,
+            # "command" field is missing
+            "result": "Task completed"
+        })
+
+        valid, llm_response = llm._validate_llm_response(response)
+
+        # Should be invalid because command field is required (missing field check)
+        assert valid is False
+        assert llm_response is None
+        assert llm.retries == 1
+        assert len(llm.messages) == 1
+        assert "missing required fields" in llm.messages[0]["content"]
+
+    def test_task_done_true_with_none_command_field(self, llm):
+        """Test validation when task_done is True but command field None"""
+        response = json.dumps({
+            "task_done": True,
+            "command": None,
+            "result": "Task completed"
+        })
+
+        valid, llm_response = llm._validate_llm_response(response)
+
+        # Should be invalid because command field is required (missing field check)
+        assert valid is True
+        assert llm_response.task_done is True
+        assert llm_response.command is None
+        assert llm_response.result == "Task completed"
+        assert llm.retries == 0
+        assert len(llm.messages) == 0
+
+
+    def test_task_done_true_with_not_none_command_field(self, llm):
+        """Test validation when task_done is True but command field is not None"""
+        response = json.dumps({
+            "task_done": True,
+            "command": "not empty",
+            "result": "Task completed"
+        })
+
+        valid, llm_response = llm._validate_llm_response(response)
+
+        # Should be invalid because command field is required (missing field check)
+        assert valid is False
+        assert llm_response is None
+        assert llm.retries == 1
+        assert len(llm.messages) == 1
+        assert "When 'task_done' is true, 'command' should be an empty string." in llm.messages[0]["content"]
