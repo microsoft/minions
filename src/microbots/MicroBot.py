@@ -10,6 +10,7 @@ from microbots.constants import ModelProvider
 from microbots.environment.local_docker.LocalDockerEnvironment import (
     LocalDockerEnvironment,
 )
+from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
@@ -280,6 +281,12 @@ class MicroBot:
                 system_prompt=self.system_prompt, model_name=self.deployment_name
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
+        elif self.model_provider == ModelProvider.ANTHROPIC:
+            self.llm = AnthropicApi(
+                system_prompt=self.system_prompt, deployment_name=self.deployment_name
+            )
+        else:
+            raise ValueError(f"Unsupported model provider: {self.model_provider}")
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash
