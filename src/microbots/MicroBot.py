@@ -197,8 +197,9 @@ class MicroBot:
 
             # Validate command for dangerous operations
             if not self._is_safe_command(llm_response.command):
-                error_msg = f"Dangerous command detected and blocked: {llm_response.command}"
-                logger.error(" ⚠️  %s", error_msg)
+                explanation = self._get_dangerous_command_explanation(llm_response.command)
+                error_msg = f"Dangerous command detected and blocked: {llm_response.command}\n{explanation}"
+                logger.info("%s %s", LogLevelEmoji.WARNING, error_msg)
                 llm_response = self.llm.ask(f"COMMAND_ERROR: {error_msg}\nPlease provide a safer alternative command.")
                 continue
 
@@ -277,27 +278,60 @@ class MicroBot:
                 "Only MOUNT mount type is supported for folder_to_mount"
             )
 
+    def _get_dangerous_command_explanation(self, command: str) -> Optional[str]:
+        """Provides detailed explanation for why a command is dangerous and suggests alternatives.
+
+        Args:
+            command: The shell command to analyze
+
+        Returns:
+            str: Explanation with reason and alternative, or None if command is safe
+        """
+        # Define dangerous command patterns with detailed explanations
+        # Note: Don't convert to lowercase before checking, as we need case-sensitive pattern matching
+        dangerous_checks = [
+            {
+                'pattern': r'\bls\s+(?:[^-]*\s+)?-[a-z]*[rR](?:[a-z]*\b|\s|$)',
+                'reason': 'Recursive ls commands (ls -R) can generate massive output in large repositories, exceeding context limits',
+                'alternative': 'Use targeted paths like "ls drivers/block/" or "ls -la <specific-directory>" instead'
+            },
+            {
+                'pattern': r'\btree\b',
+                'reason': 'Tree command recursively lists entire directory structures, which can exceed context limits',
+                'alternative': 'Use "ls -la <specific-directory>" or "find <path> -maxdepth 2 -type d" for controlled exploration'
+            },
+            {
+                'pattern': r'\brm\s+(?:[^-]*\s+)?-[a-z]*[rR](?:[a-z]*\b|\s|$)',
+                'reason': 'Recursive rm commands (rm -r/-rf) can delete entire directory trees, which is destructive',
+                'alternative': 'Delete specific files individually or use "rm <specific-file>" to avoid accidental data loss'
+            },
+            {
+                'pattern': r'\brm\s+--recursive\b',
+                'reason': 'Recursive rm commands can delete entire directory trees, which is destructive',
+                'alternative': 'Delete specific files individually or use "rm <specific-file>" to avoid accidental data loss'
+            },
+            {
+                'pattern': r'\bfind\b(?!.*-maxdepth)',
+                'reason': 'Find command without -maxdepth can recursively search entire filesystems, causing excessive output',
+                'alternative': 'Use "find <path> -name "*.ext" -maxdepth 2" to limit search depth and control output size'
+            },
+        ]
+
+        for check in dangerous_checks:
+            if re.search(check['pattern'], command, re.IGNORECASE):
+                return f"REASON: {check['reason']}\nALTERNATIVE: {check['alternative']}"
+
+        return None
+
     def _is_safe_command(self, command: str) -> bool:
         if not command or not isinstance(command, str):
             return False
  
-        command_lower = command.lower().strip()
+        stripped_command = command.strip()
 
         # Empty or whitespace-only commands are invalid
-        if not command_lower:
+        if not stripped_command:
             return False
 
-        # Define dangerous command patterns with regex
-        dangerous_patterns = [
-            r'\bls\s+.*-[a-z]*r',          # Matches: ls -R, ls -lR, ls -alR, etc.
-            r'\btree\b',                   # Matches: tree command (recursive directory listing)
-            r'\brm\s+.*-[a-z]*r',          # Matches: rm -r, rm -rf, rm -fr, etc.
-            r'\brm\s+--recursive\b',       # Matches: rm --recursive (long form)
-            r'\bfind\b(?!.*-maxdepth)',    # Matches: find without -maxdepth (allows find with -maxdepth)
-        ]
-
-        for pattern in dangerous_patterns:
-            if re.search(pattern, command_lower):
-                return False
-
-        return True
+        # Check if command has a dangerous explanation (meaning it's dangerous)
+        return self._get_dangerous_command_explanation(stripped_command) is None
