@@ -295,6 +295,41 @@ class TestMicrobotIntegration:
         assert not response.status
         assert response.error == "Timeout of 5 seconds reached"
 
+    def test_dangerous_command_blocking(self, no_mount_microBot, monkeypatch, caplog):
+        """Test that dangerous commands are blocked and LLM receives detailed explanation."""
+        caplog.set_level(logging.INFO)
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call returns dangerous command
+                return LLMAskResponse(command="ls -R /path", task_done=False, result="")
+            else:
+                # After receiving error with explanation, return safe command
+                assert "COMMAND_ERROR:" in message
+                assert "Dangerous command detected and blocked" in message
+                assert "REASON:" in message
+                assert "ALTERNATIVE:" in message
+                return LLMAskResponse(command="pwd", task_done=True, result="")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "List files",
+            timeout_in_seconds=60,
+            max_iterations=10
+        )
+
+        # Verify dangerous command was logged with explanation
+        assert "Dangerous command detected and blocked: ls -R /path" in caplog.text
+        assert "REASON:" in caplog.text
+        assert "ALTERNATIVE:" in caplog.text
+
+        # Verify task completed after providing safe command
+        assert response.status
+
 
 @pytest.mark.unit
 class TestMicrobotUnit:
@@ -308,6 +343,7 @@ class TestMicrobotUnit:
         ("ls -Rl", False),
         ("ls -r /path", False),
         ("ls -laR /some/path", False),
+        ("ls -Ra", False),
         # Dangerous: Tree commands
         ("tree", False),
         ("tree /path", False),
@@ -327,8 +363,11 @@ class TestMicrobotUnit:
         ("find /path -name '*.py' -maxdepth 2", True),
         ("find . -type f -maxdepth 1", True),
         ("find /home -maxdepth 3 -name 'test*'", True),
-        # Safe: Common commands
+        # Safe: Common commands (including the key test case)
         ("ls -la", True),
+        ("ls -la /workdir/test-repo && ls -la /workdir/test-repo/tests", True),
+        ("ls -lt", True),
+        ("ls -al", True),
         ("ls /path/to/dir", True),
         ("rm file.txt", True),
         ("rm -f file.txt", True),
@@ -351,5 +390,49 @@ class TestMicrobotUnit:
         """Test command safety validation for all scenarios."""
         # Create a minimal bot instance without environment (no container)
         bot = MicroBot.__new__(MicroBot)  # Create instance without calling __init__
-        result = bot._is_safe_command(command)
-        assert result == expected_safe, f"Command '{command}' expected safe={expected_safe}, got {result}"
+        is_safe, explanation = bot._is_safe_command(command)
+        assert is_safe == expected_safe, f"Command '{command}' expected safe={expected_safe}, got {is_safe}"
+
+        # Verify explanation is provided when command is not safe
+        if not expected_safe:
+            assert explanation is not None, f"Expected explanation for unsafe command '{command}'"
+            assert "REASON:" in explanation
+            assert "ALTERNATIVE:" in explanation
+
+    @pytest.mark.parametrize("command,should_be_dangerous,expected_keyword", [
+        # Dangerous commands
+        ("ls -R", True, "Recursive ls"),
+        ("ls -lR /path", True, "Recursive ls"),
+        ("tree", True, "Tree command"),
+        ("rm -rf /path", True, "Recursive rm"),
+        ("find . -name '*.py'", True, "Find command without -maxdepth"),
+        # Safe commands
+        ("ls -la", False, None),
+        ("ls -la /workdir/test-repo && ls -la /workdir/test-repo/tests", False, None),
+        ("rm file.txt", False, None),
+        ("find /path -maxdepth 2 -name '*.py'", False, None),
+    ])
+    def test_get_dangerous_command_explanation(self, command, should_be_dangerous, expected_keyword):
+        """Test that dangerous commands return explanations with REASON and ALTERNATIVE."""
+        bot = MicroBot.__new__(MicroBot)
+        result = bot._get_dangerous_command_explanation(command)
+        
+        if should_be_dangerous:
+            assert result is not None, f"Command '{command}' should have explanation"
+            assert "REASON:" in result and "ALTERNATIVE:" in result
+            assert expected_keyword in result
+        else:
+            assert result is None, f"Command '{command}' should be safe"
+
+    def test_dangerous_command_explanation_format(self):
+        """Test that dangerous command explanations have correct format with reason and alternative."""
+        bot = MicroBot.__new__(MicroBot)
+        explanation = bot._get_dangerous_command_explanation("ls -R")
+        
+        assert explanation is not None
+        lines = explanation.split('\n')
+        assert len(lines) >= 2
+        assert lines[0].startswith("REASON:")
+        assert lines[1].startswith("ALTERNATIVE:")
+        assert len(lines[0].replace("REASON:", "").strip()) > 0
+        assert len(lines[1].replace("ALTERNATIVE:", "").strip()) > 0
