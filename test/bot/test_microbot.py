@@ -295,6 +295,41 @@ class TestMicrobotIntegration:
         assert not response.status
         assert response.error == "Timeout of 5 seconds reached"
 
+    def test_dangerous_command_blocking(self, no_mount_microBot, monkeypatch, caplog):
+        """Test that dangerous commands are blocked and LLM receives detailed explanation."""
+        caplog.set_level(logging.INFO)
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call returns dangerous command
+                return LLMAskResponse(command="ls -R /path", task_done=False, result="")
+            else:
+                # After receiving error with explanation, return safe command
+                assert "COMMAND_ERROR:" in message
+                assert "Dangerous command detected and blocked" in message
+                assert "REASON:" in message
+                assert "ALTERNATIVE:" in message
+                return LLMAskResponse(command="pwd", task_done=True, result="")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "List files",
+            timeout_in_seconds=60,
+            max_iterations=10
+        )
+
+        # Verify dangerous command was logged with explanation
+        assert "Dangerous command detected and blocked: ls -R /path" in caplog.text
+        assert "REASON:" in caplog.text
+        assert "ALTERNATIVE:" in caplog.text
+
+        # Verify task completed after providing safe command
+        assert response.status
+
 
 @pytest.mark.unit
 class TestMicrobotUnit:
