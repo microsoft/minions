@@ -285,8 +285,6 @@ class MicroBot:
             self.llm = AnthropicApi(
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
-        else:
-            raise ValueError(f"Unsupported model provider: {self.model_provider}")
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash
