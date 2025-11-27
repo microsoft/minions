@@ -390,8 +390,14 @@ class TestMicrobotUnit:
         """Test command safety validation for all scenarios."""
         # Create a minimal bot instance without environment (no container)
         bot = MicroBot.__new__(MicroBot)  # Create instance without calling __init__
-        result = bot._is_safe_command(command)
-        assert result == expected_safe, f"Command '{command}' expected safe={expected_safe}, got {result}"
+        is_safe, explanation = bot._is_safe_command(command)
+        assert is_safe == expected_safe, f"Command '{command}' expected safe={expected_safe}, got {is_safe}"
+
+        # Verify explanation is provided when command is not safe
+        if not expected_safe:
+            assert explanation is not None, f"Expected explanation for unsafe command '{command}'"
+            assert "REASON:" in explanation
+            assert "ALTERNATIVE:" in explanation
 
     @pytest.mark.parametrize("command,should_be_dangerous,expected_keyword", [
         # Dangerous commands

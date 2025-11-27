@@ -196,8 +196,8 @@ class MicroBot:
                 return return_value
 
             # Validate command for dangerous operations
-            if not self._is_safe_command(llm_response.command):
-                explanation = self._get_dangerous_command_explanation(llm_response.command)
+            is_safe, explanation = self._is_safe_command(llm_response.command)
+            if not is_safe:
                 error_msg = f"Dangerous command detected and blocked: {llm_response.command}\n{explanation}"
                 logger.info("%s %s", LogLevelEmoji.WARNING, error_msg)
                 llm_response = self.llm.ask(f"COMMAND_ERROR: {error_msg}\nPlease provide a safer alternative command.")
@@ -287,6 +287,14 @@ class MicroBot:
         Returns:
             str: Explanation with reason and alternative, or None if command is safe
         """
+        # Handle invalid commands (empty, None, or non-string)
+        if not command or not isinstance(command, str):
+            return "REASON: Empty or invalid command provided\nALTERNATIVE: Provide a valid shell command"
+
+        stripped_command = command.strip()
+        if not stripped_command:
+            return "REASON: Empty or whitespace-only command provided\nALTERNATIVE: Provide a valid shell command"
+
         # Define dangerous command patterns with detailed explanations
         # Note: Don't convert to lowercase before checking, as we need case-sensitive pattern matching
         dangerous_checks = [
@@ -318,20 +326,26 @@ class MicroBot:
         ]
 
         for check in dangerous_checks:
-            if re.search(check['pattern'], command, re.IGNORECASE):
+            if re.search(check['pattern'], stripped_command, re.IGNORECASE):
                 return f"REASON: {check['reason']}\nALTERNATIVE: {check['alternative']}"
 
         return None
 
-    def _is_safe_command(self, command: str) -> bool:
-        if not command or not isinstance(command, str):
-            return False
- 
-        stripped_command = command.strip()
+    def _is_safe_command(self, command: str) -> tuple[bool, Optional[str]]:
+        """Validates if a command is safe to execute.
 
-        # Empty or whitespace-only commands are invalid
-        if not stripped_command:
-            return False
+        A command is considered safe if it:
+        - Is not a recursive command (ls -R, rm -rf, tree, find without -maxdepth)
+        - Does not risk generating excessive output or destructive actions
 
-        # Check if command has a dangerous explanation (meaning it's dangerous)
-        return self._get_dangerous_command_explanation(stripped_command) is None
+        Args:
+            command: The shell command to validate
+
+        Returns:
+            tuple[bool, Optional[str]]: A tuple of (is_safe, explanation) where:
+                - is_safe: True if command is safe to execute, False otherwise
+                - explanation: Detailed explanation if dangerous, None if safe
+        """
+        explanation = self._get_dangerous_command_explanation(command)
+        is_safe = explanation is None
+        return is_safe, explanation
