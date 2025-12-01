@@ -23,14 +23,14 @@ jobs:
 
     steps:
 
-      - name: Free up space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
+      # - name: Free up space
+      #   uses: jlumbroso/free-disk-space@main
+      #   with:
+      #     tool-cache: true
+      #     android: true
+      #     dotnet: true
+      #     haskell: true
+      #     large-packages: true
 
       - name: Checkout code
         uses: actions/checkout@v4
