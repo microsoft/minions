@@ -213,53 +213,6 @@ class TestOllamaLocalSendRequest:
         assert call_args[1]["json"]["model"] == LOCAL_MODEL_NAME
 
     @patch('microbots.llm.ollama_local.requests.post')
-    def test_send_request_with_extra_text(self, mock_post):
-        """Test handling response with extra text around JSON"""
-        system_prompt = "You are a helpful assistant"
-        ollama = OllamaLocal(
-            system_prompt=system_prompt,
-            model_name=LOCAL_MODEL_NAME,
-            model_port=LOCAL_MODEL_PORT
-        )
-
-        # Mock response with extra text
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "response": 'Sure, here is the response: {"task_done": false, "command": "ls", "thoughts": "Listing files"} Hope this helps!'
-        }
-        mock_post.return_value = mock_response
-
-        messages = [{"role": "user", "content": "test"}]
-        result = ollama._send_request_to_local_model(messages)
-
-        # Should extract just the JSON part
-        assert result == '{"task_done": false, "command": "ls", "thoughts": "Listing files"}'
-
-    @patch('microbots.llm.ollama_local.requests.post')
-    def test_send_request_invalid_json_raises_error(self, mock_post):
-        """Test handling of invalid JSON response"""
-        system_prompt = "You are a helpful assistant"
-        ollama = OllamaLocal(
-            system_prompt=system_prompt,
-            model_name=LOCAL_MODEL_NAME,
-            model_port=LOCAL_MODEL_PORT
-        )
-
-        # Mock response with invalid JSON
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "response": 'This is not JSON!'
-        }
-        mock_post.return_value = mock_response
-
-        messages = [{"role": "user", "content": "test"}]
-
-        with pytest.raises(Exception):
-            ollama._send_request_to_local_model(messages)
-
-    @patch('microbots.llm.ollama_local.requests.post')
     def test_send_request_server_error(self, mock_post):
         """Test handling of server error response"""
         system_prompt = "You are a helpful assistant"
@@ -341,6 +294,44 @@ class TestOllamaLocalAsk:
         ollama.ask("List files")
 
         assert ollama.retries == 0
+
+    @patch('microbots.llm.ollama_local.requests.post')
+    def test_ask_retries_on_invalid_response(self, mock_post):
+        """Test that ask retries on invalid JSON response"""
+        system_prompt = "You are a helpful assistant"
+        ollama = OllamaLocal(
+            system_prompt=system_prompt,
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT,
+            max_retries=2
+        )
+
+        # Mock invalid response first, then valid
+        mock_response_invalid = Mock()
+        mock_response_invalid.status_code = 200
+        mock_response_invalid.text = "Invalid response"
+        mock_response_invalid.json.return_value = {
+            "response": 'This is not JSON'
+        }
+
+        mock_response_valid = Mock()
+        mock_response_valid.status_code = 200
+        mock_response_valid.text = "Success"
+        mock_response_valid.json.return_value = {
+            "response": '{"task_done": true, "command": "", "thoughts": "Completed"}'
+        }
+
+        mock_post.side_effect = [mock_response_invalid, mock_response_valid]
+
+        result = ollama.ask("Echo done")
+
+        assert isinstance(result, LLMAskResponse)
+        assert result.task_done is True
+        assert result.command == ""
+        assert result.thoughts == "Completed"
+
+        # Verify retries count
+        assert ollama.retries == 1  # One retry before success
 
 
 @pytest.mark.ollama_local

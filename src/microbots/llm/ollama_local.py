@@ -109,7 +109,7 @@ class OllamaLocal(LLMInterface):
             response = "{" + response.rsplit("}", 1)[0] + "}"
         except Exception as e:
             self.retries += 1
-            logger.warning("No JSON in LLM response. Retrying... (%d/%d)", self.retries, self.max_retries)
+            logger.warning("No JSON in LLM response.\nException: %s\nRetrying... (%d/%d)", e, self.retries, self.max_retries)
             self.messages.append({"role": "user", "content": "LLM_RES_ERROR: Please respond in the following JSON format.\n" + llm_output_format_str})
             return False, None
 
