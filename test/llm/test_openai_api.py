@@ -93,7 +93,7 @@ class TestOpenAIApiAsk:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "echo 'hello'",
-            "result": None
+            "thoughts": None
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -126,7 +126,7 @@ class TestOpenAIApiAsk:
         mock_response.output_text = json.dumps({
             "task_done": True,
             "command": "",
-            "result": "Task completed successfully"
+            "thoughts": "Task completed successfully"
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -151,7 +151,7 @@ class TestOpenAIApiAsk:
         mock_valid_response.output_text = json.dumps({
             "task_done": False,
             "command": "ls -la",
-            "result": None
+            "thoughts": None
         })
 
         api.ai_client.responses.create = Mock(
@@ -180,7 +180,7 @@ class TestOpenAIApiAsk:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "pwd",
-            "result": None
+            "thoughts": None
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -203,7 +203,7 @@ class TestOpenAIApiAsk:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "echo test",
-            "result": None
+            "thoughts": None
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -218,7 +218,7 @@ class TestOpenAIApiAsk:
         assistant_content = json.loads(assistant_messages[-1]["content"])
         assert assistant_content["task_done"] is False
         assert assistant_content["command"] == "echo test"
-        assert assistant_content["result"] is None
+        assert assistant_content["thoughts"] is None
 
     def test_ask_uses_asdict_for_response(self):
         """Test that ask uses asdict to convert LLMAskResponse to dict"""
@@ -230,7 +230,7 @@ class TestOpenAIApiAsk:
         response_dict = {
             "task_done": True,
             "command": "",
-            "result": "Done"
+            "thoughts": "Done"
         }
         mock_response.output_text = json.dumps(response_dict)
         api.ai_client.responses.create = Mock(return_value=mock_response)
@@ -258,7 +258,7 @@ class TestOpenAIApiAsk:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "ls",
-            "result": None
+            "thoughts": None
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -360,7 +360,7 @@ class TestOpenAIApiEdgeCases:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "echo ''",
-            "result": None
+            "thoughts": None
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -381,7 +381,7 @@ class TestOpenAIApiEdgeCases:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "pwd",
-            "result": None
+            "thoughts": None
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
