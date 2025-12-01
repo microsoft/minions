@@ -20,7 +20,7 @@
 # LOCAL_MODEL_PORT=11434
 # ```
 #
-# To use with Microbot, define you Microbot as following
+# To use with Microbot, define your Microbot as following
 # ```python
 # bot = Microbot(
 #   model="ollama-local/codellama:latest",
@@ -53,14 +53,14 @@ class OllamaLocal(LLMInterface):
         self.messages = [{"role": "system", "content": system_prompt}]
 
         if not self.model_name or not self.model_port:
-            raise ValueError("LOCAL_MODEL_NAME and LOCAL_MODEL_PORT environment variables must be set for or passed as arguments OllamaLocal.")
+            raise ValueError("LOCAL_MODEL_NAME and LOCAL_MODEL_PORT environment variables must be set or passed as arguments to OllamaLocal.")
 
         # Set these values here. This logic will be handled in the parent class.
         self.max_retries = max_retries
         self.retries = 0
 
     def ask(self, message) -> LLMAskResponse:
-        self.retries = 0 # reset retries for each ask. Handled in parent class.
+        self.retries = 0  # reset retries for each ask. Handled in parent class.
 
         self.messages.append({"role": "user", "content": message})
 
@@ -99,11 +99,11 @@ class OllamaLocal(LLMInterface):
         if response.status_code == 200:
             response_json = response.json()
             logger.debug(f"\nResponse JSON: {response_json}")
-            response_back = response_json.get("response", {})
+            response_back = response_json.get("response", "")
 
             # However, as instructed, Ollama is not providing the response only in JSON.
-            # It adds some extra text above or below the json sometimes.
-            # So, this hack to extract the json part from the response.
+            # It adds some extra text above or below the JSON sometimes.
+            # So, this hack extracts the JSON part from the response.
             try:
                 response_back = response_back.split("{", 1)[1]
                 response_back = "{" + response_back.rsplit("}", 1)[0] + "}"

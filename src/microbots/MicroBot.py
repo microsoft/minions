@@ -28,11 +28,11 @@ You will provide the commands to achieve the task strictly in this particular be
 Don't add any chat or extra messages outside the json format. Because the system will parse only the json response.
 The properties ( task_done, thoughts, command ) are mandatory on each response.
 
-after each command, the system will execute the command respond you the output.
-ensure to run only one command at a time.
+after each command, the system will execute the command and respond to you with the output.
+Ensure to run only one command at a time.
 NEVER use 'ls -R', 'tree', or 'find' without -maxdepth on large repos - use targeted paths like 'ls drivers/block/' to avoid exceeding context limits.
 Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
-No human in involved in the task. So, don't seek human intervention.
+No human is involved in the task. So, don't seek human intervention.
 """
 
 

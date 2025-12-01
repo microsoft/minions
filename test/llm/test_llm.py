@@ -38,7 +38,7 @@ class TestLlmAskResponse:
         response = LLMAskResponse()
         assert response.task_done is False
         assert response.command == ""
-        assert response.thoughts is None or response.thoughts == ""
+        assert response.thoughts == ""
 
     def test_custom_values(self):
         """Test creating response with custom values"""
@@ -56,7 +56,7 @@ class TestLlmAskResponse:
         response = LLMAskResponse(command="ls -la")
         assert response.task_done is False
         assert response.command == "ls -la"
-        assert response.thoughts is None or response.thoughts == ""
+        assert response.thoughts == ""
 
 @pytest.mark.integration
 class TestValidateLlmResponse:
