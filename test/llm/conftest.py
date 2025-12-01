@@ -7,6 +7,12 @@ import os
 import time
 import requests
 import shutil
+import sys
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+)
+from test_constants import LOCAL_MODEL_NAME, LOCAL_MODEL_PORT
 
 
 @pytest.fixture(scope="session")
@@ -79,9 +85,9 @@ def ollama_model_name():
     """
     Get the Ollama model name from environment or use default.
 
-    Set LOCAL_MODEL_NAME environment variable or use default: codellama:latest
+    Set LOCAL_MODEL_NAME environment variable or use default: qwen3-coder:latest
     """
-    return os.getenv("LOCAL_MODEL_NAME", "codellama:latest")
+    return os.getenv("LOCAL_MODEL_NAME", LOCAL_MODEL_NAME)
 
 
 @pytest.fixture(scope="session")
@@ -91,7 +97,7 @@ def ollama_model_port():
 
     Set LOCAL_MODEL_PORT environment variable or use default: 11434
     """
-    return os.getenv("LOCAL_MODEL_PORT", "11434")
+    return os.getenv("LOCAL_MODEL_PORT", LOCAL_MODEL_PORT)
 
 
 @pytest.fixture(scope="session")
@@ -277,7 +283,7 @@ def mock_ollama_response():
     ```
     """
     return {
-        "model": "codellama:latest",
+        "model": LOCAL_MODEL_NAME,
         "created_at": "2025-12-01T00:00:00.000000000Z",
         "response": '{"task_done": false, "command": "echo \'hello\'", "thoughts": "Executing echo"}',
         "done": True,

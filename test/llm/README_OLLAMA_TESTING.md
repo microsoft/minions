@@ -17,8 +17,8 @@ ollama --version
 ### 2. Pull a Model
 
 ```bash
-# Pull the default model (codellama:latest)
-ollama pull codellama:latest
+# Pull the default model (qwen3-coder:latest)
+ollama pull qwen3-coder:latest
 
 # Or pull a different model
 ollama pull llama2:latest
@@ -30,7 +30,7 @@ Create a `.env` file in the project root or set these environment variables:
 
 ```bash
 # Optional: defaults are shown
-LOCAL_MODEL_NAME=codellama:latest
+LOCAL_MODEL_NAME=qwen3-coder:latest
 LOCAL_MODEL_PORT=11434
 ```
 
@@ -93,7 +93,7 @@ def test_my_feature(mock_post):
 
     ollama = OllamaLocal(
         system_prompt="Test",
-        model_name="codellama:latest",
+        model_name="qwen3-coder:latest",
         model_port="11434"
     )
     result = ollama.ask("test message")
@@ -139,7 +139,7 @@ export LOCAL_MODEL_PORT=11435
 Ensure the model is pulled:
 
 ```bash
-ollama pull codellama:latest
+ollama pull qwen3-coder:latest
 # or
 ollama list  # to see available models
 ```
@@ -157,7 +157,7 @@ For CI/CD pipelines, you may want to:
 - name: Setup Ollama
   run: |
     curl -fsSL https://ollama.com/install.sh | sh
-    ollama pull codellama:latest
+    ollama pull qwen3-coder:latest
     ollama serve &
 
 - name: Run tests

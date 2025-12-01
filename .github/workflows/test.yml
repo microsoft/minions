@@ -23,6 +23,15 @@ jobs:
 
     steps:
 
+      - name: Free up space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -63,6 +72,9 @@ jobs:
         run: |
           # Build the shell server image needed for Docker tests
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
+
+      - name: Check disk space
+        run: df -h
 
       - name: Run ${{ matrix.test-type }} tests
         env:

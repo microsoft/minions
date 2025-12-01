@@ -15,6 +15,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import LLMAskResponse, LLMInterface
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+from test_constants import LOCAL_MODEL_NAME, LOCAL_MODEL_PORT
+
 
 @pytest.mark.unit
 class TestOllamaLocalInitialization:
@@ -23,8 +26,8 @@ class TestOllamaLocalInitialization:
     def test_init_with_all_parameters(self):
         """Test initialization with all parameters provided"""
         system_prompt = "You are a helpful assistant"
-        model_name = "codellama:latest"
-        model_port = "11434"
+        model_name = LOCAL_MODEL_NAME
+        model_port = LOCAL_MODEL_PORT
 
         ollama = OllamaLocal(
             system_prompt=system_prompt,
@@ -47,8 +50,8 @@ class TestOllamaLocalInitialization:
 
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434",
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT,
             max_retries=5
         )
 
@@ -63,7 +66,7 @@ class TestOllamaLocalInitialization:
             OllamaLocal(
                 system_prompt=system_prompt,
                 model_name=None,
-                model_port="11434"
+                model_port=LOCAL_MODEL_PORT
             )
 
     def test_init_without_model_port_raises_error(self):
@@ -73,7 +76,7 @@ class TestOllamaLocalInitialization:
         with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
             OllamaLocal(
                 system_prompt=system_prompt,
-                model_name="codellama:latest",
+                model_name=LOCAL_MODEL_NAME,
                 model_port=None
             )
 
@@ -98,8 +101,8 @@ class TestOllamaLocalInheritance:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         assert isinstance(ollama, LLMInterface)
@@ -109,8 +112,8 @@ class TestOllamaLocalInheritance:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         assert hasattr(ollama, 'ask')
@@ -121,8 +124,8 @@ class TestOllamaLocalInheritance:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         assert hasattr(ollama, 'clear_history')
@@ -138,8 +141,8 @@ class TestOllamaLocalClearHistory:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Add some messages
@@ -162,8 +165,8 @@ class TestOllamaLocalClearHistory:
         system_prompt = "You are a code assistant specialized in Python"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Add and clear messages multiple times
@@ -186,8 +189,8 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Mock successful response
@@ -207,7 +210,7 @@ class TestOllamaLocalSendRequest:
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         assert call_args[0][0] == "http://localhost:11434/api/generate"
-        assert call_args[1]["json"]["model"] == "codellama:latest"
+        assert call_args[1]["json"]["model"] == LOCAL_MODEL_NAME
 
     @patch('microbots.llm.ollama_local.requests.post')
     def test_send_request_with_extra_text(self, mock_post):
@@ -215,8 +218,8 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Mock response with extra text
@@ -239,8 +242,8 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Mock response with invalid JSON
@@ -262,8 +265,8 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Mock error response
@@ -288,8 +291,8 @@ class TestOllamaLocalAsk:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         # Mock successful response
@@ -320,8 +323,8 @@ class TestOllamaLocalAsk:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="codellama:latest",
-            model_port="11434"
+            model_name=LOCAL_MODEL_NAME,
+            model_port=LOCAL_MODEL_PORT
         )
 
         ollama.retries = 5  # Simulate previous retries
