@@ -49,9 +49,9 @@ def ollama_model_name():
     """
     Get the Ollama model name from environment or use default.
 
-    Set LOCAL_MODEL_NAME environment variable or use default: qwen3-coder:latest
+    Set LOCAL_MODEL_NAME environment variable or use default: codellama:latest
     """
-    return os.getenv("LOCAL_MODEL_NAME", "qwen3-coder:latest")
+    return os.getenv("LOCAL_MODEL_NAME", "codellama:latest")
 
 
 @pytest.fixture(scope="session")
@@ -246,7 +246,7 @@ def mock_ollama_response():
     ```
     """
     return {
-        "model": "qwen3-coder:latest",
+        "model": "codellama:latest",
         "created_at": "2025-12-01T00:00:00.000000000Z",
         "response": '{"task_done": false, "command": "echo \'hello\'", "thoughts": "Executing echo"}',
         "done": True,

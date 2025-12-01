@@ -8,22 +8,22 @@
 # ollama --version
 # ```
 #
-# Pull and run a local model (e.g., qwen3-coder:latest)
+# Pull and run a local model (e.g., codellama:latest)
 # ```
-# ollama pull qwen3-coder:latest
-# ollama serve qwen3-coder:latest --port 11434
+# ollama pull codellama:latest
+# ollama serve codellama:latest --port 11434
 # ```
 #
 # Set environment variables in a .env file or your system environment:
 # ```
-# LOCAL_MODEL_NAME=qwen3-coder:latest
+# LOCAL_MODEL_NAME=codellama:latest
 # LOCAL_MODEL_PORT=11434
 # ```
 #
 # To use with Microbot, define you Microbot as following
 # ```python
 # bot = Microbot(
-#   model="ollama-local/qwen3-coder:latest",
+#   model="ollama-local/codellama:latest",
 #       folder_to_mount=str(test_repo)
 #   )
 # ```

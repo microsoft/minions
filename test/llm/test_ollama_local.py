@@ -24,7 +24,7 @@ class TestOllamaLocalInitialization:
     def test_init_with_all_parameters(self):
         """Test initialization with all parameters provided"""
         system_prompt = "You are a helpful assistant"
-        model_name = "qwen3-coder:latest"
+        model_name = "codellama:latest"
         model_port = "11434"
 
         ollama = OllamaLocal(
@@ -48,7 +48,7 @@ class TestOllamaLocalInitialization:
 
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434",
             max_retries=5
         )
@@ -74,7 +74,7 @@ class TestOllamaLocalInitialization:
         with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
             OllamaLocal(
                 system_prompt=system_prompt,
-                model_name="qwen3-coder:latest",
+                model_name="codellama:latest",
                 model_port=None
             )
 
@@ -99,7 +99,7 @@ class TestOllamaLocalInheritance:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -110,7 +110,7 @@ class TestOllamaLocalInheritance:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -122,7 +122,7 @@ class TestOllamaLocalInheritance:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -139,7 +139,7 @@ class TestOllamaLocalClearHistory:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -163,7 +163,7 @@ class TestOllamaLocalClearHistory:
         system_prompt = "You are a code assistant specialized in Python"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -187,7 +187,7 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -208,7 +208,7 @@ class TestOllamaLocalSendRequest:
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         assert call_args[0][0] == "http://localhost:11434/api/generate"
-        assert call_args[1]["json"]["model"] == "qwen3-coder:latest"
+        assert call_args[1]["json"]["model"] == "codellama:latest"
 
     @patch('microbots.llm.ollama_local.requests.post')
     def test_send_request_with_extra_text(self, mock_post):
@@ -216,7 +216,7 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -240,7 +240,7 @@ class TestOllamaLocalSendRequest:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -266,7 +266,7 @@ class TestOllamaLocalAsk:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
@@ -298,7 +298,7 @@ class TestOllamaLocalAsk:
         system_prompt = "You are a helpful assistant"
         ollama = OllamaLocal(
             system_prompt=system_prompt,
-            model_name="qwen3-coder:latest",
+            model_name="codellama:latest",
             model_port="11434"
         )
 
