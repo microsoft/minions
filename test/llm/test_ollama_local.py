@@ -7,8 +7,7 @@ Skip Ollama tests: pytest test/llm/test_ollama_local.py -m "not ollama_local"
 import pytest
 import sys
 import os
-from unittest.mock import Mock, patch, MagicMock
-import json
+from unittest.mock import Mock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
@@ -313,7 +312,7 @@ class TestOllamaLocalAsk:
         }
         mock_post.return_value = mock_response
 
-        result = ollama.ask("List files")
+        ollama.ask("List files")
 
         assert ollama.retries == 0
 

@@ -93,7 +93,7 @@ class TestOpenAIApiAsk:
         mock_response.output_text = json.dumps({
             "task_done": False,
             "command": "echo 'hello'",
-            "thoughts": None
+            "thoughts": ""
         })
         api.ai_client.responses.create = Mock(return_value=mock_response)
 
@@ -105,7 +105,7 @@ class TestOpenAIApiAsk:
         assert isinstance(result, LLMAskResponse)
         assert result.task_done is False
         assert result.command == "echo 'hello'"
-        assert result.thoughts is None or result.thoughts == ""
+        assert result.thoughts == ""
 
         # Verify retries was reset
         assert api.retries == 0
