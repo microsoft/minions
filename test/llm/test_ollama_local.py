@@ -234,6 +234,29 @@ class TestOllamaLocalSendRequest:
         assert result == '{"task_done": false, "command": "ls", "thoughts": "Listing files"}'
 
     @patch('microbots.llm.ollama_local.requests.post')
+    def test_send_request_invalid_json_raises_error(self, mock_post):
+        """Test handling of invalid JSON response"""
+        system_prompt = "You are a helpful assistant"
+        ollama = OllamaLocal(
+            system_prompt=system_prompt,
+            model_name="codellama:latest",
+            model_port="11434"
+        )
+
+        # Mock response with invalid JSON
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "response": 'This is not JSON!'
+        }
+        mock_post.return_value = mock_response
+
+        messages = [{"role": "user", "content": "test"}]
+
+        with pytest.raises(Exception):
+            ollama._send_request_to_local_model(messages)
+
+    @patch('microbots.llm.ollama_local.requests.post')
     def test_send_request_server_error(self, mock_post):
         """Test handling of server error response"""
         system_prompt = "You are a helpful assistant"
