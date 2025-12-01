@@ -49,7 +49,7 @@ class TestLlmAskResponse:
         )
         assert response.task_done is True
         assert response.command == "echo 'hello'"
-        assert response.result == "Task completed successfully"
+        assert response.thoughts == "Task completed successfully"
 
     def test_partial_initialization(self):
         """Test partial initialization with some defaults"""
@@ -72,7 +72,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "echo 'hello world'",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -80,7 +80,7 @@ class TestValidateLlmResponse:
         assert valid is True
         assert llm_response.task_done is False
         assert llm_response.command == "echo 'hello world'"
-        assert llm_response.result is None
+        assert llm_response.thoughts is None
         assert llm.retries == 0
 
     def test_valid_response_task_done(self, llm):
@@ -88,7 +88,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": True,
             "command": "",
-            "result": "Task completed successfully"
+            "thoughts": "Task completed successfully"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -96,7 +96,7 @@ class TestValidateLlmResponse:
         assert valid is True
         assert llm_response.task_done is True
         assert llm_response.command == ""
-        assert llm_response.result == "Task completed successfully"
+        assert llm_response.thoughts == "Task completed successfully"
         assert llm.retries == 0
 
     def test_invalid_json(self, llm):
@@ -116,7 +116,7 @@ class TestValidateLlmResponse:
         """Test validation with missing required fields"""
         response = json.dumps({
             "task_done": False,
-            # Missing "command" and "result"
+            # Missing "command" and "thoughts"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -132,7 +132,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": "yes",  # Should be boolean
             "command": "echo test",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -148,7 +148,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "",  # Empty command
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -164,7 +164,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "   ",  # Whitespace only
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -178,7 +178,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": None,  # Null command
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -192,7 +192,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": True,
             "command": "echo 'should not have this'",  # Should be empty
-            "result": "Done"
+            "thoughts": "Done"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -210,7 +210,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "",  # Invalid
-            "result": None
+            "thoughts": None
         })
 
         with pytest.raises(Exception) as exc_info:
@@ -240,33 +240,33 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": True,
             "command": "",
-            "result": "Analysis complete: Found 5 errors"
+            "thoughts": "Analysis complete: Found 5 errors"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
 
         assert valid is True
-        assert llm_response.result == "Analysis complete: Found 5 errors"
+        assert llm_response.thoughts == "Analysis complete: Found 5 errors"
 
     def test_valid_response_with_null_result(self, llm):
         """Test validation with result as null"""
         response = json.dumps({
             "task_done": False,
             "command": "ls -la",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
 
         assert valid is True
-        assert llm_response.result is None
+        assert llm_response.thoughts is None
 
     def test_command_with_special_characters(self, llm):
         """Test validation with command containing special characters"""
         response = json.dumps({
             "task_done": False,
             "command": "echo 'Hello \"World\"' | grep -i 'world'",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -279,7 +279,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "echo test",
-            "result": None,
+            "thoughts": None,
             "extra_field": "should be ignored",
             "another_extra": 123
         })
@@ -295,7 +295,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "pwd",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -308,7 +308,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": True,
             "command": "",
-            "result": "All tasks completed"
+            "thoughts": "All tasks completed"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -321,7 +321,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": False,
             "command": "for i in 1 2 3; do\n  echo $i\ndone",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -334,7 +334,7 @@ class TestValidateLlmResponse:
         response = json.dumps({
             "task_done": "not a boolean",
             "command": "test",
-            "result": None
+            "thoughts": None
         })
 
         initial_message_count = len(llm.messages)
@@ -358,7 +358,7 @@ class TestValidateLlmResponse:
         llm._validate_llm_response(json.dumps({
             "task_done": False,
             "command": "",
-            "result": None
+            "thoughts": None
         }))
         assert llm.retries == 3
 
@@ -373,7 +373,7 @@ class TestLlmOutputFormatStr:
         """Test that the format string contains all required field names"""
         assert "task_done" in llm_output_format_str
         assert "command" in llm_output_format_str
-        assert "result" in llm_output_format_str
+        assert "thoughts" in llm_output_format_str
 
     def test_format_string_contains_types(self):
         """Test that the format string shows the types"""
@@ -422,7 +422,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": False,
             "command": 123,  # Integer, not string
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -437,7 +437,7 @@ class TestValidateLlmResponseAdditionalCases:
         """Test that missing fields produces correct error message"""
         response = json.dumps({
             "task_done": False,
-            # Missing "command" and "result"
+            # Missing "command" and "thoughts"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -483,7 +483,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": False,
             "command": "",
-            "result": None
+            "thoughts": None
         })
 
         with caplog.at_level(logging.ERROR):
@@ -508,7 +508,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": False,
             "command": "echo test",
-            "result": None
+            "thoughts": None
         })
 
         with caplog.at_level(logging.INFO):
@@ -521,7 +521,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": "true",  # String instead of boolean
             "command": "",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -538,7 +538,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": 2,  # Integer that's not 0 or 1
             "command": "test",
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -569,7 +569,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": False,
             "command": "     ",  # Only spaces
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -583,7 +583,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": False,
             "command": "\t\t\t",  # Only tabs
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -596,7 +596,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": False,
             "command": "  echo test  ",  # Has actual content
-            "result": None
+            "thoughts": None
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -610,7 +610,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": True,
             "command": "   ",  # Whitespace
-            "result": "Done"
+            "thoughts": "Done"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -623,7 +623,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = """{
             "task_done": false,  // This is a comment
             "command": "test",
-            "result": null
+            "thoughts": null
         }"""
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -666,13 +666,13 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": True,
             "command": "",
-            "result": ""  # Empty string result
+            "thoughts": ""  # Empty string result
         })
 
         valid, llm_response = llm._validate_llm_response(response)
 
         assert valid is True
-        assert llm_response.result == ""
+        assert llm_response.thoughts == ""
 
     def test_all_error_messages_contain_format_string(self, llm):
         """Test that all error messages include the format string"""
@@ -697,7 +697,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": True,
             # "command" field is missing
-            "result": "Task completed"
+            "thoughts": "Task completed"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -714,7 +714,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": True,
             "command": None,
-            "result": "Task completed"
+            "thoughts": "Task completed"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
@@ -723,7 +723,7 @@ class TestValidateLlmResponseAdditionalCases:
         assert valid is True
         assert llm_response.task_done is True
         assert llm_response.command is None
-        assert llm_response.result == "Task completed"
+        assert llm_response.thoughts == "Task completed"
         assert llm.retries == 0
         assert len(llm.messages) == 0
 
@@ -733,7 +733,7 @@ class TestValidateLlmResponseAdditionalCases:
         response = json.dumps({
             "task_done": True,
             "command": "not empty",
-            "result": "Task completed"
+            "thoughts": "Task completed"
         })
 
         valid, llm_response = llm._validate_llm_response(response)
