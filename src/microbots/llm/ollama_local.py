@@ -24,7 +24,7 @@
 # ```python
 # bot = Microbot(
 #   model="ollama-local/codellama:latest",
-#       folder_to_mount=str(test_repo)
+#   folder_to_mount=str(test_repo)
 #   )
 # ```
 ###############################################################################
