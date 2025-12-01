@@ -22,10 +22,41 @@ def check_ollama_installed():
     """
     ollama_path = shutil.which("ollama")
     if ollama_path is None:
-        pytest.skip(
-            "Ollama is not installed. Install with: "
-            "curl -fsSL https://ollama.com/install.sh | sh"
-        )
+        print("\nOllama not found. Installing Ollama...")
+        try:
+            # Install Ollama using the official install script
+            install_result = subprocess.run(
+                ["curl", "-fsSL", "https://ollama.com/install.sh"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if install_result.returncode != 0:
+                pytest.skip(f"Failed to download Ollama installer: {install_result.stderr}")
+
+            # Execute the install script
+            execute_result = subprocess.run(
+                ["sh"],
+                input=install_result.stdout,
+                text=True,
+                timeout=300  # 5 minutes timeout for installation
+            )
+
+            if execute_result.returncode != 0:
+                pytest.skip(f"Failed to install Ollama: {execute_result.stderr}")
+
+            # Re-check if ollama is now available
+            ollama_path = shutil.which("ollama")
+            if ollama_path is None:
+                pytest.skip("Ollama installation completed but ollama command is still not available")
+
+            print("Ollama installed successfully!")
+
+        except subprocess.TimeoutExpired:
+            pytest.fail("Timeout while installing Ollama")
+        except Exception as e:
+            pytest.fail(f"Error installing Ollama: {e}")
 
     # Verify ollama can run
     try:
@@ -36,9 +67,9 @@ def check_ollama_installed():
             timeout=5
         )
         if result.returncode != 0:
-            pytest.skip(f"Ollama is installed but not working properly: {result.stderr}")
+            pytest.fail(f"Ollama is installed but not working properly: {result.stderr}")
     except Exception as e:
-        pytest.skip(f"Failed to verify Ollama installation: {e}")
+        pytest.fail(f"Failed to verify Ollama installation: {e}")
 
     return ollama_path
 
