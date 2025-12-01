@@ -63,6 +63,10 @@ def test_writing_bot_ollama(test_repo, issue_1, ollama_local_ready):
 
     # Get the model name and port from the fixture
     model_name = ollama_local_ready["model_name"]
+    model_port = ollama_local_ready["model_port"]
+
+    os.environ["LOCAL_MODEL_NAME"] = model_name
+    os.environ["LOCAL_MODEL_PORT"] = str(model_port)
 
     writingBot = WritingBot(
         model=f"ollama-local/{model_name}",

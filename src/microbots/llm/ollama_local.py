@@ -34,7 +34,7 @@ import os
 from dataclasses import asdict
 
 from dotenv import load_dotenv
-from microbots.llm.llm import LLMAskResponse, LLMInterface
+from microbots.llm.llm import LLMAskResponse, LLMInterface, llm_output_format_str
 import requests
 import logging
 
@@ -42,13 +42,10 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-LOCAL_MODEL_NAME = os.getenv("LOCAL_MODEL_NAME") or None
-LOCAL_MODEL_PORT = os.getenv("LOCAL_MODEL_PORT") or None
-
 class OllamaLocal(LLMInterface):
-    def __init__(self, system_prompt, model_name=LOCAL_MODEL_NAME, model_port=LOCAL_MODEL_PORT, max_retries=3):
-        self.model_name = model_name
-        self.model_port = model_port
+    def __init__(self, system_prompt, model_name=None, model_port=None, max_retries=3):
+        self.model_name = model_name or os.environ.get("LOCAL_MODEL_NAME")
+        self.model_port = model_port or os.environ.get("LOCAL_MODEL_PORT")
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
 
@@ -99,19 +96,22 @@ class OllamaLocal(LLMInterface):
         if response.status_code == 200:
             response_json = response.json()
             logger.debug(f"\nResponse JSON: {response_json}")
-            response_back = response_json.get("response", "")
-
-            # However, as instructed, Ollama is not providing the response only in JSON.
-            # It adds some extra text above or below the JSON sometimes.
-            # So, this hack extracts the JSON part from the response.
-            try:
-                response_back = response_back.split("{", 1)[1]
-                response_back = "{" + response_back.rsplit("}", 1)[0] + "}"
-            except Exception as e:
-                logger.error(f"Error while extracting JSON from response: {e}")
-                raise e
-
-            logger.debug(f"\nResponse from local model: {response_back}")
-            return response_back
+            return response_json.get("response", "")
         else:
             raise Exception(f"Error from local model server: {response.status_code} - {response.text}")
+
+    def _validate_llm_response(self, response):
+        # However, as instructed, Ollama is not providing the response only in JSON.
+        # It adds some extra text above or below the JSON sometimes.
+        # So, this hack extracts the JSON part from the response.
+        try:
+            response = response.split("{", 1)[1]
+            response = "{" + response.rsplit("}", 1)[0] + "}"
+        except Exception as e:
+            self.retries += 1
+            logger.warning("No JSON in LLM response. Retrying... (%d/%d)", self.retries, self.max_retries)
+            self.messages.append({"role": "user", "content": "LLM_RES_ERROR: Please respond in the following JSON format.\n" + llm_output_format_str})
+            return False, None
+
+        logger.debug(f"\nResponse from local model: {response}")
+        return super()._validate_llm_response(response)
