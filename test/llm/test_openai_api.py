@@ -136,7 +136,7 @@ class TestOpenAIApiAsk:
         # Verify the result
         assert result.task_done is True
         assert result.command == ""
-        assert result.result == "Task completed successfully"
+        assert result.thoughts == "Task completed successfully"
 
     def test_ask_with_retry_on_invalid_response(self):
         """Test ask method retries on invalid response then succeeds"""
