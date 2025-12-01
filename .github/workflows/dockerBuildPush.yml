@@ -1,4 +1,4 @@
-name: Build and Push to Docker Hub and ACR
+name: Build and Push to Docker Hub
 
 on:
   push:
@@ -12,9 +12,6 @@ on:
 
 jobs:
   build-and-push:
-    permissions:
-      id-token: write # Require write permission to Fetch an OIDC token.
-
     runs-on: ubuntu-latest
 
     steps:
@@ -27,36 +24,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push to Docker Hub
+      - name: Build and push Docker image
         run: |
-          DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
           TAG=${{ github.sha }}
 
-          # Build with both commit SHA and latest tag
-          docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t $DOCKERHUB_IMAGE:$TAG -t $DOCKERHUB_IMAGE:latest .
-          docker push $DOCKERHUB_IMAGE:$TAG
-          docker push $DOCKERHUB_IMAGE:latest
-
-      - name: Azure CLI Login with OIDC
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Tag and push to Azure Container Registry
-        run: |
-          # Login to ACR using Azure CLI (authenticated via OIDC)
-          az acr login --name microbotsacr
-
-          DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/shell_server
-          ACR_IMAGE=microbotsacr.azurecr.io/shell_server
-          TAG=${{ github.sha }}
-
-          # Tag the existing image for ACR
-          docker tag $DOCKERHUB_IMAGE:$TAG $ACR_IMAGE:$TAG
-          docker tag $DOCKERHUB_IMAGE:latest $ACR_IMAGE:latest
-          
-          # Push to ACR
-          docker push $ACR_IMAGE:$TAG
-          docker push $ACR_IMAGE:latest
+          # build with both commit SHA and latest tag
+          docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t $IMAGE_NAME:$TAG -t $IMAGE_NAME:latest .
+          docker push $IMAGE_NAME:$TAG
+          docker push $IMAGE_NAME:latest
