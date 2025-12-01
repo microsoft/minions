@@ -105,7 +105,7 @@ class TestOpenAIApiAsk:
         assert isinstance(result, LLMAskResponse)
         assert result.task_done is False
         assert result.command == "echo 'hello'"
-        assert result.result is None
+        assert result.thoughts is None or result.thoughts == ""
 
         # Verify retries was reset
         assert api.retries == 0

@@ -22,7 +22,7 @@ class ConcreteLLM(LLMInterface):
 
     def ask(self, message: str) -> LLMAskResponse:
         """Simple implementation for testing"""
-        return LLMAskResponse(task_done=False, command="test", result=None)
+        return LLMAskResponse(task_done=False, command="test", thoughts=None)
 
     def clear_history(self) -> bool:
         """Simple implementation for testing"""
@@ -38,14 +38,14 @@ class TestLlmAskResponse:
         response = LLMAskResponse()
         assert response.task_done is False
         assert response.command == ""
-        assert response.result is None
+        assert response.thoughts is None or response.thoughts == ""
 
     def test_custom_values(self):
         """Test creating response with custom values"""
         response = LLMAskResponse(
             task_done=True,
             command="echo 'hello'",
-            result="Task completed successfully"
+            thoughts="Task completed successfully"
         )
         assert response.task_done is True
         assert response.command == "echo 'hello'"
@@ -56,7 +56,7 @@ class TestLlmAskResponse:
         response = LLMAskResponse(command="ls -la")
         assert response.task_done is False
         assert response.command == "ls -la"
-        assert response.result is None
+        assert response.thoughts is None or response.thoughts == ""
 
 @pytest.mark.integration
 class TestValidateLlmResponse:

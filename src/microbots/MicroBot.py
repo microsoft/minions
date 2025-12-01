@@ -11,6 +11,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import (
     LocalDockerEnvironment,
 )
 from microbots.llm.openai_api import OpenAIApi
+from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
 from microbots.tools.tool import Tool, install_tools, setup_tools
 from microbots.extras.mount import Mount, MountType
@@ -19,15 +20,20 @@ from microbots.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
-system_prompt_common = f"""There is a shell session open for you.
-                I will provide a task to achieve using the shell.
-                You will provide the commands to achieve the task in this particular below json format, Ensure all the time to respond in this format only and nothing else, also all the properties ( task_done, command, result ) are mandatory on each response
-                {llm_output_format_str}
-                after each command I will provide the output of the command.
-                ensure to run only one command at a time.
-                NEVER use 'ls -R', 'tree', or 'find' without -maxdepth on large repos - use targeted paths like 'ls drivers/block/' to avoid exceeding context limits.
-                Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
-                I won't be able to intervene once I have given task."""
+system_prompt_common = f"""
+There is a shell session open for you.
+You will be provided with a task and you should achieve it using the shell.
+You will provide the commands to achieve the task strictly in this particular below json format.
+{llm_output_format_str}
+Don't add any chat or extra messages outside the json format. Because the system will parse only the json response.
+The properties ( task_done, thoughts, command ) are mandatory on each response.
+
+after each command, the system will execute the command respond you the output.
+ensure to run only one command at a time.
+NEVER use 'ls -R', 'tree', or 'find' without -maxdepth on large repos - use targeted paths like 'ls drivers/block/' to avoid exceeding context limits.
+Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
+No human in involved in the task. So, don't seek human intervention.
+"""
 
 
 class BotType(StrEnum):
@@ -224,7 +230,7 @@ class MicroBot:
             llm_response = self.llm.ask(output_text)
 
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
-        return BotRunResult(status=True, result=llm_response.result, error=None)
+        return BotRunResult(status=True, result=llm_response.thoughts, error=None)
 
     def _mount_additional(self, mount: Mount):
         if mount.mount_type != MountType.COPY:
@@ -259,6 +265,12 @@ class MicroBot:
             self.llm = OpenAIApi(
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
+        elif self.model_provider == ModelProvider.OLLAMA_LOCAL:
+            self.llm = OllamaLocal(
+                system_prompt=self.system_prompt, model_name=self.deployment_name
+            )
+        else:
+            raise ValueError(f"Unsupported model provider: {self.model_provider}")
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash
