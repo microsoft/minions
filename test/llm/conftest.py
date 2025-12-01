@@ -7,7 +7,6 @@ import os
 import time
 import requests
 import shutil
-from pathlib import Path
 
 
 @pytest.fixture(scope="session")
@@ -128,6 +127,7 @@ def ollama_server(check_ollama_installed, ensure_ollama_model_pulled, ollama_mod
             server_already_running = True
             print(f"\nOllama server already running on port {ollama_model_port}")
     except requests.exceptions.RequestException:
+        # If the request fails, assume the server is not running and proceed to start it.
         pass
 
     process = None
