@@ -88,7 +88,7 @@ def test_my_feature(mock_post):
     """Test without actual Ollama server"""
     mock_post.return_value = Mock(
         status_code=200,
-        json=lambda: {"response": '{"task_done": false, "command": "test", "result": null}'}
+        json=lambda: {"response": '{"task_done": false, "command": "test", "thoughts": null}'}
     )
 
     ollama = OllamaLocal(
