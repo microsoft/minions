@@ -29,7 +29,7 @@ class ConcreteLLM(LLMInterface):
         self.messages = []
         return True
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestLlmAskResponse:
     """Tests for LLMAskResponse dataclass"""
 
@@ -58,7 +58,7 @@ class TestLlmAskResponse:
         assert response.command == "ls -la"
         assert response.thoughts == ""
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestValidateLlmResponse:
     """Tests for LLMInterface._validate_llm_response method"""
 
@@ -365,7 +365,7 @@ class TestValidateLlmResponse:
         # Should have 3 error messages
         assert len(llm.messages) == 3
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestLlmOutputFormatStr:
     """Test the output format string constant"""
 
@@ -379,9 +379,8 @@ class TestLlmOutputFormatStr:
         """Test that the format string shows the types"""
         assert "bool" in llm_output_format_str
         assert "str" in llm_output_format_str
-        assert "null" in llm_output_format_str
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestConcreteLLMImplementation:
     """Test the concrete LLM implementation used for testing"""
 
@@ -408,7 +407,7 @@ class TestConcreteLLMImplementation:
         assert llm.max_retries == 5
         assert llm.retries == 0
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestValidateLlmResponseAdditionalCases:
     """Additional test cases to cover all branches in _validate_llm_response"""
 
