@@ -101,7 +101,7 @@ class OllamaLocal(LLMInterface):
             logger.debug(f"\nResponse JSON: {response_json}")
             response_back = response_json.get("response", {})
 
-            # However instructed ollama is not only providing the response only in json
+            # However, as instructed, Ollama is not providing the response only in JSON.
             # It adds some extra text above or below the json sometimes.
             # So, this hack to extract the json part from the response.
             try:
