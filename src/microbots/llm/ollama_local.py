@@ -91,7 +91,8 @@ class OllamaLocal(LLMInterface):
         headers = {
             "Content-Type": "application/json"
         }
-        response = requests.post(server, json=payload, headers=headers)
+        # Set timeout: 30 seconds connect, 600 seconds read to handle model cold start
+        response = requests.post(server, json=payload, headers=headers, timeout=(30, 600))
         logger.debug(f"\nResponse Code: {response.status_code}\nResponse Text:\n{response.text}\n---")
         if response.status_code == 200:
             response_json = response.json()

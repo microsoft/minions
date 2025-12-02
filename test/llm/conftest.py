@@ -226,8 +226,48 @@ def ollama_env_config(ollama_model_name, ollama_model_port):
     }
 
 
+@pytest.fixture(scope="session")
+def ollama_model_warmed_up(ollama_server, ollama_env_config):
+    """
+    Warm up the Ollama model by making an initial request.
+
+    This fixture ensures the model is loaded into memory before tests run,
+    which is especially important on CPU-only CI runners where cold starts
+    can cause connection timeouts.
+    """
+    model_name = ollama_env_config["LOCAL_MODEL_NAME"]
+    model_port = ollama_env_config["LOCAL_MODEL_PORT"]
+
+    print(f"\nWarming up Ollama model: {model_name}...")
+
+    try:
+        # Send a simple request to load the model into memory
+        response = requests.post(
+            f"http://localhost:{model_port}/api/generate",
+            json={
+                "model": model_name,
+                "prompt": "hi",
+                "stream": False
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=(30, 600)  # 30s connect, 600s read for model loading
+        )
+
+        if response.status_code == 200:
+            print(f"Model {model_name} warmed up successfully!")
+        else:
+            print(f"Warning: Model warm-up returned status {response.status_code}")
+
+    except requests.exceptions.Timeout:
+        print(f"Warning: Model warm-up timed out. Tests may experience slow first responses.")
+    except Exception as e:
+        print(f"Warning: Model warm-up failed: {e}. Tests may experience slow first responses.")
+
+    return True
+
+
 @pytest.fixture
-def ollama_local_ready(ollama_server, ollama_env_config, monkeypatch):
+def ollama_local_ready(ollama_server, ollama_env_config, ollama_model_warmed_up, monkeypatch):
     """
     Complete setup fixture that ensures Ollama is ready for testing.
 
