@@ -62,13 +62,16 @@ class OllamaLocal(LLMInterface):
         self.messages.append({"role": "user", "content": message})
 
         valid = False
-        while not valid or self.retries < self.max_retries:
+        while not valid and self.retries < self.max_retries:
             response = self._send_request_to_local_model(self.messages)
+            self.messages.append({"role": "assistant", "content": response})
             valid, askResponse = self._validate_llm_response(response=response)
 
         if not valid and self.retries >= self.max_retries:
             raise Exception("Max retries reached. Failed to get valid response from local model.")
 
+        # Remove last assistant message and replace with structured response
+        self.messages.pop()
         self.messages.append({"role": "assistant", "content": json.dumps(asdict(askResponse))})
 
         return askResponse
