@@ -53,7 +53,6 @@ def test_writing_bot_azure(test_repo, issue_1):
     verify_function(test_repo)
 
 
-@pytest.mark.integration
 @pytest.mark.ollama_local
 def test_writing_bot_ollama(test_repo, issue_1, ollama_local_ready):
     """Test WritingBot with Ollama Local model"""

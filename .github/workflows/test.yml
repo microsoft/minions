@@ -13,12 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-type: ["unit", "integration"]
+        # Installing ollama model in GitHub Actions runner requires significant disk space.
+        # It reduces the space available for browser-based tests
+        test-type: ["unit", "integration", "ollama_local"]
         include:
           - test-type: "unit"
             pytest-args: "-m 'unit'"
           - test-type: "integration"
             pytest-args: "-m 'integration'"
+          - test-type: "ollama_local"
+            pytest-args: "-m 'ollama_local'"
 
 
     steps:
@@ -75,16 +79,19 @@ jobs:
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
 
       - name: Check disk space before ollama installation
+        if: matrix.test-type == 'ollama_local'
         run: df -h
 
       - name: Run model
         uses: ai-action/ollama-action@v1
         id: model
+        if: matrix.test-type == 'ollama_local'
         with:
           model: qwen2.5-coder:latest
           prompt: Hi, Are you running? What is your model name?
 
       - name: Check disk space after ollama installation
+        if: matrix.test-type == 'ollama_local'
         run: df -h
 
       - name: Print response

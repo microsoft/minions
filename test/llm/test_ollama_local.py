@@ -335,7 +335,6 @@ class TestOllamaLocalAsk:
 
 
 @pytest.mark.ollama_local
-@pytest.mark.integration
 class TestOllamaLocalIntegration:
     """Integration tests that require actual Ollama server running"""
 
