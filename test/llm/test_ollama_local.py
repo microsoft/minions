@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
 from microbots.llm.ollama_local import OllamaLocal
-from microbots.llm.llm import LLMAskResponse, LLMInterface
+from microbots.llm.llm import LLMAskResponse, LLMInterface, llm_output_format_str
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 from test_constants import LOCAL_MODEL_NAME, LOCAL_MODEL_PORT
@@ -350,7 +350,7 @@ class TestOllamaLocalIntegration:
         )
 
         # Test basic ask
-        response = ollama.ask("Echo 'test' - provide response in exact JSON format")
+        response = ollama.ask(f"Echo 'test' - provide response in exact JSON format {llm_output_format_str}")
 
         assert isinstance(response, LLMAskResponse)
         assert hasattr(response, 'task_done')
