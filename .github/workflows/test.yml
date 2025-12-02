@@ -76,8 +76,23 @@ jobs:
           # Build the shell server image needed for Docker tests
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
 
-      - name: Check disk space
+      - name: Check disk space before ollama installation
         run: df -h
+
+      - name: Run model
+        uses: ai-action/ollama-action@v1
+        id: model
+        with:
+          model: qwen3:latest
+          prompt: Hi, Are you running? What is your model name?
+
+      - name: Check disk space after ollama installation
+        run: df -h
+
+      - name: Print response
+        run: echo "$response"
+        env:
+          response: ${{ steps.model.outputs.response }}
 
       - name: Run ${{ matrix.test-type }} tests
         env:
