@@ -341,7 +341,7 @@ class TestOllamaLocalIntegration:
 
     def test_ollama_local_with_server(self, ollama_local_ready):
         """Test OllamaLocal with actual Ollama server"""
-        system_prompt = "You are a helpful assistant. Respond in JSON format only."
+        system_prompt = "This is a capability test for you to check whether you can follow instructions properly."
 
         ollama = OllamaLocal(
             system_prompt=system_prompt,
@@ -350,7 +350,7 @@ class TestOllamaLocalIntegration:
         )
 
         # Test basic ask
-        response = ollama.ask(f"Echo 'test' - provide response in exact JSON format {llm_output_format_str}")
+        response = ollama.ask(f"Echo 'test' - provide a sample response in following JSON format {llm_output_format_str}")
 
         assert isinstance(response, LLMAskResponse)
         assert hasattr(response, 'task_done')
