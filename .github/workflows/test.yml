@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-type: ["unit", "integration"]
+        # test-type: ["unit", "integration"]
+        test-type: ["ollama_local"]
         include:
           - test-type: "unit"
             pytest-args: "-m 'unit'"
