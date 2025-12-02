@@ -61,6 +61,8 @@ class OllamaLocal(LLMInterface):
 
         self.messages.append({"role": "user", "content": message})
 
+        # TODO: If the retry count is maintained here, all the wrong responses from the history
+        # can be removed. It will be a natural history cleaning process.
         valid = False
         while not valid and self.retries < self.max_retries:
             response = self._send_request_to_local_model(self.messages)
