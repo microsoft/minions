@@ -118,11 +118,11 @@ class TestMicrobotIntegration:
         )
 
         response: BotRunResult = testing_bot.run(
-            "Execute tests/missing_colon.py and provide the error message",
+            "Execute tests/missing_colon.py and provide the error message. Your response should be in 'thoughts' field.",
             timeout_in_seconds=300
         )
 
-        print(f"Custom Reading Bot - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+        logger.debug(f"Custom Reading Bot - Status: {response.status}, Result: {response.result}, Error: {response.error}")
 
         assert response.status
         assert response.result is not None
@@ -142,7 +142,7 @@ class TestMicrobotIntegration:
 
         additional_mounts = Mount(
             str(log_file_path),
-            "/var/log",
+            "/var/log/",
             PermissionLabels.READ_ONLY,
             MountType.COPY,
         )
@@ -192,7 +192,7 @@ class TestMicrobotIntegration:
 
         additional_mounts = Mount(
             str(log_file_path),
-            "/var/log",
+            "/var/log/",
             PermissionLabels.READ_ONLY,
             MountType.MOUNT, # MOUNT is not supported yet
         )
