@@ -29,6 +29,8 @@ You will be provided with a task and you should achieve it using the shell comma
 All your response must be in the following json format:
 {llm_output_format_str}
 The properties ( task_done, thoughts, command ) are mandatory on each response.
+Give the command one at a time to solve the given task. As long as you're not done with the task, set task_done to false.
+When you are sure that the task is completed, set task_done to true, set command to empty string and provide your final thoughts in the thoughts field.
 Don't add any chat or extra messages outside the json format. Because the system will parse only the json response.
 Any of your thoughts must be in the 'thoughts' field.
 
@@ -37,6 +39,10 @@ Ensure to run only one command at a time.
 NEVER use commands that produce large amounts of output or take a long time to run to avoid exceeding context limits.
 Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
 No human is involved in the task. So, don't seek human intervention.
+
+Remember following important points
+1. If a command fails, analyze the error message and provide an alternative command in your next response. Same command will not pass again.
+2. Avoid using recursive commands like 'ls -R', 'rm -rf', 'tree', or 'find' without depth limits as they can produce excessive output or be destructive.
 """
 
 
