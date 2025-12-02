@@ -20,6 +20,8 @@ jobs:
             pytest-args: "-m 'unit'"
           - test-type: "integration"
             pytest-args: "-m 'integration'"
+          - test-type: "ollama_local"
+            pytest-args: "-m 'ollama_local'"
 
 
     steps:
@@ -42,7 +44,7 @@ jobs:
           python-version: "3.12"
 
       - name: Set up Docker Buildx
-        if: matrix.test-type == 'integration'
+        if: matrix.test-type != 'unit'
         uses: docker/setup-buildx-action@v3
 
       - name: Cache pip dependencies
@@ -69,7 +71,7 @@ jobs:
           pip install -e .
 
       - name: Build Docker images for integration tests
-        if: matrix.test-type == 'integration'
+        if: matrix.test-type != 'unit'
         run: |
           # Build the shell server image needed for Docker tests
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
