@@ -13,19 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # test-type: ["unit", "integration"]
-        test-type: ["ollama_local"]
+        test-type: ["unit", "integration"]
         include:
-          # - test-type: "unit"
-          #   pytest-args: "-m 'unit'"
-          # - test-type: "integration"
-          #   pytest-args: "-m 'integration'"
-          - test-type: "ollama_local"
-            pytest-args: "-m 'ollama_local'"
+          - test-type: "unit"
+            pytest-args: "-m 'unit'"
+          - test-type: "integration"
+            pytest-args: "-m 'integration'"
 
 
     steps:
 
+      # Keeping it here when we need to free up space in future
       # - name: Free up space
       #   uses: jlumbroso/free-disk-space@main
       #   with:
@@ -83,7 +81,7 @@ jobs:
         uses: ai-action/ollama-action@v1
         id: model
         with:
-          model: qwen3:latest
+          model: qwen2.5-coder:latest
           prompt: Hi, Are you running? What is your model name?
 
       - name: Check disk space after ollama installation
