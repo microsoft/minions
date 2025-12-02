@@ -56,7 +56,7 @@ def test_writing_bot_azure(test_repo, issue_1):
 @pytest.mark.integration
 @pytest.mark.ollama_local
 def test_writing_bot_ollama(test_repo, issue_1, ollama_local_ready):
-    """Test WritingBot with Ollama Local qwen3-coder:latest model"""
+    """Test WritingBot with Ollama Local model"""
     issue_text = issue_1[0] + "\nFix the syntax error in the code and ensure it runs successfully."
     verify_function = issue_1[1]
 

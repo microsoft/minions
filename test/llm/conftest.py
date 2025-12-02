@@ -84,8 +84,6 @@ def check_ollama_installed():
 def ollama_model_name():
     """
     Get the Ollama model name from environment or use default.
-
-    Set LOCAL_MODEL_NAME environment variable or use default: qwen3-coder:latest
     """
     return os.getenv("LOCAL_MODEL_NAME", LOCAL_MODEL_NAME)
 
@@ -137,6 +135,7 @@ def ensure_ollama_model_pulled(check_ollama_installed, ollama_model_name):
             )
 
         print(f"Successfully pulled model: {ollama_model_name}")
+        time.sleep(10)  # brief pause to ensure model is ready
         return True
 
     except subprocess.TimeoutExpired:
