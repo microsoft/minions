@@ -279,8 +279,7 @@ class MicroBot:
             self.llm = OllamaLocal(
                 system_prompt=self.system_prompt, model_name=self.deployment_name
             )
-        else:
-            raise ValueError(f"Unsupported model provider: {self.model_provider}")
+        # No Else case required as model provider is already validated using _validate_model_and_provider
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash
