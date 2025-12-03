@@ -118,11 +118,11 @@ class TestMicrobotIntegration:
         )
 
         response: BotRunResult = testing_bot.run(
-            "Execute tests/missing_colon.py and provide the error message",
+            "Execute tests/missing_colon.py and provide the error message. Your response should be in 'thoughts' field.",
             timeout_in_seconds=300
         )
 
-        print(f"Custom Reading Bot - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+        logger.debug(f"Custom Reading Bot - Status: {response.status}, Result: {response.result}, Error: {response.error}")
 
         assert response.status
         assert response.result is not None
@@ -142,7 +142,7 @@ class TestMicrobotIntegration:
 
         additional_mounts = Mount(
             str(log_file_path),
-            "/var/log",
+            "/var/log/",
             PermissionLabels.READ_ONLY,
             MountType.COPY,
         )
@@ -192,7 +192,7 @@ class TestMicrobotIntegration:
 
         additional_mounts = Mount(
             str(log_file_path),
-            "/var/log",
+            "/var/log/",
             PermissionLabels.READ_ONLY,
             MountType.MOUNT, # MOUNT is not supported yet
         )
@@ -233,7 +233,7 @@ class TestMicrobotIntegration:
         assert no_mount_microBot is not None
 
         def mock_ask(message: str):
-            return LLMAskResponse(command="echo 'Hello World'", task_done=False, result="")
+            return LLMAskResponse(command="echo 'Hello World'", task_done=False, thoughts="")
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -280,7 +280,7 @@ class TestMicrobotIntegration:
         assert no_mount_microBot is not None
 
         def mock_ask(message: str):
-            return LLMAskResponse(command="sleep 10", task_done=False, result="")
+            return LLMAskResponse(command="sleep 10", task_done=False, thoughts="")
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -305,14 +305,14 @@ class TestMicrobotIntegration:
             call_count[0] += 1
             if call_count[0] == 1:
                 # First call returns dangerous command
-                return LLMAskResponse(command="ls -R /path", task_done=False, result="")
+                return LLMAskResponse(command="ls -R /path", task_done=False, thoughts="")
             else:
                 # After receiving error with explanation, return safe command
                 assert "COMMAND_ERROR:" in message
                 assert "Dangerous command detected and blocked" in message
                 assert "REASON:" in message
                 assert "ALTERNATIVE:" in message
-                return LLMAskResponse(command="pwd", task_done=True, result="")
+                return LLMAskResponse(command="pwd", task_done=True, thoughts="")
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -416,7 +416,7 @@ class TestMicrobotUnit:
         """Test that dangerous commands return explanations with REASON and ALTERNATIVE."""
         bot = MicroBot.__new__(MicroBot)
         result = bot._get_dangerous_command_explanation(command)
-        
+
         if should_be_dangerous:
             assert result is not None, f"Command '{command}' should have explanation"
             assert "REASON:" in result and "ALTERNATIVE:" in result
@@ -428,7 +428,7 @@ class TestMicrobotUnit:
         """Test that dangerous command explanations have correct format with reason and alternative."""
         bot = MicroBot.__new__(MicroBot)
         explanation = bot._get_dangerous_command_explanation("ls -R")
-        
+
         assert explanation is not None
         lines = explanation.split('\n')
         assert len(lines) >= 2

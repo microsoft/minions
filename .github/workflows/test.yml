@@ -13,15 +13,30 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-type: ["unit", "integration"]
+        # Installing ollama model in GitHub Actions runner requires significant disk space.
+        # It reduces the space available for browser-based tests
+        test-type: ["unit", "integration", "ollama_local"]
         include:
           - test-type: "unit"
             pytest-args: "-m 'unit'"
           - test-type: "integration"
             pytest-args: "-m 'integration'"
+          - test-type: "ollama_local"
+            pytest-args: "-m 'ollama_local'"
 
 
     steps:
+
+      # Keeping it here when we need to free up space in future
+      # - name: Free up space
+      #   uses: jlumbroso/free-disk-space@main
+      #   with:
+      #     tool-cache: true
+      #     android: true
+      #     dotnet: true
+      #     haskell: true
+      #     large-packages: true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -31,7 +46,7 @@ jobs:
           python-version: "3.12"
 
       - name: Set up Docker Buildx
-        if: matrix.test-type == 'integration'
+        if: matrix.test-type != 'unit'
         uses: docker/setup-buildx-action@v3
 
       - name: Cache pip dependencies
@@ -58,10 +73,31 @@ jobs:
           pip install -e .
 
       - name: Build Docker images for integration tests
-        if: matrix.test-type == 'integration'
+        if: matrix.test-type != 'unit'
         run: |
           # Build the shell server image needed for Docker tests
           docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
+
+      - name: Check disk space before ollama installation
+        if: matrix.test-type == 'ollama_local'
+        run: df -h
+
+      - name: Run model
+        uses: ai-action/ollama-action@v1
+        id: model
+        if: matrix.test-type == 'ollama_local'
+        with:
+          model: qwen2.5-coder:latest
+          prompt: Hi, Are you running? What is your model name?
+
+      - name: Check disk space after ollama installation
+        if: matrix.test-type == 'ollama_local'
+        run: df -h
+
+      - name: Print response
+        run: echo "$response"
+        env:
+          response: ${{ steps.model.outputs.response }}
 
       - name: Run ${{ matrix.test-type }} tests
         env:

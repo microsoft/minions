@@ -36,8 +36,11 @@ class OpenAIApi(LLMInterface):
                 model=self.deployment_name,
                 input=self.messages,
             )
+            self.messages.append({"role": "assistant", "content": response.output_text})
             valid, askResponse = self._validate_llm_response(response=response.output_text)
 
+        # Remove last assistant message and replace with structured response
+        self.messages.pop()
         self.messages.append({"role": "assistant", "content": json.dumps(asdict(askResponse))})
 
         return askResponse

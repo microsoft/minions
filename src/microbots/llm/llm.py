@@ -5,19 +5,20 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
-@dataclass
-class LLMAskResponse:
-    task_done: bool = False
-    command: str = ""
-    result: str | None = None
 
 llm_output_format_str = """
 {
     "task_done": <bool>,  // Indicates if the task is completed
-    "command": <str>,     // The command to be executed
-    "result": <str|null>  // The result of the command execution, null if not applicable
+    "thoughts": <str>,     // The reasoning behind the decision
+    "command": <str>     // The command to be executed
 }
 """
+
+@dataclass
+class LLMAskResponse:
+    task_done: bool = False
+    thoughts: str = ""
+    command: str = ""
 
 class LLMInterface(ABC):
     @abstractmethod
@@ -75,7 +76,7 @@ class LLMInterface(ABC):
             llm_response = LLMAskResponse(
                 task_done=response_dict["task_done"],
                 command=response_dict["command"],
-                result=response_dict.get("result"),
+                thoughts=response_dict.get("thoughts"),
             )
             return True, llm_response
         else:
