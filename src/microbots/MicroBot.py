@@ -280,11 +280,11 @@ class MicroBot:
             self.llm = OllamaLocal(
                 system_prompt=self.system_prompt, model_name=self.deployment_name
             )
-        # No Else case required as model provider is already validated using _validate_model_and_provider
         elif self.model_provider == ModelProvider.ANTHROPIC:
             self.llm = AnthropicApi(
                 system_prompt=self.system_prompt, deployment_name=self.deployment_name
             )
+        # No Else case required as model provider is already validated using _validate_model_and_provider
 
     def _validate_model_and_provider(self, model):
         # Ensure it has only only slash
