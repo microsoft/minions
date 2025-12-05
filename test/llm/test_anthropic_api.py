@@ -88,7 +88,7 @@ class TestAnthropicApiAsk:
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo 'hello'",
-            "result": None
+            "thoughts": ""
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
@@ -101,7 +101,7 @@ class TestAnthropicApiAsk:
         assert isinstance(result, LLMAskResponse)
         assert result.task_done is False
         assert result.command == "echo 'hello'"
-        assert result.result is None
+        assert result.thoughts == ""
 
         # Verify retries was reset
         assert api.retries == 0
@@ -123,7 +123,7 @@ class TestAnthropicApiAsk:
         mock_content.text = json.dumps({
             "task_done": True,
             "command": "",
-            "result": "Task completed successfully"
+            "thoughts": "Task completed successfully"
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
@@ -134,7 +134,7 @@ class TestAnthropicApiAsk:
         # Verify the result
         assert result.task_done is True
         assert result.command == ""
-        assert result.result == "Task completed successfully"
+        assert result.thoughts == "Task completed successfully"
 
     def test_ask_with_retry_on_invalid_response(self):
         """Test ask method retries on invalid response then succeeds"""
@@ -152,7 +152,7 @@ class TestAnthropicApiAsk:
         mock_valid_content.text = json.dumps({
             "task_done": False,
             "command": "ls -la",
-            "result": None
+            "thoughts": ""
         })
         mock_valid_response.content = [mock_valid_content]
 
@@ -183,7 +183,7 @@ class TestAnthropicApiAsk:
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "pwd",
-            "result": None
+            "thoughts": ""
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
@@ -208,7 +208,7 @@ class TestAnthropicApiAsk:
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo test",
-            "result": None
+            "thoughts": ""
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
@@ -224,7 +224,7 @@ class TestAnthropicApiAsk:
         assistant_content = json.loads(assistant_messages[-1]["content"])
         assert assistant_content["task_done"] is False
         assert assistant_content["command"] == "echo test"
-        assert assistant_content["result"] is None
+        assert assistant_content["thoughts"] == ""
 
     def test_ask_uses_asdict_for_response(self):
         """Test that ask uses asdict to convert LLMAskResponse to dict"""
@@ -237,7 +237,7 @@ class TestAnthropicApiAsk:
         response_dict = {
             "task_done": True,
             "command": "",
-            "result": "Done"
+            "thoughts": "Done"
         }
         mock_content.text = json.dumps(response_dict)
         mock_response.content = [mock_content]
@@ -267,7 +267,7 @@ class TestAnthropicApiAsk:
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "ls",
-            "result": None
+            "thoughts": ""
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
@@ -291,7 +291,7 @@ class TestAnthropicApiAsk:
 {
     "task_done": false,
     "command": "cat file.txt",
-    "result": null
+    "thoughts": ""
 }
 ```"""
         mock_response.content = [mock_content]
@@ -395,7 +395,7 @@ class TestAnthropicApiEdgeCases:
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo ''",
-            "result": None
+            "thoughts": ""
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
@@ -418,7 +418,7 @@ class TestAnthropicApiEdgeCases:
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "pwd",
-            "result": None
+            "thoughts": ""
         })
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
