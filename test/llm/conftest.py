@@ -342,3 +342,7 @@ def pytest_configure(config):
         "markers",
         "ollama_local: mark test as requiring Ollama Local setup (deselect with '-m \"not ollama_local\"')"
     )
+    config.addinivalue_line(
+        "markers",
+        "anthropic_integration: mark test as requiring Anthropic API (deselect with '-m \"not anthropic_integration\"')"
+    )

@@ -111,6 +111,10 @@ jobs:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           BROWSER_USE_LLM_MODEL: "gpt-5"
           BROWSER_USE_LLM_TEMPERATURE: 1
+          #Anthrpic API Configuration
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_DEPLYMENT_NAME: ${{ secrets.ANTHROPIC_DEPLOYMENT_NAME }}
+          ANTHROPIC_END_POINT: ${{ secrets.ANTHROPIC_END_POINT }}
         run: |
           python -m pytest ${{ matrix.pytest-args }} \
             -n auto \

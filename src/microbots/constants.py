@@ -5,6 +5,7 @@ from pathlib import Path
 class ModelProvider(StrEnum):
     OPENAI = "azure-openai"
     OLLAMA_LOCAL = "ollama-local"
+    ANTHROPIC = "anthropic"
 
 
 class ModelEnum(StrEnum):
