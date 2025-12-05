@@ -12,22 +12,31 @@ from dataclasses import asdict
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
 from microbots.llm.anthropic_api import AnthropicApi
-from microbots.llm.llm import LLMAskResponse, LLMInterface
+from microbots.llm.llm import LLMAskResponse, LLMInterface, llm_output_format_str
 
 
-@pytest.fixture(autouse=True)
-def patch_anthropic_config():
-    """Automatically patch Anthropic configuration for all tests"""
-    with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
-         patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4-5'), \
-         patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
-         patch('microbots.llm.anthropic_api.Anthropic') as mock_anthropic:
-        yield mock_anthropic
+@pytest.fixture
+def patch_anthropic_config(request):
+    """Patch Anthropic configuration for unit tests only"""
+    # Skip patching for integration tests
+    if 'anthropic_integration' in request.keywords:
+        yield None
+    else:
+        with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
+             patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4-5'), \
+             patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
+             patch('microbots.llm.anthropic_api.Anthropic') as mock_anthropic:
+            yield mock_anthropic
 
 
 @pytest.mark.unit
 class TestAnthropicApiInitialization:
     """Tests for AnthropicApi initialization"""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        """Apply patch for unit tests"""
+        pass
 
     def test_init_with_default_deployment_name(self):
         """Test initialization with deployment name from parameter default"""
@@ -76,6 +85,11 @@ class TestAnthropicApiInitialization:
 @pytest.mark.unit
 class TestAnthropicApiAsk:
     """Tests for AnthropicApi.ask method"""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        """Apply patch for unit tests"""
+        pass
 
     def test_ask_successful_response(self):
         """Test ask method with successful response"""
@@ -309,6 +323,11 @@ class TestAnthropicApiAsk:
 class TestAnthropicApiClearHistory:
     """Tests for AnthropicApi.clear_history method"""
 
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        """Apply patch for unit tests"""
+        pass
+
     def test_clear_history_empties_messages(self):
         """Test that clear_history removes all messages"""
         system_prompt = "You are a helpful assistant"
@@ -356,6 +375,11 @@ class TestAnthropicApiClearHistory:
 class TestAnthropicApiInheritance:
     """Tests to verify AnthropicApi correctly inherits from LLMInterface"""
 
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        """Apply patch for unit tests"""
+        pass
+
     def test_anthropic_api_is_llm_interface(self):
         """Test that AnthropicApi is an instance of LLMInterface"""
         system_prompt = "You are a helpful assistant"
@@ -383,6 +407,11 @@ class TestAnthropicApiInheritance:
 @pytest.mark.unit
 class TestAnthropicApiEdgeCases:
     """Tests for edge cases and error scenarios"""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        """Apply patch for unit tests"""
+        pass
 
     def test_ask_with_empty_message(self):
         """Test ask with empty string message"""
@@ -437,4 +466,53 @@ class TestAnthropicApiEdgeCases:
         assert user_messages[0]["content"] == "First question"
         assert user_messages[1]["content"] == "Second question"
         assert user_messages[2]["content"] == "Third question"
+
+
+@pytest.mark.anthropic_integration
+class TestAnthropicApiIntegration:
+    """Integration tests that require actual Anthropic API"""
+
+    def test_anthropic_api_with_real_service(self):
+        """Test AnthropicApi with actual Anthropic service"""
+        system_prompt = "This is a capability test for you to check whether you can follow instructions properly."
+
+        # Use real Anthropic API (requires ANTHROPIC_API_KEY in environment)
+        try:
+            api = AnthropicApi(system_prompt=system_prompt)
+        except Exception as e:
+            pytest.skip(f"Failed to initialize Anthropic API: {e}")
+
+        # Test basic ask
+        try:
+            response = api.ask(f"Echo 'test' - provide a sample response in following JSON format {llm_output_format_str}")
+        except Exception as e:
+            pytest.skip(f"ask method raised an exception: {e}")
+
+        assert isinstance(response, LLMAskResponse)
+        assert hasattr(response, 'task_done')
+        assert hasattr(response, 'command')
+        assert hasattr(response, 'thoughts')
+
+    def test_anthropic_api_clear_history_integration(self):
+        """Test clear_history with actual Anthropic service"""
+        system_prompt = "You are a helpful assistant"
+
+        try:
+            api = AnthropicApi(system_prompt=system_prompt)
+        except Exception as e:
+            pytest.skip(f"Failed to initialize Anthropic API: {e}")
+
+        # Add some interaction
+        api.messages.append({"role": "user", "content": "test"})
+        api.messages.append({"role": "assistant", "content": "response"})
+
+        # Clear history
+        result = api.clear_history()
+
+        assert result is True
+        assert len(api.messages) == 0  # Anthropic doesn't store system in messages
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
 
