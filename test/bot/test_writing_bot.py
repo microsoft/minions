@@ -40,7 +40,7 @@ def test_writing_bot_azure(test_repo, issue_1):
     verify_function = issue_1[1]
 
     writingBot = WritingBot(
-        model="anthropic/claude-sonnet-4-5",
+        model="azure-openai/mini-swe-agent-gpt5",
         folder_to_mount=str(test_repo)
     )
 

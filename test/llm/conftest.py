@@ -336,7 +336,7 @@ def mock_ollama_response():
     }
 
 
-# Marker for tests that require Ollama Local
+# Marker for tests that require Ollama Local and anthropic model
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
