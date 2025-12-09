@@ -1,4 +1,5 @@
 openai==1.107.3
+anthropic==0.75.0
 python-dotenv==1.1.1
 docker==7.1.0
 fastapi==0.116.1

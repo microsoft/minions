@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from unittest.mock import patch, Mock
 
 import pytest
 # Add src directory to path to import from local source
@@ -79,6 +80,19 @@ class TestMicrobotIntegration:
         yield bot
         del bot
 
+    @pytest.fixture(scope="function")
+    def anthropic_microBot(self):
+        with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
+             patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4'), \
+             patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
+             patch('microbots.llm.anthropic_api.Anthropic'):
+            bot = MicroBot(
+                model="anthropic/claude-sonnet-4",
+                system_prompt=SYSTEM_PROMPT,
+            )
+            yield bot
+            del bot
+
     def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
         assert test_repo is not None
 
@@ -99,6 +113,15 @@ class TestMicrobotIntegration:
         del ro_microBot
 
         assert "Failed to remove working directory" not in caplog.text
+
+    def test_microbot_anthropic_initialization(self, anthropic_microBot):
+        """Test that MicroBot correctly initializes with Anthropic model provider."""
+        assert anthropic_microBot is not None
+        assert anthropic_microBot.model_provider == "anthropic"
+        assert anthropic_microBot.deployment_name == "claude-sonnet-4"
+        assert anthropic_microBot.llm is not None
+        from microbots.llm.anthropic_api import AnthropicApi
+        assert isinstance(anthropic_microBot.llm, AnthropicApi)
 
     def test_microbot_2bot_combo(self, log_file_path, test_repo, issue_1):
         assert test_repo is not None
@@ -228,6 +251,28 @@ class TestMicrobotIntegration:
                 system_prompt=SYSTEM_PROMPT,
                 folder_to_mount=test_repo_mount_ro,
             )
+
+    def test_microbot_anthropic_with_mount(self, test_repo):
+        """Test that MicroBot with Anthropic provider works with mounted folders."""
+        assert test_repo is not None
+
+        test_repo_mount_ro = Mount(
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
+        )
+        with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
+             patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4'), \
+             patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
+             patch('microbots.llm.anthropic_api.Anthropic'):
+            bot = MicroBot(
+                model="anthropic/claude-sonnet-4",
+                system_prompt=SYSTEM_PROMPT,
+                folder_to_mount=test_repo_mount_ro,
+            )
+            assert bot is not None
+            assert bot.model_provider == "anthropic"
+            from microbots.llm.anthropic_api import AnthropicApi
+            assert isinstance(bot.llm, AnthropicApi)
+            del bot
 
     def test_max_iterations_exceeded(self, no_mount_microBot, monkeypatch):
         assert no_mount_microBot is not None

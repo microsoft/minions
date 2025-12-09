@@ -336,9 +336,13 @@ def mock_ollama_response():
     }
 
 
-# Marker for tests that require Ollama Local
+# Marker for tests that require Ollama Local and anthropic model
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "ollama_local: mark test as requiring Ollama Local setup (deselect with '-m \"not ollama_local\"')"
+    )
+    config.addinivalue_line(
+        "markers",
+        "anthropic_integration: mark test as requiring Anthropic API (deselect with '-m \"not anthropic_integration\"')"
     )
