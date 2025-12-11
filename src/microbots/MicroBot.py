@@ -192,7 +192,7 @@ class MicroBot:
             logger.info("%s Step-%d %s", "-" * 20, iteration_count, "-" * 20)
             if llm_response.thoughts:
                 logger.info(
-                    f" 💭  LLM thoughts : {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
+                    f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
                 )
             logger.info(
                 f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
@@ -239,7 +239,7 @@ class MicroBot:
 
         if llm_response.thoughts:
             logger.info(
-                f" 💭  LLM final thoughts : {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
+                f" 💭  LLM final thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
             )
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.thoughts, error=None)
