@@ -226,6 +226,13 @@ class MicroBot:
 
             llm_command_output = self.environment.execute(llm_response.command)
 
+            logger.debug(
+                    " 🔧  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
+                    llm_command_output.return_code,
+                    llm_command_output.stdout,
+                    llm_command_output.stderr,
+                )
+
             if llm_command_output.return_code == 0:
                 if llm_command_output.stdout:
                     output_text = llm_command_output.stdout
