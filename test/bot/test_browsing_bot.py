@@ -14,7 +14,7 @@ load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 from microbots import BrowsingBot, BotRunResult
 
-@pytest.mark.integration
+@pytest.mark.ollama_local
 @pytest.mark.docker
 @pytest.mark.slow
 class TestBrowsingBot:

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 from microbots import LogAnalysisBot, BotRunResult
 
-@pytest.mark.integration
+@pytest.mark.ollama_local
 @pytest.mark.docker
 @pytest.mark.slow
 class TestLogAnalysisBot:
