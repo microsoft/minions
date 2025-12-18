@@ -35,7 +35,7 @@ class TestLogAnalysisBot:
     @pytest.fixture(scope="function")
     def log_analysis_bot(self, test_repo):
         log_analysis_bot = LogAnalysisBot(
-            model="azure-openai/mini-swe-agent-gpt5",
+            model="ollama-local/qwen3-coder:latest",
             folder_to_mount=str(test_repo)
         )
 
