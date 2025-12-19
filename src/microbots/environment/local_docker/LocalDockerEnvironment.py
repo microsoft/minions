@@ -32,8 +32,23 @@ class LocalDockerEnvironment(Environment):
         self.port = port  # required host port
         self.container_port = 8080
         self.deleted = False
+        self.is_ci = self._detect_ci_environment()
         self._create_working_dir()
         self.start()
+
+    def _detect_ci_environment(self) -> bool:
+        """Detect if running in a CI environment (GitHub Actions, etc.)."""
+        ci_indicators = [
+            'GITHUB_ACTIONS',  # GitHub Actions
+            'CI',              # Generic CI indicator
+            'GITLAB_CI',       # GitLab CI
+            'CIRCLECI',        # CircleCI
+            'TRAVIS',          # Travis CI
+        ]
+        is_ci = any(os.environ.get(indicator) for indicator in ci_indicators)
+        if is_ci:
+            logger.info("🔧 CI environment detected - will use copy-based mounting for read-only directories")
+        return is_ci
 
     def __del__(self):
         if hasattr(self, 'deleted') and not self.deleted:
@@ -92,7 +107,10 @@ class LocalDockerEnvironment(Environment):
         time.sleep(2)  # Give some time for the server to start
 
         if self.folder_to_mount and self.folder_to_mount.permission == PermissionLabels.READ_ONLY:
-            self._setup_overlay_mount()
+            if self.is_ci:
+                self._setup_copy_mount()
+            else:
+                self._setup_overlay_mount()
 
         if self.folder_to_mount:
             self.execute(f"cd {self.folder_to_mount.sandbox_path}")
@@ -108,11 +126,47 @@ class LocalDockerEnvironment(Environment):
             f"mkdir -p {self.folder_to_mount.sandbox_path} {DOCKER_WORKING_DIR}/overlay/{path_name}/upper {DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
             f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {self.folder_to_mount.sandbox_path}"
         )
-        self.execute(mount_command)
+        result = self.execute(mount_command)
+        
+        if result.return_code != 0:
+            logger.error(f"❌ Failed to set up overlay mount: {result.stderr}")
+            raise RuntimeError(f"Overlay mount failed with return code {result.return_code}: {result.stderr}")
+        
+        # Verify the mount point exists
+        verify_result = self.execute(f"test -d {self.folder_to_mount.sandbox_path} && echo 'exists'")
+        if verify_result.return_code != 0 or "exists" not in verify_result.stdout:
+            logger.error(f"❌ Mount point {self.folder_to_mount.sandbox_path} does not exist after mount")
+            raise RuntimeError(f"Mount point {self.folder_to_mount.sandbox_path} verification failed")
+        
         logger.info(
-            f"🔒 Set up overlay mount for read-only directory at {DOCKER_WORKING_DIR}/{path_name}"
+            f"🔒 Set up overlay mount for read-only directory at {self.folder_to_mount.sandbox_path}"
         )
         self.overlay_mount = True
+
+    def _setup_copy_mount(self):
+        """Set up a writable copy of the read-only directory for CI environments."""
+        path_name = os.path.basename(self.folder_to_mount.sandbox_path)
+        
+        # Copy the read-only directory to the writable working directory
+        copy_command = (
+            f"mkdir -p {self.folder_to_mount.sandbox_path} && "
+            f"cp -r /ro/{path_name}/. {self.folder_to_mount.sandbox_path}/"
+        )
+        result = self.execute(copy_command)
+        
+        if result.return_code != 0:
+            logger.error(f"❌ Failed to copy read-only directory: {result.stderr}")
+            raise RuntimeError(f"Copy mount failed with return code {result.return_code}: {result.stderr}")
+        
+        # Verify the directory exists and has content
+        verify_result = self.execute(f"test -d {self.folder_to_mount.sandbox_path} && echo 'exists'")
+        if verify_result.return_code != 0 or "exists" not in verify_result.stdout:
+            logger.error(f"❌ Directory {self.folder_to_mount.sandbox_path} does not exist after copy")
+            raise RuntimeError(f"Directory {self.folder_to_mount.sandbox_path} verification failed")
+        
+        logger.info(
+            f"📋 Copied read-only directory to writable location at {self.folder_to_mount.sandbox_path}"
+        )
 
     def _teardown_overlay_mount(self):
         path_name = os.path.basename(os.path.abspath(self.folder_to_mount.sandbox_path))
