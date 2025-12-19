@@ -20,11 +20,11 @@ logging.basicConfig(level=logging.INFO)
 from microbots import ReadingBot, BotRunResult
 
 @pytest.mark.ollama_local
-def test_reading_bot(test_repo, issue_1):
+def test_reading_bot(test_repo, issue_1, ollama_local_ready):
     issue_text = issue_1[0] + "\n\nPlease suggest a fix for this issue. When you suggest a fix, you must set the `task_done` field to true and set `thoughts` field with fix suggestion."
 
     readingBot = ReadingBot(
-        model="ollama-local/qwen3-coder:latest",
+        model=f"ollama-local/{ollama_local_ready['model_name']}",
         folder_to_mount=str(test_repo)
     )
 

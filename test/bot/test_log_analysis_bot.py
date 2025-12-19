@@ -33,9 +33,9 @@ class TestLogAnalysisBot:
             subprocess.run(["rm", "-rf", str(tmpdir)])
 
     @pytest.fixture(scope="function")
-    def log_analysis_bot(self, test_repo):
+    def log_analysis_bot(self, test_repo, ollama_local_ready):
         log_analysis_bot = LogAnalysisBot(
-            model="ollama-local/qwen3-coder:latest",
+            model=f"ollama-local/{ollama_local_ready['model_name']}",
             folder_to_mount=str(test_repo)
         )
 

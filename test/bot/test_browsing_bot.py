@@ -21,9 +21,9 @@ class TestBrowsingBot:
     """Integration tests for BrowsingBot functionality."""
 
     @pytest.fixture(scope="function")
-    def browsing_bot(self):
+    def browsing_bot(self, ollama_local_ready):
         """Create a BrowsingBot instance for testing."""
-        bot = BrowsingBot(model="ollama-local/qwen3-coder:latest")
+        bot = BrowsingBot(model=f"ollama-local/{ollama_local_ready['model_name']}")
         yield bot
         # Cleanup: stop the environment
         if hasattr(bot, 'environment') and bot.environment:
