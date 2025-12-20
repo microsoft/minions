@@ -173,7 +173,7 @@ EOF"""
         env = None
         test_dir_mount = Mount(
             host_path=test_dir,
-            sandbox_path=f"{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
+            sandbox_path=f"/{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
             permission="READ_WRITE"
         )
         try:
@@ -183,7 +183,7 @@ EOF"""
             )
 
             folder_name = os.path.basename(test_dir)
-            mount_path = f"{DOCKER_WORKING_DIR}/{folder_name}"
+            mount_path = f"/{DOCKER_WORKING_DIR}/{folder_name}"
 
             # Test that mounted directory is accessible
             result = env.execute(f"ls {mount_path}")
@@ -232,7 +232,7 @@ EOF"""
         env = None
         test_dir_mount = Mount(
             host_path=test_dir,
-            sandbox_path=f"{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
+            sandbox_path=f"/{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
             permission="READ_ONLY"
         )
 
@@ -243,7 +243,7 @@ EOF"""
             )
 
             folder_name = os.path.basename(test_dir)
-            mount_path = f"{DOCKER_WORKING_DIR}/{folder_name}"
+            mount_path = f"/{DOCKER_WORKING_DIR}/{folder_name}"
 
             # Test that mounted directory is accessible
             result = env.execute(f"ls {mount_path}")

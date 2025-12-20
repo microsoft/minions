@@ -58,7 +58,7 @@ class TestMicrobotIntegration:
     def ro_mount(self, test_repo: Path):
         assert test_repo is not None
         return Mount(
-            str(test_repo), f"{DOCKER_WORKING_DIR}/test-repo", PermissionLabels.READ_ONLY
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
 
     @pytest.fixture(scope="function")
