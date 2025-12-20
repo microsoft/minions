@@ -14,7 +14,7 @@ load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 from microbots import BrowsingBot, BotRunResult
 
-@pytest.mark.ollama_local
+@pytest.mark.integration
 @pytest.mark.docker
 @pytest.mark.slow
 class TestBrowsingBot:
@@ -23,7 +23,7 @@ class TestBrowsingBot:
     @pytest.fixture(scope="function")
     def browsing_bot(self, ollama_local_ready):
         """Create a BrowsingBot instance for testing."""
-        bot = BrowsingBot(model=f"ollama-local/{ollama_local_ready['model_name']}")
+        bot = BrowsingBot(model=f"azure-openai/mini-swe-agent-gpt5")
         yield bot
         # Cleanup: stop the environment
         if hasattr(bot, 'environment') and bot.environment:
