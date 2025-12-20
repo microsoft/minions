@@ -21,7 +21,7 @@ class TestBrowsingBot:
     """Integration tests for BrowsingBot functionality."""
 
     @pytest.fixture(scope="function")
-    def browsing_bot(self, ollama_local_ready):
+    def browsing_bot(self):
         """Create a BrowsingBot instance for testing."""
         bot = BrowsingBot(model=f"azure-openai/mini-swe-agent-gpt5")
         yield bot
