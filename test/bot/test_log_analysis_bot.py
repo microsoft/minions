@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 from microbots import LogAnalysisBot, BotRunResult
 
-@pytest.mark.integration
+@pytest.mark.ollama_local
 @pytest.mark.docker
 @pytest.mark.slow
 class TestLogAnalysisBot:
@@ -33,9 +33,9 @@ class TestLogAnalysisBot:
             subprocess.run(["rm", "-rf", str(tmpdir)])
 
     @pytest.fixture(scope="function")
-    def log_analysis_bot(self, test_repo):
+    def log_analysis_bot(self, test_repo, ollama_local_ready):
         log_analysis_bot = LogAnalysisBot(
-            model="azure-openai/mini-swe-agent-gpt5",
+            model=f"ollama-local/{ollama_local_ready['model_name']}",
             folder_to_mount=str(test_repo)
         )
 
@@ -65,7 +65,7 @@ class TestLogAnalysisBot:
             log_file.write(result.stderr)
 
         response: BotRunResult = log_analysis_bot.run(
-            str(log_file_path), timeout_in_seconds=300
+            str(log_file_path), timeout_in_seconds=600
         )
 
         print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")

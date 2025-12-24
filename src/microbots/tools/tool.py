@@ -225,7 +225,7 @@ def setup_tools(env: Environment, tools: List[Tool]):
             logger.debug("No setup commands provided for tool: %s", tool.name)
             continue
 
-        env.execute(f"cd /{DOCKER_WORKING_DIR}")
+        env.execute(f"cd {DOCKER_WORKING_DIR}")
 
         for command in tool.setup_commands:
             output = env.execute(command)

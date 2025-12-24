@@ -105,10 +105,18 @@ class LocalDockerEnvironment(Environment):
         path_name = os.path.basename(self.folder_to_mount.sandbox_path)
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
-            f"mkdir -p {self.folder_to_mount.sandbox_path} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
+            f"mkdir -p {self.folder_to_mount.sandbox_path} {DOCKER_WORKING_DIR}/overlay/{path_name}/upper {DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
             f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {self.folder_to_mount.sandbox_path}"
         )
-        self.execute(mount_command)
+        result = self.execute(mount_command)
+        if result.return_code != 0:
+            logger.error(
+                "❌ Failed to set up overlay mount for %s. Return code: %d, stderr: %s",
+                path_name, result.return_code, result.stderr
+            )
+            raise RuntimeError(
+                f"Failed to set up overlay mount for {path_name}: {result.stderr}"
+            )
         logger.info(
             f"🔒 Set up overlay mount for read-only directory at {DOCKER_WORKING_DIR}/{path_name}"
         )
@@ -151,6 +159,16 @@ class LocalDockerEnvironment(Environment):
             if self.overlay_mount:
                 self._teardown_overlay_mount()
 
+            # Fix ownership of files created by root in container before stopping
+            # This prevents permission errors during cleanup
+            try:
+                uid = os.getuid()
+                gid = os.getgid()
+                self.execute(f"chown -R {uid}:{gid} {DOCKER_WORKING_DIR}")
+                logger.debug(f"🔧 Fixed ownership of {DOCKER_WORKING_DIR} to {uid}:{gid}")
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to fix ownership before cleanup: {e}")
+
             self.container.stop()
             self.container.remove()
             self.container = None
@@ -159,9 +177,23 @@ class LocalDockerEnvironment(Environment):
         if os.path.exists(WORKING_DIR):
             try:
                 import shutil
-
                 shutil.rmtree(WORKING_DIR)
                 logger.info("🗑️  Removed working directory at %s", WORKING_DIR)
+            except PermissionError as e:
+                # If chown failed and we still have permission issues, use Docker to clean up
+                logger.warning("⚠️  Permission denied, using Docker for cleanup")
+                import subprocess
+                try:
+                    subprocess.run(
+                        ["docker", "run", "--rm", "-v", f"{WORKING_DIR}:/cleanup",
+                         "alpine", "rm", "-rf", "/cleanup"],
+                        check=True,
+                        capture_output=True,
+                        timeout=30
+                    )
+                    logger.info("🗑️  Removed working directory at %s using Docker", WORKING_DIR)
+                except Exception as docker_err:
+                    logger.error("❌  Failed to remove working directory: %s", docker_err)
             except Exception as e:
                 logger.error("❌  Failed to remove working directory: %s", e)
 

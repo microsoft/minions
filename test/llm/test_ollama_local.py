@@ -62,34 +62,37 @@ class TestOllamaLocalInitialization:
         """Test that initialization without model_name raises ValueError"""
         system_prompt = "You are a helpful assistant"
 
-        with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
-            OllamaLocal(
-                system_prompt=system_prompt,
-                model_name=None,
-                model_port=LOCAL_MODEL_PORT
-            )
+        with patch.dict(os.environ, {'LOCAL_MODEL_NAME': ''}, clear=False):
+            with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
+                OllamaLocal(
+                    system_prompt=system_prompt,
+                    model_name=None,
+                    model_port=LOCAL_MODEL_PORT
+                )
 
     def test_init_without_model_port_raises_error(self):
         """Test that initialization without model_port raises ValueError"""
         system_prompt = "You are a helpful assistant"
 
-        with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
-            OllamaLocal(
-                system_prompt=system_prompt,
-                model_name=LOCAL_MODEL_NAME,
-                model_port=None
-            )
+        with patch.dict(os.environ, {'LOCAL_MODEL_PORT': ''}, clear=False):
+            with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
+                OllamaLocal(
+                    system_prompt=system_prompt,
+                    model_name=LOCAL_MODEL_NAME,
+                    model_port=None
+                )
 
     def test_init_without_both_params_raises_error(self):
         """Test that initialization without both params raises ValueError"""
         system_prompt = "You are a helpful assistant"
 
-        with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
-            OllamaLocal(
-                system_prompt=system_prompt,
-                model_name=None,
-                model_port=None
-            )
+        with patch.dict(os.environ, {'LOCAL_MODEL_NAME': '', 'LOCAL_MODEL_PORT': ''}, clear=False):
+            with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
+                OllamaLocal(
+                    system_prompt=system_prompt,
+                    model_name=None,
+                    model_port=None
+                )
 
 
 @pytest.mark.unit
