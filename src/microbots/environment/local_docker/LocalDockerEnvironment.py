@@ -105,10 +105,18 @@ class LocalDockerEnvironment(Environment):
         path_name = os.path.basename(self.folder_to_mount.sandbox_path)
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
-            f"mkdir -p {self.folder_to_mount.sandbox_path} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
+            f"mkdir -p {self.folder_to_mount.sandbox_path} {DOCKER_WORKING_DIR}/overlay/{path_name}/upper {DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
             f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {self.folder_to_mount.sandbox_path}"
         )
-        self.execute(mount_command)
+        result = self.execute(mount_command)
+        if result.return_code != 0:
+            logger.error(
+                "❌ Failed to set up overlay mount for %s. Return code: %d, stderr: %s",
+                path_name, result.return_code, result.stderr
+            )
+            raise RuntimeError(
+                f"Failed to set up overlay mount for {path_name}: {result.stderr}"
+            )
         logger.info(
             f"🔒 Set up overlay mount for read-only directory at {DOCKER_WORKING_DIR}/{path_name}"
         )
