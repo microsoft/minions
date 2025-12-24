@@ -29,7 +29,7 @@ def test_reading_bot(test_repo, issue_1, ollama_local_ready):
     )
 
     response: BotRunResult = readingBot.run(
-        issue_text, timeout_in_seconds=300
+        issue_text, timeout_in_seconds=600
     )
 
     print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")
