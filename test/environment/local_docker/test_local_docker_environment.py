@@ -27,22 +27,6 @@ class TestLocalDockerEnvironmentIntegration:
             port = s.getsockname()[1]
         return port
 
-    @pytest.fixture
-    def test_dir(self):
-        """Use existing test/bot/calculator directory for testing instead of temp directory"""
-        # Get the base path of the minions project dynamically
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))  # /path/to/minions/test/environment/local_docker
-        minions_base_path = os.path.dirname(os.path.dirname(os.path.dirname(current_file_dir)))  # /path/to/minions
-        test_directory = os.path.join(minions_base_path, "test", "bot", "calculator")
-
-        # Verify the directory exists and has test files
-        assert os.path.exists(test_directory), f"Test directory {test_directory} does not exist"
-        assert os.path.exists(os.path.join(test_directory, "calculator.log")), "Test file calculator.log not found"
-        assert os.path.exists(os.path.join(test_directory, "code")), "Test code subdirectory not found"
-        assert os.path.exists(os.path.join(test_directory, "code", "calculator.py")), "Test file calculator.py not found"
-
-        return test_directory
-
     @pytest.fixture(scope="class")
     def shared_env(self, available_port):
         """Create a single LocalDockerEnvironment instance for all tests in this class"""
@@ -162,7 +146,8 @@ EOF"""
 
     @pytest.mark.integration
     @pytest.mark.docker
-    def test_read_write_mount(self, test_dir):
+    @pytest.mark.slow
+    def test_read_write_mount(self, test_repo):
         """Test READ_WRITE mount functionality - creates own env because mounting requires initialization-time config"""
         # Get a fresh port for this test since shared_env is using the class-scoped port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -171,49 +156,42 @@ EOF"""
             mount_port = s.getsockname()[1]
 
         env = None
-        test_dir_mount = Mount(
-            host_path=test_dir,
-            sandbox_path=f"/{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
+        test_repo_mount = Mount(
+            host_path=str(test_repo),
+            sandbox_path=f"{DOCKER_WORKING_DIR}/{test_repo.name}",
             permission="READ_WRITE"
         )
         try:
             env = LocalDockerEnvironment(
                 port=mount_port,
-                folder_to_mount=test_dir_mount,
+                folder_to_mount=test_repo_mount,
             )
 
-            folder_name = os.path.basename(test_dir)
-            mount_path = f"/{DOCKER_WORKING_DIR}/{folder_name}"
+            mount_path = f"{DOCKER_WORKING_DIR}/{test_repo.name}"
 
             # Test that mounted directory is accessible
             result = env.execute(f"ls {mount_path}")
             assert result.return_code == 0
-            assert "calculator.log" in result.stdout
-            assert "code" in result.stdout
-
-            # Test reading the mounted file
-            result = env.execute(f"cat {mount_path}/calculator.log")
-            assert result.return_code == 0
-            assert "Calculator application started" in result.stdout
+            assert "tests" in result.stdout
 
             # Test reading subdirectory
-            result = env.execute(f"ls {mount_path}/code")
+            result = env.execute(f"ls {mount_path}/tests")
             assert result.return_code == 0
-            assert "calculator.py" in result.stdout
+            assert "missing_colon.py" in result.stdout
 
             # Test writing to the mounted directory (should succeed with READ_WRITE)
             result = env.execute(f"echo 'new content from container' > {mount_path}/new_test_file.txt")
             assert result.return_code == 0
 
             # Verify the file was created on the host
-            new_file_path = os.path.join(test_dir, "new_test_file.txt")
-            assert os.path.exists(new_file_path)
+            new_file_path = test_repo / "new_test_file.txt"
+            assert new_file_path.exists()
             with open(new_file_path, 'r') as f:
                 content = f.read().strip()
                 assert "new content from container" in content
 
             # Clean up the created file
-            os.remove(new_file_path)
+            new_file_path.unlink()
 
         finally:
             if env:
@@ -221,7 +199,8 @@ EOF"""
 
     @pytest.mark.integration
     @pytest.mark.docker
-    def test_read_only_mount(self, test_dir):
+    @pytest.mark.slow
+    def test_read_only_mount(self, test_repo):
         """Test READ_ONLY mount with overlay functionality - creates own env because mounting requires initialization-time config"""
         # Get a fresh port for this test since shared_env is using the class-scoped port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -230,30 +209,29 @@ EOF"""
             mount_port = s.getsockname()[1]
 
         env = None
-        test_dir_mount = Mount(
-            host_path=test_dir,
-            sandbox_path=f"/{DOCKER_WORKING_DIR}/{os.path.basename(test_dir)}",
+        test_repo_mount = Mount(
+            host_path=str(test_repo),
+            sandbox_path=f"{DOCKER_WORKING_DIR}/{test_repo.name}",
             permission="READ_ONLY"
         )
 
         try:
             env = LocalDockerEnvironment(
                 port=mount_port,
-                folder_to_mount=test_dir_mount,
+                folder_to_mount=test_repo_mount,
             )
 
-            folder_name = os.path.basename(test_dir)
-            mount_path = f"/{DOCKER_WORKING_DIR}/{folder_name}"
+            mount_path = f"{DOCKER_WORKING_DIR}/{test_repo.name}"
 
             # Test that mounted directory is accessible
             result = env.execute(f"ls {mount_path}")
             assert result.return_code == 0
-            assert "calculator.log" in result.stdout
+            assert "tests" in result.stdout
 
-            # Test reading the mounted file
-            result = env.execute(f"cat {mount_path}/calculator.log")
+            # Test reading subdirectory
+            result = env.execute(f"ls {mount_path}/tests")
             assert result.return_code == 0
-            assert "Calculator application started" in result.stdout
+            assert "missing_colon.py" in result.stdout
 
             # Test writing to the mounted directory (should appear to succeed with overlay)
             result = env.execute(f"echo 'overlay content' > {mount_path}/overlay_file.txt")
@@ -265,18 +243,17 @@ EOF"""
             assert "overlay content" in result.stdout
 
             # Verify the file was NOT created on the host (read-only mount)
-            overlay_file_path = os.path.join(test_dir, "overlay_file.txt")
-            assert not os.path.exists(overlay_file_path)
+            overlay_file_path = test_repo / "overlay_file.txt"
+            assert not overlay_file_path.exists()
 
             # Test modifying existing file (should work in overlay)
-            result = env.execute(f"echo 'overlay modification' >> {mount_path}/calculator.log")
+            result = env.execute(f"echo 'overlay modification' >> {mount_path}/tests/missing_colon.py")
             assert result.return_code == 0
 
             # Verify original file on host is unchanged
-            with open(os.path.join(test_dir, "calculator.log"), 'r') as f:
+            with open(test_repo / "tests" / "missing_colon.py", 'r') as f:
                 content = f.read()
                 assert "overlay modification" not in content
-                assert "Calculator application started" in content
 
         finally:
             if env:
@@ -284,19 +261,19 @@ EOF"""
 
     @pytest.mark.integration
     @pytest.mark.docker
-    def test_copy_to_container(self, shared_env, test_dir):
+    def test_copy_to_container(self, shared_env, test_repo):
         """Test copying files from host to container using shared environment"""
         # Test copying a single file
-        source_file = os.path.join(test_dir, "calculator.log")
-        dest_dir = "/var/log/"
+        source_file = test_repo / "tests" / "missing_colon.py"
+        dest_dir = "/tmp/"
 
-        success = shared_env.copy_to_container(source_file, dest_dir)
+        success = shared_env.copy_to_container(str(source_file), dest_dir)
         assert success is True
 
         # Verify file exists and has correct content in container
-        result = shared_env.execute(f"cat {dest_dir}calculator.log")
+        result = shared_env.execute(f"cat {dest_dir}missing_colon.py")
         assert result.return_code == 0
-        assert "Calculator application started" in result.stdout
+        assert "division" in result.stdout
 
         # Test copying non-existent file
         success = shared_env.copy_to_container("/nonexistent/file.txt", "/tmp/fail.txt")

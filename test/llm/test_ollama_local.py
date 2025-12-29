@@ -58,9 +58,12 @@ class TestOllamaLocalInitialization:
         assert ollama.max_retries == 5
         assert ollama.retries == 0
 
-    def test_init_without_model_name_raises_error(self):
+    def test_init_without_model_name_raises_error(self, monkeypatch):
         """Test that initialization without model_name raises ValueError"""
         system_prompt = "You are a helpful assistant"
+        
+        # Clear environment variables
+        monkeypatch.delenv("LOCAL_MODEL_NAME", raising=False)
 
         with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
             OllamaLocal(
@@ -69,9 +72,12 @@ class TestOllamaLocalInitialization:
                 model_port=LOCAL_MODEL_PORT
             )
 
-    def test_init_without_model_port_raises_error(self):
+    def test_init_without_model_port_raises_error(self, monkeypatch):
         """Test that initialization without model_port raises ValueError"""
         system_prompt = "You are a helpful assistant"
+        
+        # Clear environment variables
+        monkeypatch.delenv("LOCAL_MODEL_PORT", raising=False)
 
         with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
             OllamaLocal(
@@ -80,9 +86,13 @@ class TestOllamaLocalInitialization:
                 model_port=None
             )
 
-    def test_init_without_both_params_raises_error(self):
+    def test_init_without_both_params_raises_error(self, monkeypatch):
         """Test that initialization without both params raises ValueError"""
         system_prompt = "You are a helpful assistant"
+        
+        # Clear environment variables
+        monkeypatch.delenv("LOCAL_MODEL_NAME", raising=False)
+        monkeypatch.delenv("LOCAL_MODEL_PORT", raising=False)
 
         with pytest.raises(ValueError, match="LOCAL_MODEL_NAME and LOCAL_MODEL_PORT"):
             OllamaLocal(

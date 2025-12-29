@@ -15,27 +15,33 @@ jobs:
       matrix:
         # Installing ollama model in GitHub Actions runner requires significant disk space.
         # It reduces the space available for browser-based tests
-        test-type: ["unit", "integration", "ollama_local"]
+        test-type: ["unit", "integration", "ollama_local", "slow-browser", "slow-other"]
         include:
           - test-type: "unit"
-            pytest-args: "-m 'unit'"
+            pytest-args: "-m 'unit and not ollama_local'"
           - test-type: "integration"
-            pytest-args: "-m 'integration'"
+            pytest-args: "-m 'integration and not ollama_local and not slow'"
           - test-type: "ollama_local"
-            pytest-args: "-m 'ollama_local'"
+            pytest-args: "-m 'ollama_local and not slow'"
+          - test-type: "slow-browser"
+            pytest-args: "-m 'slow' test/bot/test_browsing_bot.py"
+          - test-type: "slow-other"
+            pytest-args: "-m 'slow' --ignore=test/bot/test_browsing_bot.py"
 
 
     steps:
 
-      # Keeping it here when we need to free up space in future
-      # - name: Free up space
-      #   uses: jlumbroso/free-disk-space@main
-      #   with:
-      #     tool-cache: true
-      #     android: true
-      #     dotnet: true
-      #     haskell: true
-      #     large-packages: true
+      - name: Free up disk space for slow and ollama tests
+        if: matrix.test-type == 'slow-browser' || matrix.test-type == 'slow-other' || matrix.test-type == 'ollama_local'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: false
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,6 +54,15 @@ jobs:
       - name: Set up Docker Buildx
         if: matrix.test-type != 'unit'
         uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        if: matrix.test-type != 'unit'
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('src/microbots/environment/local_docker/image_builder/Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Cache pip dependencies
         uses: actions/cache@v4
@@ -76,7 +91,15 @@ jobs:
         if: matrix.test-type != 'unit'
         run: |
           # Build the shell server image needed for Docker tests
-          docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --load \
+            -f src/microbots/environment/local_docker/image_builder/Dockerfile \
+            -t kavyasree261002/shell_server:latest .
+          # Prevent cache from growing indefinitely
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Check disk space before ollama installation
         if: matrix.test-type == 'ollama_local'
@@ -115,6 +138,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_DEPLYMENT_NAME: ${{ secrets.ANTHROPIC_DEPLOYMENT_NAME }}
           ANTHROPIC_END_POINT: ${{ secrets.ANTHROPIC_END_POINT }}
+          #Local Model Configuration
+          LOCAL_MODEL_NAME: "qwen2.5-coder:latest"
+          LOCAL_MODEL_PORT: 11434
         run: |
           python -m pytest ${{ matrix.pytest-args }} \
             -n auto \
@@ -172,5 +198,28 @@ jobs:
           echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Test Type | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Integration Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Check each test result file and parse for failures
+          for test_type in unit integration ollama_local slow-browser slow-other; do
+            if [ -f "test-results-${test_type}.xml" ]; then
+              failures=$(grep -oP 'failures="\K[0-9]+' "test-results-${test_type}.xml" | head -1)
+              errors=$(grep -oP 'errors="\K[0-9]+' "test-results-${test_type}.xml" | head -1)
+              
+              if [ "${failures:-0}" -eq 0 ] && [ "${errors:-0}" -eq 0 ]; then
+                status="✅ Passed"
+              else
+                status="❌ Failed"
+              fi
+              
+              # Format test type name nicely
+              case $test_type in
+                unit) name="Unit Tests" ;;
+                integration) name="Integration Tests" ;;
+                ollama_local) name="Ollama Tests" ;;
+                slow-browser) name="Slow Browser Tests" ;;
+                slow-other) name="Slow Other Tests" ;;
+              esac
+              
+              echo "| ${name} | ${status} |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done

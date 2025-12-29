@@ -44,6 +44,7 @@ No human is involved in the task. So, don't seek human intervention.
 Remember following important points
 1. If a command fails, analyze the error message and provide an alternative command in your next response. Same command will not pass again.
 2. Avoid using recursive commands like 'ls -R', 'rm -rf', 'tree', or 'find' without depth limits as they can produce excessive output or be destructive.
+3. You cannot run any interactive commands like vim, nano, etc.
 """
 
 
