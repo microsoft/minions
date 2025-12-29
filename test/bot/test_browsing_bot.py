@@ -16,6 +16,7 @@ from microbots import BrowsingBot, BotRunResult
 
 @pytest.mark.integration
 @pytest.mark.docker
+@pytest.mark.slow  # Browser tests require Chromium installation and significant disk space
 class TestBrowsingBot:
     """Integration tests for BrowsingBot functionality."""
 
@@ -51,7 +52,6 @@ class TestBrowsingBot:
         logger.info(f"Test passed. Bot response: {response.result}")
 
 
-    @pytest.mark.slow
     # Google search may fail due to captcha, so this test may be flaky in CI environments.
     @pytest.mark.parametrize("query,expected_keywords", [
         ("Get capital of Germany from https://en.wikipedia.org/wiki/Germany", ["berlin"]),

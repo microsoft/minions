@@ -29,15 +29,17 @@ jobs:
 
     steps:
 
-      # Keeping it here when we need to free up space in future
-      # - name: Free up space
-      #   uses: jlumbroso/free-disk-space@main
-      #   with:
-      #     tool-cache: true
-      #     android: true
-      #     dotnet: true
-      #     haskell: true
-      #     large-packages: true
+      - name: Free up disk space for slow tests
+        if: matrix.test-type == 'slow' || matrix.test-type == 'ollama_local'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: false
 
       - name: Checkout code
         uses: actions/checkout@v4
