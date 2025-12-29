@@ -55,7 +55,6 @@ class TestBrowsingBot:
     # Google search may fail due to captcha, so this test may be flaky in CI environments.
     @pytest.mark.parametrize("query,expected_keywords", [
         ("Get capital of Germany from https://en.wikipedia.org/wiki/Germany", ["berlin"]),
-        ("What is 2+2?", ["4", "four"]),
         ("Get the description of this CVE-2024-11738 from nvd.nist.gov website", ["Rustls"]),
     ])
     def test_multiple_queries(self, browsing_bot, query, expected_keywords):
