@@ -87,9 +87,10 @@ jobs:
         if: matrix.test-type != 'unit'
         run: |
           # Build the shell server image needed for Docker tests
-          docker build \
+          docker buildx build \
             --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --load \
             -f src/microbots/environment/local_docker/image_builder/Dockerfile \
             -t kavyasree261002/shell_server:latest .
           # Prevent cache from growing indefinitely
