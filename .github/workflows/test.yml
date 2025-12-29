@@ -219,11 +219,6 @@ jobs:
                 slow-browser) name="Slow Browser Tests" ;;
                 slow-other) name="Slow Other Tests" ;;
               esac
-                unit) name="Unit Tests" ;;
-                integration) name="Integration Tests" ;;
-                ollama_local) name="Ollama Tests" ;;
-                slow) name="Slow Tests" ;;
-              esac
               
               echo "| ${name} | ${status} |" >> $GITHUB_STEP_SUMMARY
             fi
