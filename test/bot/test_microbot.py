@@ -42,6 +42,16 @@ You must send `task_done` as true only when you have completed the task. It mean
 """
 
 
+@pytest.fixture(scope="function")
+def no_mount_microBot():
+    bot = MicroBot(
+        model="ollama-local/qwen2.5-coder",
+        system_prompt=SYSTEM_PROMPT,
+    )
+    yield bot
+    del bot
+
+
 @pytest.mark.integration
 @pytest.mark.docker
 @pytest.mark.slow
@@ -64,18 +74,9 @@ class TestMicrobotIntegration:
     @pytest.fixture(scope="function")
     def ro_microBot(self, ro_mount: Mount):
         bot = MicroBot(
-            model="azure-openai/mini-swe-agent-gpt5",
+            model="ollama-local/qwen2.5-coder",
             system_prompt=SYSTEM_PROMPT,
             folder_to_mount=ro_mount,
-        )
-        yield bot
-        del bot
-
-    @pytest.fixture(scope="function")
-    def no_mount_microBot(self):
-        bot = MicroBot(
-            model="azure-openai/mini-swe-agent-gpt5",
-            system_prompt=SYSTEM_PROMPT,
         )
         yield bot
         del bot
@@ -93,6 +94,7 @@ class TestMicrobotIntegration:
             yield bot
             del bot
 
+    @pytest.mark.ollama_local
     def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
         assert test_repo is not None
 
@@ -106,6 +108,7 @@ class TestMicrobotIntegration:
         assert result.return_code == 0
         assert "missing_colon.py" in result.stdout
 
+    @pytest.mark.ollama_local
     def test_microbot_overlay_teardown(self, ro_microBot, caplog):
         caplog.clear()
         caplog.set_level(logging.INFO)
@@ -182,76 +185,6 @@ class TestMicrobotIntegration:
 
         verify_function(test_repo)
 
-    def test_incorrect_code_mount_type(self, log_file_path, test_repo):
-        assert test_repo is not None
-        assert log_file_path is not None
-
-        test_repo_mount_ro = Mount(
-            str(test_repo),
-            f"{DOCKER_WORKING_DIR}/{test_repo.name}",
-            PermissionLabels.READ_ONLY,
-            MountType.COPY,
-        )
-
-        with pytest.raises(ValueError, match="Only MOUNT mount type is supported for folder_to_mount"):
-            testing_bot = MicroBot(
-                model="azure-openai/mini-swe-agent-gpt5",
-                system_prompt=SYSTEM_PROMPT,
-                folder_to_mount=test_repo_mount_ro,
-            )
-
-    def test_incorrect_copy_mount_type(self, log_file_path, test_repo):
-        assert test_repo is not None
-        assert log_file_path is not None
-
-        test_repo_mount_ro = Mount(
-            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
-        )
-        testing_bot = MicroBot(
-            model="azure-openai/mini-swe-agent-gpt5",
-            system_prompt=SYSTEM_PROMPT,
-            folder_to_mount=test_repo_mount_ro,
-        )
-
-        additional_mounts = Mount(
-            str(log_file_path),
-            "/var/log/",
-            PermissionLabels.READ_ONLY,
-            MountType.MOUNT, # MOUNT is not supported yet
-        )
-        with pytest.raises(ValueError, match="Only COPY mount type is supported for additional mounts for now"):
-            testing_bot.run(
-                "Execute tests/missing_colon.py and provide the error message",
-                additional_mounts=[additional_mounts],
-                timeout_in_seconds=300
-            )
-
-    def test_incorrect_model_provider(self, test_repo):
-        assert test_repo is not None
-
-        test_repo_mount_ro = Mount(
-            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
-        )
-        with pytest.raises(ValueError, match="Unsupported model provider: provider"):
-            MicroBot(
-                model="provider/invalidmodelname",
-                system_prompt=SYSTEM_PROMPT,
-                folder_to_mount=test_repo_mount_ro,
-            )
-
-    def test_incorrect_model_format(self, test_repo):
-        assert test_repo is not None
-
-        test_repo_mount_ro = Mount(
-            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
-        )
-        with pytest.raises(ValueError, match="Model should be in the format <provider>/<model_name>"):
-            MicroBot(
-                model="invalidmodelname",
-                system_prompt=SYSTEM_PROMPT,
-                folder_to_mount=test_repo_mount_ro,
-            )
-
     def test_microbot_anthropic_with_mount(self, test_repo):
         """Test that MicroBot with Anthropic provider works with mounted folders."""
         assert test_repo is not None
@@ -274,25 +207,61 @@ class TestMicrobotIntegration:
             assert isinstance(bot.llm, AnthropicApi)
             del bot
 
-    def test_max_iterations_exceeded(self, no_mount_microBot, monkeypatch):
-        assert no_mount_microBot is not None
 
-        def mock_ask(message: str):
-            return LLMAskResponse(command="echo 'Hello World'", task_done=False, thoughts="")
+@pytest.mark.unit
+class TestMicrobotUnit:
+    """Unit tests for MicroBot command safety validation."""
 
-        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
-
-        response: BotRunResult = no_mount_microBot.run(
-            "This is a test to check max iterations handling.",
-            timeout_in_seconds=120,
-            max_iterations=3
+    def test_incorrect_code_mount_type(self):
+        """Test that ValueError is raised when folder_to_mount uses COPY mount type."""
+        invalid_mount = Mount(
+            "/dummy/path",
+            f"{DOCKER_WORKING_DIR}/test",
+            PermissionLabels.READ_ONLY,
+            MountType.COPY,  # COPY is not supported for folder_to_mount
         )
 
-        print(f"Max Iterations Test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+        with pytest.raises(ValueError, match="Only MOUNT mount type is supported for folder_to_mount"):
+            MicroBot(
+                model="ollama-local/qwen2.5-coder",
+                system_prompt=SYSTEM_PROMPT,
+                folder_to_mount=invalid_mount,
+            )
 
-        assert not response.status
-        assert response.error == "Max iterations 3 reached"
+    @pytest.mark.ollama_local
+    def test_incorrect_copy_mount_type(self, no_mount_microBot):
+        """Test that ValueError is raised when additional_mounts uses MOUNT mount type."""
+        invalid_additional_mount = Mount(
+            "/dummy/log/file.txt",
+            "/var/log/file.txt",
+            PermissionLabels.READ_ONLY,
+            MountType.MOUNT,  # MOUNT is not supported for additional_mounts
+        )
 
+        with pytest.raises(ValueError, match="Only COPY mount type is supported for additional mounts for now"):
+            no_mount_microBot.run(
+                "Test task",
+                additional_mounts=[invalid_additional_mount],
+                timeout_in_seconds=60
+            )
+
+    def test_incorrect_model_provider(self):
+        """Test that ValueError is raised for unsupported model providers."""
+        with pytest.raises(ValueError, match="Unsupported model provider: unsupported-provider"):
+            MicroBot(
+                model="unsupported-provider/some-model",
+                system_prompt=SYSTEM_PROMPT,
+            )
+
+    def test_incorrect_model_format(self):
+        """Test that ValueError is raised for incorrectly formatted model strings."""
+        with pytest.raises(ValueError, match="Model should be in the format <provider>/<model_name>"):
+            MicroBot(
+                model="invalidmodelname",
+                system_prompt=SYSTEM_PROMPT,
+            )
+
+    @pytest.mark.ollama_local
     def test_invalid_max_iterations(self, no_mount_microBot):
         """Test that ValueError is raised for invalid max_iterations values"""
         assert no_mount_microBot is not None
@@ -321,6 +290,27 @@ class TestMicrobotIntegration:
             )
         assert "max_iterations must be greater than 0" in str(exc_info.value)
 
+    @pytest.mark.ollama_local
+    def test_max_iterations_exceeded(self, no_mount_microBot, monkeypatch):
+        assert no_mount_microBot is not None
+
+        def mock_ask(message: str):
+            return LLMAskResponse(command="echo 'Hello World'", task_done=False, thoughts="")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "This is a test to check max iterations handling.",
+            timeout_in_seconds=120,
+            max_iterations=3
+        )
+
+        print(f"Max Iterations Test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+
+        assert not response.status
+        assert response.error == "Max iterations 3 reached"
+
+    @pytest.mark.ollama_local
     def test_timeout_handling(self, no_mount_microBot, monkeypatch):
         assert no_mount_microBot is not None
 
@@ -340,6 +330,7 @@ class TestMicrobotIntegration:
         assert not response.status
         assert response.error == "Timeout of 5 seconds reached"
 
+    @pytest.mark.ollama_local
     def test_dangerous_command_blocking(self, no_mount_microBot, monkeypatch, caplog):
         """Test that dangerous commands are blocked and LLM receives detailed explanation."""
         caplog.set_level(logging.INFO)
@@ -374,11 +365,6 @@ class TestMicrobotIntegration:
 
         # Verify task completed after providing safe command
         assert response.status
-
-
-@pytest.mark.unit
-class TestMicrobotUnit:
-    """Unit tests for MicroBot command safety validation."""
 
     @pytest.mark.parametrize("command,expected_safe", [
         # Dangerous: Recursive ls commands

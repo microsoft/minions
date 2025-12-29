@@ -18,9 +18,9 @@ jobs:
         test-type: ["unit", "integration", "ollama_local"]
         include:
           - test-type: "unit"
-            pytest-args: "-m 'unit'"
+            pytest-args: "-m 'unit and not ollama_local'"
           - test-type: "integration"
-            pytest-args: "-m 'integration'"
+            pytest-args: "-m 'integration and not ollama_local'"
           - test-type: "ollama_local"
             pytest-args: "-m 'ollama_local'"
 
@@ -115,6 +115,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_DEPLYMENT_NAME: ${{ secrets.ANTHROPIC_DEPLOYMENT_NAME }}
           ANTHROPIC_END_POINT: ${{ secrets.ANTHROPIC_END_POINT }}
+          #Local Model Configuration
+          LOCAL_MODEL_NAME: "qwen2.5-coder:latest"
+          LOCAL_MODEL_PORT: 11434
         run: |
           python -m pytest ${{ matrix.pytest-args }} \
             -n auto \
