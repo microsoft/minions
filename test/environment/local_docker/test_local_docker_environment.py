@@ -146,6 +146,7 @@ EOF"""
 
     @pytest.mark.integration
     @pytest.mark.docker
+    @pytest.mark.slow
     def test_read_write_mount(self, test_repo):
         """Test READ_WRITE mount functionality - creates own env because mounting requires initialization-time config"""
         # Get a fresh port for this test since shared_env is using the class-scoped port
@@ -157,7 +158,7 @@ EOF"""
         env = None
         test_repo_mount = Mount(
             host_path=str(test_repo),
-            sandbox_path=f"/{DOCKER_WORKING_DIR}/{test_repo.name}",
+            sandbox_path=f"{DOCKER_WORKING_DIR}/{test_repo.name}",
             permission="READ_WRITE"
         )
         try:
@@ -166,7 +167,7 @@ EOF"""
                 folder_to_mount=test_repo_mount,
             )
 
-            mount_path = f"/{DOCKER_WORKING_DIR}/{test_repo.name}"
+            mount_path = f"{DOCKER_WORKING_DIR}/{test_repo.name}"
 
             # Test that mounted directory is accessible
             result = env.execute(f"ls {mount_path}")
@@ -198,6 +199,7 @@ EOF"""
 
     @pytest.mark.integration
     @pytest.mark.docker
+    @pytest.mark.slow
     def test_read_only_mount(self, test_repo):
         """Test READ_ONLY mount with overlay functionality - creates own env because mounting requires initialization-time config"""
         # Get a fresh port for this test since shared_env is using the class-scoped port
@@ -209,7 +211,7 @@ EOF"""
         env = None
         test_repo_mount = Mount(
             host_path=str(test_repo),
-            sandbox_path=f"/{DOCKER_WORKING_DIR}/{test_repo.name}",
+            sandbox_path=f"{DOCKER_WORKING_DIR}/{test_repo.name}",
             permission="READ_ONLY"
         )
 
@@ -219,7 +221,7 @@ EOF"""
                 folder_to_mount=test_repo_mount,
             )
 
-            mount_path = f"/{DOCKER_WORKING_DIR}/{test_repo.name}"
+            mount_path = f"{DOCKER_WORKING_DIR}/{test_repo.name}"
 
             # Test that mounted directory is accessible
             result = env.execute(f"ls {mount_path}")
