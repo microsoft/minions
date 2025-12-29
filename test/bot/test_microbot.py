@@ -54,7 +54,6 @@ def no_mount_microBot():
 
 @pytest.mark.integration
 @pytest.mark.docker
-@pytest.mark.slow
 class TestMicrobotIntegration:
 
     @pytest.fixture(scope="function")
@@ -126,6 +125,7 @@ class TestMicrobotIntegration:
         from microbots.llm.anthropic_api import AnthropicApi
         assert isinstance(anthropic_microBot.llm, AnthropicApi)
 
+    @pytest.mark.slow
     def test_microbot_2bot_combo(self, log_file_path, test_repo, issue_1):
         assert test_repo is not None
         assert log_file_path is not None

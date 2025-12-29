@@ -34,6 +34,7 @@ logging.basicConfig(level=logging.INFO)
 from microbots import WritingBot, BotRunResult
 
 @pytest.mark.integration
+@pytest.mark.slow
 def test_writing_bot_azure(test_repo, issue_1):
     """Test WritingBot with Azure OpenAI model"""
     issue_text = issue_1[0]
@@ -54,6 +55,7 @@ def test_writing_bot_azure(test_repo, issue_1):
 
 
 @pytest.mark.ollama_local
+@pytest.mark.slow
 def test_writing_bot_ollama(test_repo, issue_1, ollama_local_ready):
     """Test WritingBot with Ollama Local model"""
     issue_text = issue_1[0] + "\nFix the syntax error in the code and ensure it runs successfully."

@@ -22,7 +22,7 @@ from microbots import LogAnalysisBot, BotRunResult
 
 @pytest.mark.integration
 @pytest.mark.docker
-@pytest.mark.slow
+
 class TestLogAnalysisBot:
 
     @pytest.fixture(scope="function")
@@ -48,6 +48,7 @@ class TestLogAnalysisBot:
             except Exception as e:
                 logger.warning(f"Error stopping environment: {e}")
 
+    @pytest.mark.slow
     def test_log_analysis_bot(self, log_analysis_bot, log_file_path, test_repo, issue_1):
         assert log_analysis_bot is not None
 

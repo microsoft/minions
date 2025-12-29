@@ -20,6 +20,7 @@ logging.basicConfig(level=logging.INFO)
 from microbots import ReadingBot, BotRunResult
 
 @pytest.mark.integration
+@pytest.mark.slow
 def test_reading_bot(test_repo, issue_1):
     issue_text = issue_1[0] + "\n\nPlease suggest a fix for this issue. When you suggest a fix, you must set the `task_done` field to true and set `thoughts` field with fix suggestion."
 

@@ -15,14 +15,16 @@ jobs:
       matrix:
         # Installing ollama model in GitHub Actions runner requires significant disk space.
         # It reduces the space available for browser-based tests
-        test-type: ["unit", "integration", "ollama_local"]
+        test-type: ["unit", "integration", "ollama_local", "slow"]
         include:
           - test-type: "unit"
             pytest-args: "-m 'unit and not ollama_local'"
           - test-type: "integration"
-            pytest-args: "-m 'integration and not ollama_local'"
+            pytest-args: "-m 'integration and not ollama_local and not slow'"
           - test-type: "ollama_local"
-            pytest-args: "-m 'ollama_local'"
+            pytest-args: "-m 'ollama_local and not slow'"
+          - test-type: "slow"
+            pytest-args: "-m 'slow'"
 
 
     steps:
@@ -48,6 +50,15 @@ jobs:
       - name: Set up Docker Buildx
         if: matrix.test-type != 'unit'
         uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        if: matrix.test-type != 'unit'
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('src/microbots/environment/local_docker/image_builder/Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Cache pip dependencies
         uses: actions/cache@v4
@@ -76,7 +87,14 @@ jobs:
         if: matrix.test-type != 'unit'
         run: |
           # Build the shell server image needed for Docker tests
-          docker build -f src/microbots/environment/local_docker/image_builder/Dockerfile -t kavyasree261002/shell_server:latest .
+          docker build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            -f src/microbots/environment/local_docker/image_builder/Dockerfile \
+            -t kavyasree261002/shell_server:latest .
+          # Prevent cache from growing indefinitely
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Check disk space before ollama installation
         if: matrix.test-type == 'ollama_local'
@@ -130,7 +148,7 @@ jobs:
             --junitxml=test-results-${{ matrix.test-type }}.xml \
             -v \
             -o log_cli=true \
-            -o log_cli_level=DEBUG \
+            -o log_cli_level=INFO \
             -o log_cli_format="%(asctime)s [%(levelname)s] %(name)s: %(message)s" \
             -o log_cli_date_format="%Y-%m-%d %H:%M:%S"
 
