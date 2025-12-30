@@ -86,3 +86,35 @@ class TestLogAnalysisBot:
             )
 
         logger.info("Successfully caught expected ValueError for nonexistent log file")
+
+    @pytest.mark.slow
+    def test_log_analysis_bot_max_iterations(self, log_analysis_bot, log_file_path, test_repo, issue_1):
+        """Test that max_iterations parameter limits the number of iterations"""
+        assert log_analysis_bot is not None
+
+        run_function = issue_1[2]
+
+        try:
+            result = run_function(test_repo)
+        except Exception as e:
+            pytest.fail(f"Failed to run function to generate logs: {e}")
+
+        assert result.returncode != 0
+        assert result.stderr is not None
+
+        with open(log_file_path, "w") as log_file:
+            log_file.write(result.stderr)
+
+        # Run with a very low max_iterations to force it to hit the limit
+        response: BotRunResult = log_analysis_bot.run(
+            str(log_file_path), max_iterations=2, timeout_in_seconds=300
+        )
+
+        print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")
+
+        # Should fail due to max iterations being reached
+        assert response.status is False
+        assert response.error is not None
+        assert "Max iterations 2 reached" in response.error
+
+        logger.info("Successfully verified max_iterations parameter limits execution")

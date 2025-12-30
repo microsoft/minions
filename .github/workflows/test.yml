@@ -136,7 +136,7 @@ jobs:
           BROWSER_USE_LLM_TEMPERATURE: 1
           #Anthrpic API Configuration
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_DEPLYMENT_NAME: ${{ secrets.ANTHROPIC_DEPLOYMENT_NAME }}
+          ANTHROPIC_DEPLOYMENT_NAME: ${{ secrets.ANTHROPIC_DEPLOYMENT_NAME }}
           ANTHROPIC_END_POINT: ${{ secrets.ANTHROPIC_END_POINT }}
           #Local Model Configuration
           LOCAL_MODEL_NAME: "qwen2.5-coder:latest"
