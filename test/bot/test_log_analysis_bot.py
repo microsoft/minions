@@ -34,9 +34,9 @@ class TestLogAnalysisBot:
 
     @pytest.fixture(scope="function")
     def log_analysis_bot(self, test_repo):
+        model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}"
         log_analysis_bot = LogAnalysisBot(
-            model="azure-openai/mini-swe-agent-gpt5",
-            folder_to_mount=str(test_repo)
+            model=model,
         )
 
         yield log_analysis_bot

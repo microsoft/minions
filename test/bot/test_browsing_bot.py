@@ -23,7 +23,8 @@ class TestBrowsingBot:
     @pytest.fixture(scope="function")
     def browsing_bot(self):
         """Create a BrowsingBot instance for testing."""
-        bot = BrowsingBot(model="azure-openai/mini-swe-agent-gpt5")
+        model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}"
+        bot = BrowsingBot(model=model)
         yield bot
         # Cleanup: stop the environment
         if hasattr(bot, 'environment') and bot.environment:

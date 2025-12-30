@@ -44,8 +44,9 @@ You must send `task_done` as true only when you have completed the task. It mean
 
 @pytest.fixture(scope="function")
 def no_mount_microBot():
+    local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
     bot = MicroBot(
-        model="ollama-local/qwen2.5-coder",
+        model=f"ollama-local/{local_model}",
         system_prompt=SYSTEM_PROMPT,
     )
     yield bot
@@ -72,8 +73,9 @@ class TestMicrobotIntegration:
 
     @pytest.fixture(scope="function")
     def ro_microBot(self, ro_mount: Mount):
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
         bot = MicroBot(
-            model="ollama-local/qwen2.5-coder",
+            model=f"ollama-local/{local_model}",
             system_prompt=SYSTEM_PROMPT,
             folder_to_mount=ro_mount,
         )
@@ -82,12 +84,13 @@ class TestMicrobotIntegration:
 
     @pytest.fixture(scope="function")
     def anthropic_microBot(self):
+        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4')
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
-             patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4'), \
+             patch('microbots.llm.anthropic_api.deployment_name', anthropic_deployment), \
              patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
              patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
-                model="anthropic/claude-sonnet-4",
+                model=f"anthropic/{anthropic_deployment}",
                 system_prompt=SYSTEM_PROMPT,
             )
             yield bot
@@ -137,8 +140,9 @@ class TestMicrobotIntegration:
             f"{DOCKER_WORKING_DIR}/{test_repo.name}",
             PermissionLabels.READ_ONLY
         )
+        model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}"
         testing_bot = MicroBot(
-            model="azure-openai/mini-swe-agent-gpt5",
+            model=model,
             system_prompt=SYSTEM_PROMPT,
             folder_to_mount=test_repo_mount_ro,
         )
@@ -160,8 +164,9 @@ class TestMicrobotIntegration:
         test_repo_mount_rw = Mount(
             str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_WRITE
         )
+        model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}"
         coding_bot = MicroBot(
-            model="azure-openai/mini-swe-agent-gpt5",
+            model=model,
             system_prompt=SYSTEM_PROMPT,
             folder_to_mount=test_repo_mount_rw,
         )
@@ -192,12 +197,13 @@ class TestMicrobotIntegration:
         test_repo_mount_ro = Mount(
             str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
+        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4')
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
-             patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4'), \
+             patch('microbots.llm.anthropic_api.deployment_name', anthropic_deployment), \
              patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
              patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
-                model="anthropic/claude-sonnet-4",
+                model=f"anthropic/{anthropic_deployment}",
                 system_prompt=SYSTEM_PROMPT,
                 folder_to_mount=test_repo_mount_ro,
             )
@@ -221,9 +227,10 @@ class TestMicrobotUnit:
             MountType.COPY,  # COPY is not supported for folder_to_mount
         )
 
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
         with pytest.raises(ValueError, match="Only MOUNT mount type is supported for folder_to_mount"):
             MicroBot(
-                model="ollama-local/qwen2.5-coder",
+                model=f"ollama-local/{local_model}",
                 system_prompt=SYSTEM_PROMPT,
                 folder_to_mount=invalid_mount,
             )
