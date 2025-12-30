@@ -1,3 +1,4 @@
+import json
 from pprint import pformat
 import re
 import time
@@ -196,7 +197,7 @@ class MicroBot:
                     f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
                 )
             logger.info(
-                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{pformat(llm_response.command)}{LogTextColor.ENDC}",
+                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
             )
             # increment iteration count
             iteration_count += 1
@@ -237,6 +238,13 @@ class MicroBot:
             if llm_command_output.return_code == 0:
                 if llm_command_output.stdout:
                     output_text = llm_command_output.stdout
+                    # HACK: anthropic-text-editor tool extra formats the output
+                    try:
+                        output_json = json.loads(llm_command_output.stdout)
+                        if "content" in output_json:
+                            output_text = pformat(output_json["content"])
+                    except json.JSONDecodeError:
+                        pass
                 else:
                     output_text = f"Command executed successfully with no output\nreturn code: {llm_command_output.return_code}\nstdout: {llm_command_output.stdout}\nstderr: {llm_command_output.stderr}"
             else:
@@ -287,7 +295,7 @@ class MicroBot:
             for tool in self.additional_tools:
                 if tool.usage_instructions_to_llm:
                     system_prompt_with_tools += f"\n\n{tool.usage_instructions_to_llm}"
-        
+
         if self.model_provider == ModelProvider.OPENAI:
             self.llm = OpenAIApi(
                 system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
