@@ -191,6 +191,10 @@ class MicroBot:
 
         while llm_response.task_done is False:
             logger.info("%s Step-%d %s", "-" * 20, iteration_count, "-" * 20)
+            if llm_response.thoughts:
+                logger.info(
+                    f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
+                )
             logger.info(
                 f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
             )
@@ -223,8 +227,8 @@ class MicroBot:
 
             llm_command_output = self.environment.execute(llm_response.command)
 
-            logger.info(
-                    " ⬅️  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
+            logger.debug(
+                    " 🔧  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
                     llm_command_output.return_code,
                     llm_command_output.stdout,
                     llm_command_output.stderr,
@@ -238,9 +242,13 @@ class MicroBot:
             else:
                 output_text = f"COMMAND EXECUTION FAILED\nreturn code: {llm_command_output.return_code}\nstdout: {llm_command_output.stdout}\nstderr: {llm_command_output.stderr}"
 
-            logger.info("📨  Message to LLM:\n%s", output_text)
+            logger.info(" ⬅️  Command output:\n%s", output_text)
             llm_response = self.llm.ask(output_text)
 
+        if llm_response.thoughts:
+            logger.info(
+                f" 💭  LLM final thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
+            )
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.thoughts, error=None)
 
