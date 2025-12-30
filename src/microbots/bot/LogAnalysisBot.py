@@ -46,7 +46,7 @@ Only when you have run all necessary commands and identified the root cause, you
             folder_to_mount=folder_mount_info,
         )
 
-    def run(self, file_name: str, timeout_in_seconds: int = 300) -> any:
+    def run(self, file_name: str, max_iterations: int = 20, timeout_in_seconds: int = 300) -> any:
 
         # Add the logic to copy the file from the user path to /var/log path in container
         file_mount_info = Mount(
@@ -62,5 +62,6 @@ Only when you have run all necessary commands and identified the root cause, you
         return super().run(
             task=file_name_prompt,
             additional_mounts=[file_mount_info],
+            max_iterations=max_iterations,
             timeout_in_seconds=timeout_in_seconds
         )

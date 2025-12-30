@@ -39,9 +39,9 @@ def test_writing_bot_azure(test_repo, issue_1):
     """Test WritingBot with Azure OpenAI model"""
     issue_text = issue_1[0]
     verify_function = issue_1[1]
-
+    model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}"
     writingBot = WritingBot(
-        model="azure-openai/mini-swe-agent-gpt5",
+        model=model,
         folder_to_mount=str(test_repo)
     )
 
