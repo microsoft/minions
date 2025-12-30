@@ -123,7 +123,7 @@ class TestMicrobotIntegration:
         """Test that MicroBot correctly initializes with Anthropic model provider."""
         assert anthropic_microBot is not None
         assert anthropic_microBot.model_provider == "anthropic"
-        assert anthropic_microBot.deployment_name == "claude-sonnet-4"
+        assert anthropic_microBot.deployment_name == "claude-sonnet-4-5"
         assert anthropic_microBot.llm is not None
         from microbots.llm.anthropic_api import AnthropicApi
         assert isinstance(anthropic_microBot.llm, AnthropicApi)
