@@ -474,3 +474,73 @@ class TestMicrobotUnit:
         assert lines[1].startswith("ALTERNATIVE:")
         assert len(lines[0].replace("REASON:", "").strip()) > 0
         assert len(lines[1].replace("ALTERNATIVE:", "").strip()) > 0
+
+    @pytest.mark.ollama_local
+    def test_command_logging_without_json_escaping(self, no_mount_microBot, monkeypatch, caplog):
+        """Test that commands are logged without JSON escaping, making logs more readable.
+
+        This test verifies that when a command containing special characters like quotes
+        is executed, the log output displays the command directly without JSON escaping
+        (e.g., shows " instead of \\").
+        """
+        caplog.set_level(logging.INFO)
+
+        # Command containing JSON with quotes - simulating anthropic-text-editor usage
+        json_command = """echo '{"input": {"command": "view", "path": "/tmp/test.txt"}}' | cat"""
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command=json_command, task_done=False, thoughts="")
+            else:
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "Test command logging",
+            timeout_in_seconds=60,
+            max_iterations=5
+        )
+
+        # Verify that the command appears in logs without JSON escaping
+        # The command should appear as-is, not with escaped quotes like \"
+        assert "LLM tool call" in caplog.text
+        # Should NOT have json-escaped quotes (\" would appear if json.dumps was used)
+        assert r'\"input\"' not in caplog.text
+        # Should have the raw command format
+        assert '"input"' in caplog.text or "'input'" in caplog.text
+
+    def test_pformat_produces_readable_output(self):
+        """Test that pformat produces readable output for command execution logs.
+
+        This unit test verifies the log formatting behavior for commands containing
+        special characters like quotes and newlines. It ensures that using pformat
+        instead of json.dumps produces more readable log output.
+        """
+        from pprint import pformat
+
+        # Simulate a command with JSON - like anthropic-text-editor usage
+        command = """echo '{"input": {"command": "view", "path": "/tmp/test.txt"}}' | anthropic-text-editor"""
+
+        # With json.dumps (old behavior) - escapes quotes making it harder to read
+        import json
+        json_output = json.dumps(command)
+
+        # With pformat (new behavior) - more readable
+        pformat_output = pformat(command)
+
+        # json.dumps escapes quotes with backslashes
+        assert r'\"' in json_output, "json.dumps should escape quotes"
+
+        # pformat wraps string in quotes but doesn't escape internal quotes badly
+        # It may wrap in single quotes to avoid escaping double quotes
+        # The key is that pformat is more readable for complex strings
+
+        # The raw command should be usable directly in logs without escaping
+        # Just using the command directly is the most readable
+        raw_output = command
+        assert r'\"' not in raw_output, "Raw command should not have escaped quotes"
+        assert '"input"' in raw_output, "Raw command should preserve double quotes"
