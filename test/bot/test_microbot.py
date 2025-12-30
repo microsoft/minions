@@ -535,9 +535,9 @@ class TestMicrobotUnit:
         # json.dumps escapes quotes with backslashes
         assert r'\"' in json_output, "json.dumps should escape quotes"
 
-        # pformat wraps string in quotes but doesn't escape internal quotes badly
-        # It may wrap in single quotes to avoid escaping double quotes
-        # The key is that pformat is more readable for complex strings
+        # pformat should not have escaped quotes - it uses single quotes to wrap the string
+        # so it doesn't need to escape the internal double quotes
+        assert r'\"' not in pformat_output, "pformat should not have escaped quotes"
 
         # The raw command should be usable directly in logs without escaping
         # Just using the command directly is the most readable
