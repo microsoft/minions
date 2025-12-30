@@ -1,4 +1,4 @@
-import json
+from pprint import pformat
 import re
 import time
 from dataclasses import dataclass
@@ -196,7 +196,7 @@ class MicroBot:
                     f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
                 )
             logger.info(
-                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
+                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{pformat(llm_response.command)}{LogTextColor.ENDC}",
             )
             # increment iteration count
             iteration_count += 1
