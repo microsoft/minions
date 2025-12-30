@@ -273,17 +273,24 @@ class MicroBot:
         )
 
     def _create_llm(self):
+        # Append tool usage instructions to system prompt
+        system_prompt_with_tools = self.system_prompt if self.system_prompt else ""
+        if self.additional_tools:
+            for tool in self.additional_tools:
+                if tool.usage_instructions_to_llm:
+                    system_prompt_with_tools += f"\n\n{tool.usage_instructions_to_llm}"
+        
         if self.model_provider == ModelProvider.OPENAI:
             self.llm = OpenAIApi(
-                system_prompt=self.system_prompt, deployment_name=self.deployment_name
+                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
             )
         elif self.model_provider == ModelProvider.OLLAMA_LOCAL:
             self.llm = OllamaLocal(
-                system_prompt=self.system_prompt, model_name=self.deployment_name
+                system_prompt=system_prompt_with_tools, model_name=self.deployment_name
             )
         elif self.model_provider == ModelProvider.ANTHROPIC:
             self.llm = AnthropicApi(
-                system_prompt=self.system_prompt, deployment_name=self.deployment_name
+                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 
