@@ -25,7 +25,6 @@ class Tool:
     # TODO: Add versioning to tools
     name: str
     description: str
-    parameters: dict | None
 
     # This is the set of instructions that will be provided to the LLM on how to use this tool.
     # This string will be appended to the LLM's system prompt.
@@ -36,8 +35,11 @@ class Tool:
     # These commands will be executed in the order they are provided.
     install_commands: List[str]
 
+    # Optional parameters for the tool
+    parameters: Optional[dict] = None
+
     # Mention what are the environment variables that need to be copied from your current environment
-    env_variables: Optional[str] = None
+    env_variables: Optional[List[str]] = None
 
     # Any files to be copied to the environment before the tool is installed.
     files_to_copy: Optional[List[EnvFileCopies]] = None
@@ -206,7 +208,7 @@ def install_tools(env: Environment, tools: List[Tool]):
         for tool in tools:
             _install_tool(env, tool)
 
-            for env_variable in tool.env_variables:
+            for env_variable in tool.env_variables or []:
                 _copy_env_variable(env, env_variable)
 
             for file_copy in tool.files_to_copy or []:
