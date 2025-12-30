@@ -1,5 +1,4 @@
 import json
-from pprint import pformat
 import re
 import time
 from dataclasses import dataclass
@@ -242,7 +241,7 @@ class MicroBot:
                     try:
                         output_json = json.loads(llm_command_output.stdout)
                         if "content" in output_json:
-                            output_text = pformat(output_json["content"])
+                            output_text = output_json["content"].encode("utf-8").decode("unicode_escape")
                     except json.JSONDecodeError:
                         pass
                 else:
