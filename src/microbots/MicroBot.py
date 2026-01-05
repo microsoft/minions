@@ -26,8 +26,7 @@ system_prompt_common = f"""
 You are a helpful agent well versed in software development and debugging.
 
 You will be provided with a coding or debugging task to complete inside a sandboxed shell environment.
-There is a shell session open for you.
-You will be provided with a task and you should achieve it using the shell commands.
+There is a shell session open for you. You will be provided with a task and you should achieve it using the shell commands.
 All your response must be in the following json format:
 {llm_output_format_str}
 The properties ( task_done, thoughts, command ) are mandatory on each response.
@@ -46,6 +45,22 @@ Remember following important points
 1. If a command fails, analyze the error message and provide an alternative command in your next response. Same command will not pass again.
 2. Avoid using recursive commands like 'ls -R', 'rm -rf', 'tree', or 'find' without depth limits as they can produce excessive output or be destructive.
 3. You cannot run any interactive commands like vim, nano, etc.
+
+# TOOLS
+You have following special tools.
+
+    1. summarize_context: Use this tool if your input has too many irrelevant conversation turns.
+         You can use this tool to rewrite your own context in a concise manner focusing on important points only. For example, if you have a failed command output which you've solved in later steps deep down in the conversation, that is not required to be in the context. You can summarize the context to remove such irrelevant information. This tool will not update the system prompt. So, you can ignore details in the system prompt while summarizing.
+
+         Usage:
+            summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
+
+            <no_of_recent_turns_to_keep> : Number of recent conversation turns to keep as is without summarizing. 1 means last user-assistant pair will be kept as is.
+            "<your summary of the context>" : Your summarized context in double quotes.
+
+        Important Notes:
+            - The summarize tool call step will not be added to your history.
+            - Try to be very precise and concise in your summary.
 """
 
 
@@ -217,6 +232,11 @@ class MicroBot:
                 )
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
+
+            # Handle context summarization
+            if llm_response.command.startswith("summarize_context"):
+                self._summarize_context(llm_response.command)
+                continue
 
             # Validate command for dangerous operations
             is_safe, explanation = self._is_safe_command(llm_response.command)

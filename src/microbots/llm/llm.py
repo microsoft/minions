@@ -84,3 +84,33 @@ class LLMInterface(ABC):
             logger.warning("LLM response is missing required fields. Retrying... (%d/%d)", self.retries, self.max_retries)
             self.messages.append({"role": "user", "content": "LLM_RES_ERROR: LLM response is missing required fields. Please respond in the correct JSON format.\n" + llm_output_format_str})
             return False, None
+
+    def _summarize_context(self, last_n_messages: int = 10, summary: str="") -> None:
+        """
+        It is a helper function for the LLM to summarize its own context.
+        Leave the last N messages and add the summary between system prompt and the last N messages.
+
+        summary can be empty. If empty, empty summary will be added.
+        """
+        # Keep the system prompt
+        msg0 = self.messages[0]["content"]
+        # Pop the last message which asked for summarization
+        self.messages.pop()
+        # Get the last N conversations (user + assistant)
+        # If there are not enough messages, take all except system prompt
+        recent_messages = self.messages[-(last_n_messages*2):] if len(self.messages) > (last_n_messages*2) else self.messages[1:]
+
+        # Update system prompt if it already has a summary
+        # summary will be between __summary__ and __end_summary__
+        if "__summary__" in msg0:
+            system_prompt = msg0.split("__summary__")[0]
+            old_summary = msg0.split("__end_summary__")[0].split("__summary__")[1]
+            logger.debug("Old summary found: %s", old_summary)
+            combined_summary = old_summary + "\n" + summary
+        else:
+            system_prompt = msg0
+            combined_summary = summary
+
+        new_system_prompt = f"{system_prompt}\n__summary__\n{combined_summary}\n__end_summary__"
+
+        self.messages = [{"role": "system", "content": new_system_prompt}] + recent_messages
