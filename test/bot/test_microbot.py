@@ -4,6 +4,7 @@ https://github.com/SWE-agent/test-repo/issues/1.
 This test will create multiple custom bots - a reading bot, a writing bot using the base class.
 """
 
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -526,7 +527,6 @@ class TestMicrobotUnit:
         command = """echo '{"input": {"command": "view", "path": "/tmp/test.txt"}}' | anthropic-text-editor"""
 
         # With json.dumps (old behavior) - escapes quotes making it harder to read
-        import json
         json_output = json.dumps(command)
 
         # With pformat (new behavior) - more readable
@@ -553,8 +553,6 @@ class TestMicrobotUnit:
         JSON with a "content" field containing unicode-escaped strings (e.g., \\n, \\t),
         the content should be decoded to actual newlines and tabs.
         """
-        import json
-        
         # Simulate anthropic-text-editor returning JSON with unicode-escaped content
         escaped_output = '{"content": "Line 1\\nLine 2\\nLine 3\\tTabbed"}'
         
@@ -565,7 +563,8 @@ class TestMicrobotUnit:
         decoded_output = output_json["content"].encode("utf-8").decode("unicode_escape")
         
         # Verify the decoded output has actual newlines and tabs
-        assert "Line 1\nLine 2\nLine 3\tTabbed" == decoded_output, \
+        expected_output = "Line 1\nLine 2\nLine 3\tTabbed"
+        assert decoded_output == expected_output, \
             "Output should contain decoded newlines and tabs"
         
         # Verify the escaped versions are NOT in the decoded output
