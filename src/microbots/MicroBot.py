@@ -212,7 +212,7 @@ class MicroBot:
                     f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
                 )
             logger.info(
-                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
+                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{llm_response.command}{LogTextColor.ENDC}",
             )
             # increment iteration count
             iteration_count += 1
