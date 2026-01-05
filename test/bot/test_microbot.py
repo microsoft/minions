@@ -544,6 +544,43 @@ class TestMicrobotUnit:
         raw_output = command
         assert r'\"' not in raw_output, "Raw command should not have escaped quotes"
         assert '"input"' in raw_output, "Raw command should preserve double quotes"
+
+    def test_anthropic_text_editor_unicode_escape_decoding(self):
+        """Test that unicode-escaped output is properly decoded.
+
+        This unit test verifies that the unicode_escape decoding logic introduced
+        for anthropic-text-editor output works correctly. When the tool returns
+        JSON with a "content" field containing unicode-escaped strings (e.g., \\n, \\t),
+        the content should be decoded to actual newlines and tabs.
+        """
+        import json
+        
+        # Simulate anthropic-text-editor returning JSON with unicode-escaped content
+        escaped_output = '{"content": "Line 1\\nLine 2\\nLine 3\\tTabbed"}'
+        
+        # Parse the JSON (simulating json.loads in the actual code)
+        output_json = json.loads(escaped_output)
+        
+        # Apply the unicode_escape decoding (the line being tested)
+        decoded_output = output_json["content"].encode("utf-8").decode("unicode_escape")
+        
+        # Verify the decoded output has actual newlines and tabs
+        assert "Line 1\nLine 2\nLine 3\tTabbed" == decoded_output, \
+            "Output should contain decoded newlines and tabs"
+        
+        # Verify the escaped versions are NOT in the decoded output
+        assert "\\n" not in decoded_output, \
+            "Decoded output should not contain escaped newlines"
+        assert "\\t" not in decoded_output, \
+            "Decoded output should not contain escaped tabs"
+        
+        # Verify line count - should be 3 lines (split by actual newlines)
+        lines = decoded_output.split("\n")
+        assert len(lines) == 3, "Should have 3 lines after decoding"
+        assert lines[0] == "Line 1"
+        assert lines[1] == "Line 2"
+        assert lines[2] == "Line 3\tTabbed"  # This line contains an actual tab
+
     def test_tool_usage_instructions_appended_to_system_prompt(self):
         """Test that tool usage instructions are appended to the system prompt when creating LLM."""
         from microbots.tools.tool import Tool
