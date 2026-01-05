@@ -261,7 +261,7 @@ class MicroBot:
                     # HACK: anthropic-text-editor tool extra formats the output
                     try:
                         output_json = json.loads(llm_command_output.stdout)
-                        if "content" in output_json:
+                        if isinstance(output_json, dict) and "content" in output_json:
                             output_text = pformat(output_json["content"])
                     except json.JSONDecodeError:
                         pass

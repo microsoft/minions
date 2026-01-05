@@ -148,7 +148,7 @@ class TestMicrobotIntegration:
         )
 
         response: BotRunResult = testing_bot.run(
-            "Execute tests/missing_colon.py and provide the error message. Your response should be in 'thoughts' field.",
+            "Execute tests/missing_colon.py and provide the error message. Your response should be in 'thoughts' field. missing_colon.py is a python file not a test file. So, don't use pytest to run it. Just run 'python tests/missing_colon.py'.",
             timeout_in_seconds=300
         )
 
@@ -178,7 +178,7 @@ class TestMicrobotIntegration:
             MountType.COPY,
         )
         response: BotRunResult = coding_bot.run(
-            f"The test file tests/missing_colon.py is failing. Please fix the code. The error log is available at /var/log/{log_file_path.basename}.",
+            f"The python script, tests/missing_colon.py is failing. Please fix the code. The error log is available at /var/log/{log_file_path.basename}. missing_colon.py is a python file not a test file. So, don't use pytest to run it. Just run 'python tests/missing_colon.py'.",
             additional_mounts=[additional_mounts],
             timeout_in_seconds=300
         )
@@ -547,7 +547,7 @@ class TestMicrobotUnit:
     def test_tool_usage_instructions_appended_to_system_prompt(self):
         """Test that tool usage instructions are appended to the system prompt when creating LLM."""
         from microbots.tools.tool import Tool
-        
+
         # Create a mock tool with usage instructions
         mock_tool = Tool(
             name="test_tool",
@@ -558,13 +558,13 @@ class TestMicrobotUnit:
             env_variables=[],
             files_to_copy=[],
         )
-        
+
         base_system_prompt = "You are a helpful assistant."
-        
+
         # Create a mock environment
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
-        
+
         # Mock the environment and LLM creation to avoid actual Docker/API calls
         with patch('microbots.llm.openai_api.OpenAI'):
             # Create a MicroBot with the mock tool
@@ -574,7 +574,7 @@ class TestMicrobotUnit:
                 additional_tools=[mock_tool],
                 environment=mock_env,
             )
-            
+
             # Verify that the LLM was created with the combined system prompt
             # The system prompt should include both the base prompt and the tool usage instructions
             from microbots.llm.openai_api import OpenAIApi
@@ -586,7 +586,7 @@ class TestMicrobotUnit:
     def test_multiple_tool_usage_instructions_appended(self):
         """Test that multiple tool usage instructions are all appended to the system prompt."""
         from microbots.tools.tool import Tool
-        
+
         # Create multiple mock tools with usage instructions
         tool1 = Tool(
             name="tool1",
@@ -597,7 +597,7 @@ class TestMicrobotUnit:
             env_variables=[],
             files_to_copy=[],
         )
-        
+
         tool2 = Tool(
             name="tool2",
             description="Second tool",
@@ -607,13 +607,13 @@ class TestMicrobotUnit:
             env_variables=[],
             files_to_copy=[],
         )
-        
+
         base_system_prompt = "You are a helpful assistant."
-        
+
         # Create a mock environment
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
-        
+
         # Mock the environment and LLM creation
         with patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
@@ -622,7 +622,7 @@ class TestMicrobotUnit:
                 additional_tools=[tool1, tool2],
                 environment=mock_env,
             )
-            
+
             # Verify both tool instructions are in the system prompt
             from microbots.llm.anthropic_api import AnthropicApi
             assert isinstance(bot.llm, AnthropicApi)
@@ -635,22 +635,22 @@ class TestMicrobotUnit:
     def test_no_tool_usage_instructions_when_no_tools(self):
         """Test that system prompt remains unchanged when no tools are provided."""
         base_system_prompt = "You are a helpful assistant."
-        
+
         # Create a mock environment
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
-        
+
         # Mock the environment and LLM creation
         with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
              patch('microbots.llm.ollama_local.requests'):
-            
+
             bot = MicroBot(
                 model="ollama-local/test-model",
                 system_prompt=base_system_prompt,
                 additional_tools=[],
                 environment=mock_env,
             )
-            
+
             # Verify the system prompt is unchanged
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)

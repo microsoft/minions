@@ -44,7 +44,7 @@ class LLMInterface(ABC):
             return False, None
 
         if all(key in response_dict for key in LLMAskResponse.__annotations__.keys()):
-            logger.info("The llm response is %s ", response_dict)
+            logger.debug("The llm response is %s ", response_dict)
 
             if response_dict.get("task_done") not in [True, False]:
                 self.retries += 1
