@@ -56,7 +56,7 @@ You have following special tools.
             summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
 
             <no_of_recent_turns_to_keep> : Number of recent conversation turns to keep as is without summarizing. 1 means last user-assistant pair will be kept as is.
-            "<your summary of the context>" : Your summarized context in double quotes.
+            "<your summary of the context>" : Your summarized context in double quotes. The summary can be empty if you finished a sub-task and want to remove previous context.
 
         Important Notes:
             - The summarize tool call step will not be added to your history.
