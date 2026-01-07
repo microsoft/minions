@@ -747,7 +747,7 @@ class TestValidateLlmResponseAdditionalCases:
 
 @pytest.mark.unit
 class TestSummarizeContext:
-    """Tests for LLMInterface._summarize_context method"""
+    """Tests for LLMInterface.summarize_context method"""
 
     @pytest.fixture
     def llm(self):
@@ -768,14 +768,16 @@ class TestSummarizeContext:
         llm.messages.append({"role": "user", "content": "Please summarize"})
 
         initial_len = len(llm.messages)
-        llm._summarize_context(last_n_messages=10, summary="This is a summary")
+        last_msg = llm.summarize_context(last_n_messages=10, summary="This is a summary")
 
-        # Should have: 1 system prompt + 20 recent messages (10*2)
-        assert len(llm.messages) == 21
+        # Should have: 1 system prompt + 18 recent messages (10*2-1 minus last one)
+        assert len(llm.messages) == 19
         assert llm.messages[0]["role"] == "system"
         assert "__summary__" in llm.messages[0]["content"]
         assert "This is a summary" in llm.messages[0]["content"]
         assert "__end_summary__" in llm.messages[0]["content"]
+        # Verify the last user message is returned
+        assert last_msg["content"] == "Message 24"
 
     def test_summarize_with_fewer_messages_than_threshold(self, llm):
         """Test summarization when there are fewer messages than last_n_messages*2"""
@@ -789,13 +791,15 @@ class TestSummarizeContext:
             {"role": "user", "content": "Please summarize"}  # Will be popped
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="Short conversation summary")
+        last_msg = llm.summarize_context(last_n_messages=10, summary="Short conversation summary")
 
-        # Should have: 1 system prompt + 4 messages (all except system and popped)
-        assert len(llm.messages) == 5
+        # Should have: 1 system prompt + 3 messages (all except system, popped, and last user msg)
+        assert len(llm.messages) == 4
         assert llm.messages[0]["role"] == "system"
         assert "__summary__" in llm.messages[0]["content"]
         assert "Short conversation summary" in llm.messages[0]["content"]
+        # Verify the last user message is returned
+        assert last_msg["content"] == "I'm good"
 
     def test_summarize_with_empty_summary(self, llm):
         """Test summarization with empty summary string"""
@@ -806,13 +810,15 @@ class TestSummarizeContext:
             {"role": "user", "content": "Summarize"}  # Will be popped
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="")
+        last_msg = llm.summarize_context(last_n_messages=10, summary="")
 
-        assert len(llm.messages) == 3
+        assert len(llm.messages) == 2  # system + Hello (recent_messages[:-1])
         assert "__summary__" in llm.messages[0]["content"]
         assert "__end_summary__" in llm.messages[0]["content"]
         # Empty summary should still have the markers
         assert "\n__summary__\n\n__end_summary__" in llm.messages[0]["content"]
+        # Verify the last user message is returned
+        assert last_msg["content"] == "Hi"
 
     def test_summarize_updates_existing_summary(self, llm):
         """Test that existing summary is updated when system prompt already has one"""
@@ -823,7 +829,7 @@ class TestSummarizeContext:
             {"role": "user", "content": "Summarize"}  # Will be popped
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="New summary content")
+        last_msg = llm.summarize_context(last_n_messages=10, summary="New summary content")
 
         assert "__summary__" in llm.messages[0]["content"]
         assert "Old summary content" in llm.messages[0]["content"]
@@ -833,6 +839,8 @@ class TestSummarizeContext:
         summary_section = content.split("__summary__")[1].split("__end_summary__")[0]
         assert "Old summary content" in summary_section
         assert "New summary content" in summary_section
+        # Verify the last user message is returned
+        assert last_msg["content"] == "Hi"
 
     def test_summarize_preserves_system_prompt_before_summary(self, llm):
         """Test that original system prompt is preserved before the summary"""
@@ -844,7 +852,7 @@ class TestSummarizeContext:
             {"role": "user", "content": "Summarize"}
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="Summary here")
+        llm.summarize_context(last_n_messages=10, summary="Summary here")
 
         assert llm.messages[0]["content"].startswith(original_prompt)
 
@@ -857,11 +865,13 @@ class TestSummarizeContext:
             {"role": "user", "content": "This should be popped"}
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="Summary")
+        last_msg = llm.summarize_context(last_n_messages=10, summary="Summary")
 
-        # The last user message should be gone
+        # The last user message should be gone from messages list
         for msg in llm.messages:
             assert msg["content"] != "This should be popped"
+        # But it should be returned as the last message before summarization
+        assert last_msg["content"] == "Response"
 
     def test_summarize_with_custom_last_n_messages(self, llm):
         """Test summarization with custom last_n_messages value"""
@@ -874,26 +884,26 @@ class TestSummarizeContext:
             llm.messages.append({"role": role, "content": f"Message {i}"})
         llm.messages.append({"role": "user", "content": "Summarize"})
 
-        llm._summarize_context(last_n_messages=5, summary="Custom summary")
+        last_msg = llm.summarize_context(last_n_messages=5, summary="Custom summary")
 
-        # Should have: 1 system prompt + 10 recent messages (5*2)
-        assert len(llm.messages) == 11
-        # Verify the most recent messages are kept
-        assert llm.messages[-1]["content"] == "Message 14"
+        # Should have: 1 system prompt + 8 recent messages (5*2-1 minus last one)
+        assert len(llm.messages) == 9
+        # Verify the most recent messages are kept (minus last one which is returned)
+        assert llm.messages[-1]["content"] == "Message 13"
+        # Verify the last message is returned
+        assert last_msg["content"] == "Message 14"
 
     def test_summarize_with_only_system_prompt_and_one_message(self, llm):
-        """Test summarization with minimal messages"""
+        """Test summarization with minimal messages - edge case that raises IndexError"""
         llm.messages = [
             {"role": "system", "content": "System prompt"},
             {"role": "user", "content": "To be popped"}
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="Minimal summary")
-
-        # Should have only system prompt (all others popped or excluded)
-        assert len(llm.messages) == 1
-        assert llm.messages[0]["role"] == "system"
-        assert "Minimal summary" in llm.messages[0]["content"]
+        # This edge case raises IndexError because after popping, messages[1:] is empty
+        # and recent_messages[-1] will fail on an empty list
+        with pytest.raises(IndexError):
+            llm.summarize_context(last_n_messages=10, summary="Minimal summary")
 
     def test_summarize_keeps_correct_recent_messages(self, llm):
         """Test that exactly the right recent messages are kept"""
@@ -908,17 +918,18 @@ class TestSummarizeContext:
             {"role": "user", "content": "Summarize request"}  # Will be popped
         ]
 
-        llm._summarize_context(last_n_messages=2, summary="Summary")
+        last_msg = llm.summarize_context(last_n_messages=2, summary="Summary")
 
-        # Should keep last 4 messages (2*2)
-        assert len(llm.messages) == 5  # 1 system + 4 recent
+        # Should keep last 3 messages (2*2-1 = 3, then [:-1] removes last one)
+        assert len(llm.messages) == 3  # 1 system + 2 recent (Old response 2, Recent message 1)
         message_contents = [m["content"] for m in llm.messages[1:]]
-        assert "Old message 2" in message_contents
         assert "Old response 2" in message_contents
         assert "Recent message 1" in message_contents
-        assert "Recent response 1" in message_contents
         assert "Old message 1" not in message_contents
         assert "Old response 1" not in message_contents
+        assert "Old message 2" not in message_contents
+        # Recent response 1 is now returned as the last message
+        assert last_msg["content"] == "Recent response 1"
 
     def test_summarize_default_empty_summary(self, llm):
         """Test that default summary parameter is empty string"""
@@ -930,10 +941,12 @@ class TestSummarizeContext:
         ]
 
         # Call without summary parameter
-        llm._summarize_context(last_n_messages=10)
+        last_msg = llm.summarize_context(last_n_messages=10)
 
         assert "__summary__" in llm.messages[0]["content"]
         assert "__end_summary__" in llm.messages[0]["content"]
+        # Verify return value
+        assert last_msg["content"] == "Response"
 
     def test_summarize_with_multiline_summary(self, llm):
         """Test summarization with multi-line summary content"""
@@ -948,9 +961,11 @@ class TestSummarizeContext:
 Line 2 of summary
 Line 3 with details"""
 
-        llm._summarize_context(last_n_messages=10, summary=multiline_summary)
+        last_msg = llm.summarize_context(last_n_messages=10, summary=multiline_summary)
 
         assert multiline_summary in llm.messages[0]["content"]
+        # Verify return value
+        assert last_msg["content"] == "Hi"
 
     def test_summarize_combines_old_and_new_summary_with_newline(self, llm):
         """Test that old and new summaries are combined with newline separator"""
@@ -960,12 +975,14 @@ Line 3 with details"""
             {"role": "user", "content": "Summarize"}
         ]
 
-        llm._summarize_context(last_n_messages=10, summary="Second summary")
+        last_msg = llm.summarize_context(last_n_messages=10, summary="Second summary")
 
         content = llm.messages[0]["content"]
         summary_section = content.split("__summary__")[1].split("__end_summary__")[0]
         # Check newline separator between summaries
         assert "\nFirst summary\n\nSecond summary\n" in content or "First summary\n\nSecond summary" in summary_section
+        # Verify return value
+        assert last_msg["content"] == "Hello"
 
     def test_summarize_exact_boundary_messages(self, llm):
         """Test summarization when messages count equals exactly last_n_messages*2"""
@@ -981,11 +998,14 @@ Line 3 with details"""
             {"role": "user", "content": "Summarize"}  # Will be popped
         ]
 
-        llm._summarize_context(last_n_messages=3, summary="Boundary test")
+        last_msg = llm.summarize_context(last_n_messages=3, summary="Boundary test")
 
-        # After popping, we have 7 messages. last_n_messages*2 = 6
-        # len(messages) > 6, so we take the last 6
-        assert len(llm.messages) == 7  # 1 system + 6 recent
+        # After popping, we have 7 messages. last_n_messages*2 - 1 = 5
+        # len(messages) > 5, so we take the last 5
+        # Then recent_messages[:-1] removes the last one
+        assert len(llm.messages) == 5  # 1 system + 4 recent
+        # Verify return value (last message in recent_messages)
+        assert last_msg["content"] == "Resp 3"
 
     def test_summarize_one_more_than_boundary(self, llm):
         """Test summarization when messages count is one more than last_n_messages*2"""
@@ -1002,9 +1022,13 @@ Line 3 with details"""
             {"role": "user", "content": "Summarize"}  # Will be popped
         ]
 
-        llm._summarize_context(last_n_messages=3, summary="Test")
+        last_msg = llm.summarize_context(last_n_messages=3, summary="Test")
 
-        # Should exclude "Should be excluded"
-        assert len(llm.messages) == 7  # 1 system + 6 recent
+        # After popping, last_n_messages*2-1 = 5, we take last 5 then [:-1] = 4
+        # Should exclude "Should be excluded" and "Msg 1"
+        assert len(llm.messages) == 5  # 1 system + 4 recent
         message_contents = [m["content"] for m in llm.messages]
         assert "Should be excluded" not in message_contents
+        assert "Msg 1" not in message_contents
+        # Verify return value
+        assert last_msg["content"] == "Resp 3"

@@ -85,7 +85,7 @@ class LLMInterface(ABC):
             self.messages.append({"role": "user", "content": "LLM_RES_ERROR: LLM response is missing required fields. Please respond in the correct JSON format.\n" + llm_output_format_str})
             return False, None
 
-    def _summarize_context(self, last_n_messages: int = 10, summary: str="") -> None:
+    def summarize_context(self, last_n_messages: int = 10, summary: str="") -> None:
         """
         It is a helper function for the LLM to summarize its own context.
         Leave the last N messages and add the summary between system prompt and the last N messages.
@@ -98,7 +98,7 @@ class LLMInterface(ABC):
         self.messages.pop()
         # Get the last N conversations (user + assistant)
         # If there are not enough messages, take all except system prompt
-        recent_messages = self.messages[-(last_n_messages*2):] if len(self.messages) > (last_n_messages*2) else self.messages[1:]
+        recent_messages = self.messages[-(last_n_messages*2 - 1):] if len(self.messages) > (last_n_messages*2 - 1) else self.messages[1:]
 
         # Update system prompt if it already has a summary
         # summary will be between __summary__ and __end_summary__
@@ -113,4 +113,9 @@ class LLMInterface(ABC):
 
         new_system_prompt = f"{system_prompt}\n__summary__\n{combined_summary}\n__end_summary__"
 
-        self.messages = [{"role": "system", "content": new_system_prompt}] + recent_messages
+        # Append without previous user message
+        self.messages = [{"role": "system", "content": new_system_prompt}] + recent_messages[:-1]
+        logger.debug("Context summarized. New system prompt: %s", new_system_prompt)
+
+        logger.debug("Last message before summarization: %s", recent_messages[-1])
+        return recent_messages[-1]  # return the last user message that given before summarization

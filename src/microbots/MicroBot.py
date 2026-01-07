@@ -235,7 +235,8 @@ class MicroBot:
 
             # Handle context summarization
             if llm_response.command.startswith("summarize_context"):
-                self._summarize_context(llm_response.command)
+                last_msg = self.llm.summarize_context(llm_response.command)
+                llm_response = self.llm.ask(last_msg["content"])
                 continue
 
             # Validate command for dangerous operations

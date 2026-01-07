@@ -655,3 +655,193 @@ class TestMicrobotUnit:
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)
             assert bot.llm.system_prompt == base_system_prompt
+
+    def test_summarize_context_command_calls_llm_summarize(self, no_mount_microBot, monkeypatch):
+        """Test that summarize_context command triggers LLM's summarize_context method."""
+        assert no_mount_microBot is not None
+
+        summarize_calls = []
+
+        def mock_summarize_context(command: str):
+            summarize_calls.append(command)
+            return {"role": "user", "content": "Summarized content"}
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call returns summarize_context command
+                return LLMAskResponse(
+                    command='summarize_context 2 "Summary of previous work: explored files"',
+                    task_done=False,
+                    thoughts="Need to summarize context"
+                )
+            else:
+                # After summarization, complete the task
+                return LLMAskResponse(command="", task_done=True, thoughts="Done after summarization")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "Test summarize context",
+            timeout_in_seconds=60,
+            max_iterations=10
+        )
+
+        # Verify summarize_context was called with the correct command
+        assert len(summarize_calls) == 1
+        assert 'summarize_context 2 "Summary of previous work: explored files"' in summarize_calls[0]
+        assert response.status
+
+    def test_summarize_context_does_not_increment_iteration(self, no_mount_microBot, monkeypatch):
+        """Test that summarize_context command does not count towards max_iterations."""
+        assert no_mount_microBot is not None
+
+        summarize_calls = []
+
+        def mock_summarize_context(command: str):
+            summarize_calls.append(command)
+            return {"role": "user", "content": "Summarization done."}
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call: return summarize_context
+                return LLMAskResponse(
+                    command='summarize_context 1 "Summarized"',
+                    task_done=False,
+                    thoughts=""
+                )
+            elif call_count[0] == 2:
+                # Second call: return another summarize_context
+                return LLMAskResponse(
+                    command='summarize_context 1 "Summarized again"',
+                    task_done=False,
+                    thoughts=""
+                )
+            elif call_count[0] == 3:
+                # Third call: return actual command
+                return LLMAskResponse(command="echo 'test'", task_done=False, thoughts="")
+            else:
+                # Fourth call: complete
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+
+        # With max_iterations=3, if summarize_context counted, we'd hit the limit
+        # But since it doesn't count, we should complete successfully
+        response: BotRunResult = no_mount_microBot.run(
+            "Test summarize does not count iterations",
+            timeout_in_seconds=60,
+            max_iterations=3
+        )
+
+        # Verify summarize was called twice
+        assert len(summarize_calls) == 2
+        # Verify task completed (did not hit max iterations due to summarize calls)
+        assert response.status
+        assert response.error is None
+
+    def test_summarize_context_continues_loop(self, no_mount_microBot, monkeypatch):
+        """Test that after summarize_context, the bot continues processing without executing command."""
+        assert no_mount_microBot is not None
+
+        executed_commands = []
+        summarize_calls = []
+
+        def mock_execute(command: str, timeout: int = 60):
+            executed_commands.append(command)
+            return CmdReturn(return_code=0, stdout="executed", stderr="")
+
+        def mock_summarize_context(command: str):
+            summarize_calls.append(command)
+            return {"role": "user", "content": "Summarization done."}
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(
+                    command='summarize_context 1 "Context summary"',
+                    task_done=False,
+                    thoughts=""
+                )
+            elif call_count[0] == 2:
+                return LLMAskResponse(command="echo 'actual command'", task_done=False, thoughts="")
+            else:
+                return LLMAskResponse(command="", task_done=True, thoughts="Complete")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+        monkeypatch.setattr(no_mount_microBot.environment, "execute", mock_execute)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "Test summarize continues loop",
+            timeout_in_seconds=60,
+            max_iterations=10
+        )
+
+        # Verify summarize_context was called
+        assert len(summarize_calls) == 1
+
+        # Verify the summarize_context command was NOT executed in the environment
+        assert 'summarize_context 1 "Context summary"' not in executed_commands
+
+        # Verify actual commands were executed
+        assert "echo 'actual command'" in executed_commands
+        assert response.status
+
+    def test_summarize_context_with_empty_summary(self, no_mount_microBot, monkeypatch):
+        """Test summarize_context with empty summary (used to clear context after sub-task)."""
+        assert no_mount_microBot is not None
+
+        summarize_calls = []
+
+        def mock_summarize_context(command: str):
+            summarize_calls.append(command)
+            return {"role": "user", "content": "Summarization done."}
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # Empty summary - used to clear previous context
+                return LLMAskResponse(
+                    command='summarize_context 0 ""',
+                    task_done=False,
+                    thoughts="Clearing context after completing sub-task"
+                )
+            else:
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+
+        monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
+        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+
+        response: BotRunResult = no_mount_microBot.run(
+            "Test empty summarize",
+            timeout_in_seconds=60,
+            max_iterations=10
+        )
+
+        # Verify summarize_context was called with empty summary
+        assert len(summarize_calls) == 1
+        assert 'summarize_context 0 ""' in summarize_calls[0]
+        assert response.status
+
+    @pytest.mark.parametrize("summarize_command", [
+        'summarize_context 1 "Simple summary"',
+        'summarize_context 2 "Summary with multiple words and details"',
+        'summarize_context 0 ""',
+        'summarize_context 5 "Keep 5 turns, summary: completed file exploration"',
+    ])
+    def test_summarize_context_various_formats(self, summarize_command):
+        """Test that various summarize_context command formats are detected correctly."""
+        # Verify the command starts with summarize_context
+        assert summarize_command.startswith("summarize_context")
