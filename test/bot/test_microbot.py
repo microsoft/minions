@@ -664,22 +664,25 @@ class TestMicrobotUnit:
 
         def mock_summarize_context(command: str):
             summarize_calls.append(command)
-            return {"role": "user", "content": "Summarized content"}
+            return {"role": "user", "content": "Previous context message"}
 
         call_count = [0]
 
         def mock_ask(message: str):
             call_count[0] += 1
             if call_count[0] == 1:
-                # First call returns summarize_context command
+                # First call (initial prompt) returns summarize_context command
                 return LLMAskResponse(
                     command='summarize_context 2 "Summary of previous work: explored files"',
                     task_done=False,
                     thoughts="Need to summarize context"
                 )
-            else:
-                # After summarization, complete the task
+            elif call_count[0] == 2:
+                # Second call (with returned last message content) - complete the task
+                assert message == "Previous context message"
                 return LLMAskResponse(command="", task_done=True, thoughts="Done after summarization")
+            else:
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
         monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
@@ -703,12 +706,17 @@ class TestMicrobotUnit:
 
         def mock_summarize_context(command: str):
             summarize_calls.append(command)
-            return {"role": "user", "content": "Summarization done."}
+            return {"role": "user", "content": "Previous message content"}
 
         call_count = [0]
 
         def mock_ask(message: str):
             call_count[0] += 1
+            # Flow with max_iterations=5:
+            # 1. Initial prompt -> summarize_context
+            # 2. Last message from summarize -> another summarize_context
+            # 3. Last message from summarize -> actual command
+            # 4. Command result -> complete
             if call_count[0] == 1:
                 # First call: return summarize_context
                 return LLMAskResponse(
@@ -717,14 +725,14 @@ class TestMicrobotUnit:
                     thoughts=""
                 )
             elif call_count[0] == 2:
-                # Second call: return another summarize_context
+                # Second call (with returned last message): return another summarize_context
                 return LLMAskResponse(
                     command='summarize_context 1 "Summarized again"',
                     task_done=False,
                     thoughts=""
                 )
             elif call_count[0] == 3:
-                # Third call: return actual command
+                # Third call (with returned last message): return actual command
                 return LLMAskResponse(command="echo 'test'", task_done=False, thoughts="")
             else:
                 # Fourth call: complete
@@ -733,17 +741,20 @@ class TestMicrobotUnit:
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
         monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
 
-        # With max_iterations=3, if summarize_context counted, we'd hit the limit
-        # But since it doesn't count, we should complete successfully
+        # With max_iterations=5, we have enough iterations to complete:
+        # iteration 2: first summarize_context
+        # iteration 3: second summarize_context
+        # iteration 4: actual command (echo 'test')
+        # iteration 5: task_done=True
         response: BotRunResult = no_mount_microBot.run(
             "Test summarize does not count iterations",
             timeout_in_seconds=60,
-            max_iterations=3
+            max_iterations=5
         )
 
         # Verify summarize was called twice
         assert len(summarize_calls) == 2
-        # Verify task completed (did not hit max iterations due to summarize calls)
+        # Verify task completed
         assert response.status
         assert response.error is None
 
@@ -760,19 +771,21 @@ class TestMicrobotUnit:
 
         def mock_summarize_context(command: str):
             summarize_calls.append(command)
-            return {"role": "user", "content": "Summarization done."}
+            return {"role": "user", "content": "Previous message to continue"}
 
         call_count = [0]
 
         def mock_ask(message: str):
             call_count[0] += 1
             if call_count[0] == 1:
+                # Initial prompt: return summarize_context command
                 return LLMAskResponse(
                     command='summarize_context 1 "Context summary"',
                     task_done=False,
                     thoughts=""
                 )
             elif call_count[0] == 2:
+                # After summarize (with returned last message): return actual command
                 return LLMAskResponse(command="echo 'actual command'", task_done=False, thoughts="")
             else:
                 return LLMAskResponse(command="", task_done=True, thoughts="Complete")
@@ -805,7 +818,7 @@ class TestMicrobotUnit:
 
         def mock_summarize_context(command: str):
             summarize_calls.append(command)
-            return {"role": "user", "content": "Summarization done."}
+            return {"role": "user", "content": "Previous context message"}
 
         call_count = [0]
 
@@ -818,6 +831,9 @@ class TestMicrobotUnit:
                     task_done=False,
                     thoughts="Clearing context after completing sub-task"
                 )
+            elif call_count[0] == 2:
+                # After summarize (with returned last message): complete
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
             else:
                 return LLMAskResponse(command="", task_done=True, thoughts="Done")
 
