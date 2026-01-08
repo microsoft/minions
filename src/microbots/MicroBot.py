@@ -235,7 +235,14 @@ class MicroBot:
 
             # Handle context summarization
             if llm_response.command.startswith("summarize_context"):
-                last_msg = self.llm.summarize_context(llm_response.command)
+                parsed_args = self._parse_summarize_context_command(llm_response.command)
+                if parsed_args is None:
+                    # Invalid syntax - ask LLM to correct it
+                    error_msg = self._get_summarize_context_syntax_error(llm_response.command)
+                    llm_response = self.llm.ask(error_msg)
+                    continue
+                last_n_messages, summary = parsed_args
+                last_msg = self.llm.summarize_context(last_n_messages=last_n_messages, summary=summary)
                 llm_response = self.llm.ask(last_msg["content"])
                 continue
 
@@ -348,6 +355,62 @@ class MicroBot:
             raise ValueError(
                 "Only MOUNT mount type is supported for folder_to_mount"
             )
+
+    def _parse_summarize_context_command(self, command: str) -> tuple[int, str] | None:
+        """
+        Parse the summarize_context command and extract arguments.
+
+        Expected format: summarize_context <n> "<summary>"
+        Where <n> is an integer and <summary> is a quoted string.
+
+        Returns:
+            tuple[int, str]: (last_n_messages, summary) if valid
+            None: if invalid syntax
+        """
+        import shlex
+        try:
+            # Use shlex to properly handle quoted strings
+            parts = shlex.split(command)
+            if len(parts) < 2 or len(parts) > 3:
+                return None
+
+            # First part should be 'summarize_context'
+            if parts[0] != "summarize_context":
+                return None
+
+            # Second part should be an integer
+            try:
+                last_n_messages = int(parts[1])
+            except ValueError:
+                return None
+
+            # Third part is the summary (optional, defaults to empty string)
+            summary = parts[2] if len(parts) > 2 else ""
+
+            return (last_n_messages, summary)
+
+        except ValueError:
+            # shlex.split can raise ValueError for malformed strings
+            return None
+
+    def _get_summarize_context_syntax_error(self, command: str) -> str:
+        """
+        Generate an error message for invalid summarize_context syntax.
+
+        Returns a detailed error message guiding the LLM to use correct syntax.
+        """
+        return f"""COMMAND_ERROR: Invalid summarize_context syntax.
+Your command: {command}
+
+Correct usage:
+    summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
+
+Examples:
+    summarize_context 2 "Summary of previous work: explored files and found the bug"
+    summarize_context 0 ""
+    summarize_context 5 "Completed file exploration, ready to make changes"
+
+Please send the command again with correct syntax."""
 
     def _get_dangerous_command_explanation(self, command: str) -> Optional[str]:
         """Provides detailed explanation for why a command is dangerous and suggests alternatives.

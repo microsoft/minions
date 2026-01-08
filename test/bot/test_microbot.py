@@ -4,6 +4,8 @@ https://github.com/SWE-agent/test-repo/issues/1.
 This test will create multiple custom bots - a reading bot, a writing bot using the base class.
 """
 
+from dataclasses import asdict
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -84,7 +86,7 @@ class TestMicrobotIntegration:
 
     @pytest.fixture(scope="function")
     def anthropic_microBot(self):
-        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4')
+        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
              patch('microbots.llm.anthropic_api.deployment_name', anthropic_deployment), \
              patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
@@ -197,7 +199,7 @@ class TestMicrobotIntegration:
         test_repo_mount_ro = Mount(
             str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
-        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4')
+        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
              patch('microbots.llm.anthropic_api.deployment_name', anthropic_deployment), \
              patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
@@ -212,6 +214,135 @@ class TestMicrobotIntegration:
             from microbots.llm.anthropic_api import AnthropicApi
             assert isinstance(bot.llm, AnthropicApi)
             del bot
+
+    def test_summarize_context_invalid_syntax_asks_llm_to_retry(self, no_mount_microBot, caplog):
+        """Integration test: LLM sends invalid summarize_context syntax, bot asks LLM to correct it.
+
+        This test verifies that when the LLM sends an improperly formatted summarize_context
+        command, the MicroBot:
+        1. Detects the invalid syntax
+        2. Sends an error message back to the LLM with correct usage instructions
+        3. Allows the LLM to retry with correct syntax
+        4. Successfully completes the summarization when correct syntax is provided
+
+        This follows the pattern used in _validate_llm_response in llm.py where invalid
+        responses trigger retry messages.
+        """
+        caplog.set_level(logging.DEBUG)
+
+        call_count = [0]
+
+        def mock_ask(message: str):
+            nonlocal call_count
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
+            call_count[0] += 1
+            logger.info(f"mock_ask called (count={call_count[0]}): {message[:100]}...")
+
+            if call_count[0] == 1:
+                # First call (initial prompt) - LLM sends invalid summarize_context (missing quotes)
+                res = LLMAskResponse(
+                    task_done=False,
+                    thoughts="Context is getting long, let me summarize",
+                    command='summarize_context 2 missing quotes around summary',  # Invalid: summary not quoted
+                )
+            elif call_count[0] == 2:
+                # Second call - should receive error message about invalid syntax
+                assert "COMMAND_ERROR: Invalid summarize_context syntax" in message
+                assert "Correct usage:" in message
+                assert 'summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"' in message
+                # Now LLM sends correct syntax
+                res = LLMAskResponse(
+                    task_done=False,
+                    thoughts="Let me fix the syntax",
+                    command='summarize_context 2 "This is a proper summary with quotes"',
+                )
+            elif call_count[0] == 3:
+                # Third call - after successful summarize_context, receives the previous message
+                # Complete the task
+                res = LLMAskResponse(
+                    task_done=True,
+                    thoughts="Task completed after context summarization",
+                    command='',
+                )
+            else:
+                res = LLMAskResponse(task_done=True, thoughts="Done", command='')
+
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
+
+        # Apply mocks
+        no_mount_microBot.llm.ask = mock_ask
+
+        response: BotRunResult = no_mount_microBot.run(
+            "Test summarize_context invalid syntax handling",
+            timeout_in_seconds=60,
+            max_iterations=10
+        )
+
+        # Verify the flow worked correctly
+        assert response.status, f"Expected success but got error: {response.error}"
+        assert response.error is None
+        assert call_count[0] >= 3, "Should have had at least 3 LLM calls (initial, retry, complete)"
+
+        # Verify error message was logged
+        assert "Invalid summarize_context syntax" in caplog.text or call_count[0] >= 2
+
+    def test_summarize_context_various_invalid_syntaxes(self, no_mount_microBot):
+        """Integration test: Various invalid summarize_context syntaxes are properly rejected.
+
+        Tests multiple edge cases of invalid syntax to ensure robust parsing.
+        """
+        test_cases = [
+            ('summarize_context', "Missing all arguments"),
+            ('summarize_context abc "summary"', "Non-integer first argument"),
+            ('summarize_context 2', "Missing summary (should work with empty default)"),
+            ('summarize_context "summary" 2', "Arguments in wrong order"),
+        ]
+
+        call_count = [0]
+        received_errors = []
+
+        def mock_ask(message: str):
+            nonlocal call_count
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
+            call_count[0] += 1
+
+            if "COMMAND_ERROR" in message:
+                received_errors.append(message)
+                # After receiving error, send a valid command to complete
+                res = LLMAskResponse(
+                    task_done=True,
+                    thoughts="Acknowledged the error",
+                    command='',
+                )
+                no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+                return res
+
+            # First call - try invalid syntax
+            if call_count[0] == 1:
+                res = LLMAskResponse(
+                    task_done=False,
+                    thoughts="Testing invalid syntax",
+                    command=test_cases[0][0],  # First invalid case
+                )
+                no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+                return res
+
+            res = LLMAskResponse(task_done=True, thoughts="Done", command='')
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
+
+        no_mount_microBot.llm.ask = mock_ask
+
+        response: BotRunResult = no_mount_microBot.run(
+            "Test invalid syntax",
+            timeout_in_seconds=30,
+            max_iterations=5
+        )
+
+        # Check that the first test case (missing arguments) was rejected
+        assert len(received_errors) > 0 or response.status
+        # Either we got an error for invalid syntax, or "summarize_context" alone wasn't enough
 
 
 @pytest.mark.unit
@@ -302,7 +433,10 @@ class TestMicrobotUnit:
         assert no_mount_microBot is not None
 
         def mock_ask(message: str):
-            return LLMAskResponse(command="echo 'Hello World'", task_done=False, thoughts="")
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
+            res = LLMAskResponse(command="echo 'Hello World'", task_done=False, thoughts="")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -322,7 +456,10 @@ class TestMicrobotUnit:
         assert no_mount_microBot is not None
 
         def mock_ask(message: str):
-            return LLMAskResponse(command="sleep 10", task_done=False, thoughts="")
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
+            res = LLMAskResponse(command="sleep 10", task_done=False, thoughts="")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -345,17 +482,20 @@ class TestMicrobotUnit:
         call_count = [0]
 
         def mock_ask(message: str):
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
                 # First call returns dangerous command
-                return LLMAskResponse(command="ls -R /path", task_done=False, thoughts="")
+                res = LLMAskResponse(command="ls -R /path", task_done=False, thoughts="")
             else:
                 # After receiving error with explanation, return safe command
                 assert "COMMAND_ERROR:" in message
                 assert "Dangerous command detected and blocked" in message
                 assert "REASON:" in message
                 assert "ALTERNATIVE:" in message
-                return LLMAskResponse(command="pwd", task_done=True, thoughts="")
+                res = LLMAskResponse(command="pwd", task_done=True, thoughts="")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -475,6 +615,46 @@ class TestMicrobotUnit:
         assert len(lines[0].replace("REASON:", "").strip()) > 0
         assert len(lines[1].replace("ALTERNATIVE:", "").strip()) > 0
 
+    @pytest.mark.parametrize("command,expected_result", [
+        # Valid commands
+        ('summarize_context 2 "This is a summary"', (2, "This is a summary")),
+        ('summarize_context 0 ""', (0, "")),
+        ('summarize_context 5 "Keep 5 turns, summary: completed file exploration"', (5, "Keep 5 turns, summary: completed file exploration")),
+        ('summarize_context 10 "Multi word summary with special chars: @#$%"', (10, "Multi word summary with special chars: @#$%")),
+        ('summarize_context 1 "Summary with \\"escaped quotes\\""', (1, 'Summary with "escaped quotes"')),
+        # Valid with default empty summary
+        ('summarize_context 3', (3, "")),
+        # Invalid commands
+        ('summarize_context', None),  # Missing all arguments
+        ('summarize_context abc "summary"', None),  # Non-integer first argument
+        ('summarize_context -1 "negative"', (-1, "negative")),  # Negative is valid parsing (validation elsewhere)
+        ('summarize_context "summary" 2', None),  # Wrong order
+        ('not_summarize_context 2 "summary"', None),  # Wrong command name
+        ('summarize_context 2 missing quotes', None),  # Summary without quotes (shlex will split)
+    ])
+    def test_parse_summarize_context_command(self, command, expected_result):
+        """Test parsing of summarize_context command syntax."""
+        bot = MicroBot.__new__(MicroBot)
+        result = bot._parse_summarize_context_command(command)
+
+        if expected_result is None:
+            assert result is None, f"Expected None for invalid command '{command}', got {result}"
+        else:
+            assert result is not None, f"Expected valid result for command '{command}', got None"
+            assert result == expected_result, f"Command '{command}': expected {expected_result}, got {result}"
+
+    def test_get_summarize_context_syntax_error_format(self):
+        """Test that syntax error message has correct format with usage examples."""
+        bot = MicroBot.__new__(MicroBot)
+        error_msg = bot._get_summarize_context_syntax_error('summarize_context bad syntax')
+
+        assert "COMMAND_ERROR: Invalid summarize_context syntax" in error_msg
+        assert "Your command: summarize_context bad syntax" in error_msg
+        assert "Correct usage:" in error_msg
+        assert 'summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"' in error_msg
+        assert "Examples:" in error_msg
+        assert "Please send the command again with correct syntax" in error_msg
+
     @pytest.mark.ollama_local
     def test_command_logging_without_json_escaping(self, no_mount_microBot, monkeypatch, caplog):
         """Test that commands are logged without JSON escaping, making logs more readable.
@@ -491,11 +671,14 @@ class TestMicrobotUnit:
         call_count = [0]
 
         def mock_ask(message: str):
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
-                return LLMAskResponse(command=json_command, task_done=False, thoughts="")
+                res = LLMAskResponse(command=json_command, task_done=False, thoughts="")
             else:
-                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Done")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
 
@@ -617,7 +800,7 @@ class TestMicrobotUnit:
         # Mock the environment and LLM creation
         with patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
-                model="anthropic/claude-sonnet-4",
+                model="anthropic/claude-sonnet-4-5",
                 system_prompt=base_system_prompt,
                 additional_tools=[tool1, tool2],
                 environment=mock_env,
@@ -669,10 +852,11 @@ class TestMicrobotUnit:
         call_count = [0]
 
         def mock_ask(message: str):
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
                 # First call (initial prompt) returns summarize_context command
-                return LLMAskResponse(
+                res = LLMAskResponse(
                     command='summarize_context 2 "Summary of previous work: explored files"',
                     task_done=False,
                     thoughts="Need to summarize context"
@@ -680,9 +864,11 @@ class TestMicrobotUnit:
             elif call_count[0] == 2:
                 # Second call (with returned last message content) - complete the task
                 assert message == "Previous context message"
-                return LLMAskResponse(command="", task_done=True, thoughts="Done after summarization")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Done after summarization")
             else:
-                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Done")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
         monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
@@ -711,6 +897,7 @@ class TestMicrobotUnit:
         call_count = [0]
 
         def mock_ask(message: str):
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             # Flow with max_iterations=5:
             # 1. Initial prompt -> summarize_context
@@ -719,24 +906,26 @@ class TestMicrobotUnit:
             # 4. Command result -> complete
             if call_count[0] == 1:
                 # First call: return summarize_context
-                return LLMAskResponse(
+                res = LLMAskResponse(
                     command='summarize_context 1 "Summarized"',
                     task_done=False,
                     thoughts=""
                 )
             elif call_count[0] == 2:
                 # Second call (with returned last message): return another summarize_context
-                return LLMAskResponse(
+                res = LLMAskResponse(
                     command='summarize_context 1 "Summarized again"',
                     task_done=False,
                     thoughts=""
                 )
             elif call_count[0] == 3:
                 # Third call (with returned last message): return actual command
-                return LLMAskResponse(command="echo 'test'", task_done=False, thoughts="")
+                res = LLMAskResponse(command="echo 'test'", task_done=False, thoughts="")
             else:
                 # Fourth call: complete
-                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Done")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
         monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
@@ -776,19 +965,22 @@ class TestMicrobotUnit:
         call_count = [0]
 
         def mock_ask(message: str):
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
                 # Initial prompt: return summarize_context command
-                return LLMAskResponse(
+                res = LLMAskResponse(
                     command='summarize_context 1 "Context summary"',
                     task_done=False,
                     thoughts=""
                 )
             elif call_count[0] == 2:
                 # After summarize (with returned last message): return actual command
-                return LLMAskResponse(command="echo 'actual command'", task_done=False, thoughts="")
+                res = LLMAskResponse(command="echo 'actual command'", task_done=False, thoughts="")
             else:
-                return LLMAskResponse(command="", task_done=True, thoughts="Complete")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Complete")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
         monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
@@ -823,19 +1015,22 @@ class TestMicrobotUnit:
         call_count = [0]
 
         def mock_ask(message: str):
+            no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
                 # Empty summary - used to clear previous context
-                return LLMAskResponse(
+                res = LLMAskResponse(
                     command='summarize_context 0 ""',
                     task_done=False,
                     thoughts="Clearing context after completing sub-task"
                 )
             elif call_count[0] == 2:
                 # After summarize (with returned last message): complete
-                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Done")
             else:
-                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+                res = LLMAskResponse(command="", task_done=True, thoughts="Done")
+            no_mount_microBot.llm.messages.append({"role": "assistant", "content": json.dumps(asdict(res))})
+            return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
         monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)

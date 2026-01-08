@@ -21,6 +21,17 @@ class LLMAskResponse:
     command: str = ""
 
 class LLMInterface(ABC):
+    def __init__(self, system_prompt: str, max_retries: int = 3):
+        self.system_prompt = system_prompt
+        self.max_retries = max_retries
+        self.retries = 0
+        self.messages = [
+            {
+                "role": "system",
+                "content": self.system_prompt,
+            }
+        ]
+
     @abstractmethod
     def ask(self, message: str) -> LLMAskResponse:
         pass
@@ -85,20 +96,27 @@ class LLMInterface(ABC):
             self.messages.append({"role": "user", "content": "LLM_RES_ERROR: LLM response is missing required fields. Please respond in the correct JSON format.\n" + llm_output_format_str})
             return False, None
 
-    def summarize_context(self, last_n_messages: int = 10, summary: str="") -> None:
+    def summarize_context(self, last_n_messages: int = 10, summary: str="") -> dict:
         """
         It is a helper function for the LLM to summarize its own context.
         Leave the last N messages and add the summary between system prompt and the last N messages.
 
         summary can be empty. If empty, empty summary will be added.
         """
+        logger.debug("Messages : %s", self.messages)
         # Keep the system prompt
         msg0 = self.messages[0]["content"]
         # Pop the last message which asked for summarization
         self.messages.pop()
         # Get the last N conversations (user + assistant)
         # If there are not enough messages, take all except system prompt
-        recent_messages = self.messages[-(last_n_messages*2 - 1):] if len(self.messages) > (last_n_messages*2 - 1) else self.messages[1:]
+        if (len(self.messages) > (last_n_messages*2 - 1)):
+            logger.debug("Summarizing last %d messages", last_n_messages)
+            recent_messages = self.messages[-(last_n_messages*2 - 1):]
+        else:
+            logger.debug("Not enough messages to summarize, taking all except system prompt")
+            recent_messages = self.messages[1:]
+        logger.debug("Recent messages that will not be summarized: %s", recent_messages)
 
         # Update system prompt if it already has a summary
         # summary will be between __summary__ and __end_summary__
