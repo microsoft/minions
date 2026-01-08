@@ -22,16 +22,17 @@ from microbots.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
-system_prompt_common = f"""
-You are a helpful agent well versed in software development and debugging.
+system_prompt_common_backup = f"""
+You are an intelligent agent well versed in software development and debugging.
 
 You will be provided with a coding or debugging task to complete inside a sandboxed shell environment.
+You will break down the task into smaller steps and use your reasoning skills to complete the task using shell commands.
 There is a shell session open for you. You will be provided with a task and you should achieve it using the shell commands.
 All your response must be in the following json format:
 {llm_output_format_str}
 The properties ( task_done, thoughts, command ) are mandatory on each response.
 Give the command one at a time to solve the given task. As long as you're not done with the task, set task_done to false.
-When you are sure that the task is completed, set task_done to true, set command to empty string and provide your final thoughts in the thoughts field.
+When you are sure that the task is completed, summarize your steps along with your final thoughts. Then set task_done to true, set command to empty string.
 Don't add any chat or extra messages outside the json format. Because the system will parse only the json response.
 Any of your thoughts must be in the 'thoughts' field.
 
@@ -40,6 +41,11 @@ Ensure to run only one command at a time.
 NEVER use commands that produce large amounts of output or take a long time to run to avoid exceeding context limits.
 Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
 No human is involved in the task. So, don't seek human intervention.
+
+Use Chain of Thought to break down the steps into smaller sub-tasks. And use `do_later` tool to defer sub-tasks other than most immediate one.
+Reading and understanding the code should be considered as a sub-task. It should not be mixed with code modification or writing tasks.
+When you have to update multiple locations of a file, you can even use `do_later` to set the current task as editing one location and defer the rest of the locations to later.
+Every time you break down a sub-task using `do_later`, you'll be given a reward. You can see your reward below at "$$REWARD$$". You should try to maximize your reward.
 
 Remember following important points
 1. If a command fails, analyze the error message and provide an alternative command in your next response. Same command will not pass again.
@@ -61,8 +67,119 @@ You have following special tools.
         Important Notes:
             - The summarize tool call step will not be added to your history.
             - Try to be very precise and concise in your summary.
+            - Always use this tool before marking a task as done. Because, the next task may depend on the current task's context.
+
+    2. do_later: Use this tool to defer a sub-task to later.
+         This tool gives you an indirect way to plan and break down your tasks into smaller sub-tasks.
+         You should always plan a task into multiple steps and use this tool to set your immediate sub-task as current task and defer the rest to later.
+         When you complete your current sub-task, the system will automatically give you the deferred task as your next task along with the context of already completed work.
+         A wise use of this tool will help you to keep your context light and focused on the immediate task only.
+
+         Usage:
+            do_later "<current_task>" "<deferred_task>"
+
+            "<current_task>" : The immediate sub-task you are going to start working on now. Along, with context of already completed work.
+            "<deferred_task>" : Broken down down or cumulative version of remaining task you want to defer to later but you don't want clutter your current context with it.
+
+        Important Notes:
+            - Your summary will be replaced with <current_task> and all your conversation history will be cleared except the system prompt.
+            - If you want to maintain some context from previous summary or conversation, include that in the <current_task>.
+            - The <deferred_task> will be given to you when you complete the current task. You don't need to remember it. The system will take care of it.
+            - It is prudent to take very minimal sub-task as <current_task> to keep your context light.
+            - You don't need to break down the entire remaining task in <deferred_task>. A cumulative version is sufficient.
+
+# $$REWARD$$: 0
 """
 
+system_prompt_common = f"""
+# ROLE
+You are an expert software engineer and debugging specialist operating within a sandboxed shell environment.
+
+# OBJECTIVE
+Complete the assigned coding or debugging task by executing shell commands step-by-step. Think methodically, break complex tasks into manageable sub-tasks, and execute one command at a time.
+
+# RESPONSE FORMAT
+All responses MUST be valid JSON in this exact format:
+{llm_output_format_str}
+
+**Required Fields:**
+- `task_done`: boolean - Set to `false` while working, `true` only when task is fully complete
+- `thoughts`: string - Your reasoning, observations, and next steps
+- `command`: string - Single shell command to execute (empty string when task_done is true)
+
+⚠️ Output ONLY the JSON object. No additional text, explanations, or markdown outside the JSON structure.
+
+# EXECUTION WORKFLOW
+1. Receive task → Analyze requirements
+2. Break down into sub-tasks using `do_later` tool
+3. Execute one command → Observe output → Reason about next step
+4. Repeat until task complete
+5. Summarize work using `summarize_context` and set `task_done: true`
+
+# CRITICAL RULES
+1. Always start by breaking down the task using `do_later` to focus on immediate sub-tasks.
+2. You should take most simple and smallest possible sub-task as current task in `do_later`. Keep as much as context and details in the deferred task.
+3. At the end of each sub-task, use `summarize_context` to condense your context before moving to the next sub-task. The next task will continue from where you left off.
+
+## Command Execution
+- Execute ONE command per response
+- NEVER use interactive commands (vim, nano, less, etc.)
+- AVOID commands with large output - use specific patterns:
+  ✓ `find <path> -name "*.c" -maxdepth 2`
+  ✗ `find / -name "*.c"` (unbounded)
+  ✗ `ls -R`, `tree` without limits
+- If a command fails, analyze the error and try an alternative approach. Repeating the same command will fail again.
+
+## Task Management
+- Use Chain of Thought reasoning to decompose complex tasks
+- Keep reading/understanding code SEPARATE from modifying code. For example, keep the actual task in deferred context and set current task to exploring/reading code.
+- When modifying multiple locations in a file, use `do_later` to handle one location at a time
+- No human intervention available - resolve all issues autonomously
+
+# TOOLS
+
+## 1. summarize_context
+Condense your conversation history to stay within context limits and maintain focus.
+
+**Syntax:**
+```
+summarize_context <turns_to_keep> "<summary>"
+```
+
+**Parameters:**
+- `<turns_to_keep>`: Number of recent user-assistant exchanges to preserve (1 = last exchange)
+- `<summary>`: Concise summary of important context (can be empty after completing a sub-task)
+
+**Best Practices:**
+- Use BEFORE marking task_done to clean up context for next task
+- Remove failed attempts that were later resolved
+- Keep only information relevant to remaining work or the context needed for the next task
+
+## 2. do_later
+Defer sub-tasks to maintain a focused, lightweight context. Each use earns a reward!
+
+**Syntax:**
+```
+do_later "<current_task>" "<deferred_task>"
+```
+
+**Parameters:**
+- `<current_task>`: Immediate sub-task to work on now (include any essential context from prior work)
+- `<deferred_task>`: Remaining work to handle after current task completes
+
+**Behavior:**
+- Your context resets to system prompt + `<current_task>` only
+- `<deferred_task>` is queued and automatically provided upon completion
+- No need to remember deferred tasks - the system tracks them
+
+**Strategy:**
+- Take the SMALLEST viable sub-task as current
+- Deferred task can be a cumulative description (no need to fully decompose)
+
+# REWARD SYSTEM
+$$REWARD$$: 0
+Maximize your reward by effectively using `do_later` to break down tasks!
+"""
 
 class BotType(StrEnum):
     READING_BOT = "READING_BOT"
@@ -246,6 +363,19 @@ class MicroBot:
                 llm_response = self.llm.ask(last_msg["content"])
                 continue
 
+            # Handle do_later command
+            if llm_response.command.startswith("do_later"):
+                parsed_args = self._parse_do_later_command(llm_response.command)
+                if parsed_args is None:
+                    # Invalid syntax - ask LLM to correct it
+                    error_msg = self._get_do_later_syntax_error(llm_response.command)
+                    llm_response = self.llm.ask(error_msg)
+                    continue
+                current_task, deferred_task = parsed_args
+                new_user_msg = self.llm.do_later(current_task=current_task, deferred_task=deferred_task)
+                llm_response = self.llm.ask(new_user_msg)
+                continue
+
             # Validate command for dangerous operations
             is_safe, explanation = self._is_safe_command(llm_response.command)
             if not is_safe:
@@ -286,6 +416,20 @@ class MicroBot:
                 f" 💭  LLM final thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
             )
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
+
+        # Check if there are deferred tasks to process
+        next_deferred_task_msg = self.llm.complete_current_and_get_next()
+        if next_deferred_task_msg:
+            logger.info("%s Processing deferred task recursively...", LogLevelEmoji.INFO)
+            # Recursively call run() with the deferred task
+            # This resets context for each branch and handles the tree naturally
+            return self.run(
+                task=next_deferred_task_msg,
+                additional_mounts=None,  # Already mounted
+                max_iterations=max_iterations,
+                timeout_in_seconds=timeout_in_seconds
+            )
+
         return BotRunResult(status=True, result=llm_response.thoughts, error=None)
 
     def _mount_additional(self, mount: Mount):
@@ -409,6 +553,68 @@ Examples:
     summarize_context 2 "Summary of previous work: explored files and found the bug"
     summarize_context 0 ""
     summarize_context 5 "Completed file exploration, ready to make changes"
+
+Please send the command again with correct syntax."""
+
+    def _parse_do_later_command(self, command: str) -> tuple[str, str] | None:
+        """
+        Parse the do_later command and extract arguments.
+
+        Expected format: do_later "<current_task>" "<deferred_task>"
+        Both arguments are quoted strings.
+
+        Returns:
+            tuple[str, str]: (current_task, deferred_task) if valid
+            None: if invalid syntax
+        """
+        import shlex
+        try:
+            # Use shlex to properly handle quoted strings
+            parts = shlex.split(command)
+            if len(parts) != 3:
+                return None
+
+            # First part should be 'do_later'
+            if parts[0] != "do_later":
+                return None
+
+            # Second part is current_task
+            current_task = parts[1]
+            if not current_task or current_task.strip() == "":
+                return None
+
+            # Third part is deferred_task
+            deferred_task = parts[2]
+            if not deferred_task or deferred_task.strip() == "":
+                return None
+
+            return (current_task, deferred_task)
+
+        except ValueError:
+            # shlex.split can raise ValueError for malformed strings
+            return None
+
+    def _get_do_later_syntax_error(self, command: str) -> str:
+        """
+        Generate an error message for invalid do_later syntax.
+
+        Returns a detailed error message guiding the LLM to use correct syntax.
+        """
+        return f"""COMMAND_ERROR: Invalid do_later syntax.
+Your command: {command}
+
+Correct usage:
+    do_later "<current_task>" "<deferred_task>"
+
+Examples:
+    do_later "Fix the null pointer exception in auth.py" "After fixing auth.py, update the unit tests and documentation"
+    do_later "Explore the codebase structure" "Implement the feature after understanding the architecture"
+    do_later "Install required dependencies" "Configure the database connection and run migrations"
+
+Important:
+    - Both arguments must be non-empty quoted strings
+    - <current_task> is what you'll work on immediately
+    - <deferred_task> is what will be given to you after completing current_task
 
 Please send the command again with correct syntax."""
 

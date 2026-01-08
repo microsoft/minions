@@ -29,7 +29,38 @@ sys.path.insert(
 )
 
 import logging
-logging.basicConfig(level=logging.INFO)
+
+LOGDIR = "/tmp/microbots_test_logs"
+if not os.path.exists(LOGDIR):
+    os.makedirs(LOGDIR)
+
+# Configure root logger to capture logs from all libraries
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all levels
+
+# Create formatters
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Info file handler - captures INFO and above
+info_handler = logging.FileHandler(os.path.join(LOGDIR, 'test_writing_bot_info.log'), mode='w')
+info_handler.setLevel(logging.INFO)
+info_handler.setFormatter(formatter)
+root_logger.addHandler(info_handler)
+
+# Debug file handler - captures DEBUG and above
+debug_handler = logging.FileHandler(os.path.join(LOGDIR, 'test_writing_bot_debug.log'), mode='w')
+debug_handler.setLevel(logging.DEBUG)
+debug_handler.setFormatter(formatter)
+root_logger.addHandler(debug_handler)
+
+# Console handler for INFO level output
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+root_logger.addHandler(console_handler)
+
+# Module-specific logger for this test file
+logger = logging.getLogger(__name__)
 
 from microbots import WritingBot, BotRunResult
 
@@ -88,3 +119,29 @@ def test_writing_bot_ollama(test_repo, issue_1, ollama_local_ready):
     # So, we use qwen2.5-coder which is faster but hallucinates more.
     # Hence, we decided to avoid the verification. But to keep the test meaningful,
     # we at least check if the bot run was successful.
+
+
+@pytest.mark.integration
+@pytest.mark.slow
+def test_writing_bot_backport_patch():
+    repo_path = os.path.abspath("/home/bala/linux_source/")
+    upstream_commit_id = "081056dc00a27bccb55ccc3c6f230a3d5fd3f7e0"  # Example commit ID
+    target_commit_id = "37d49f91e523e5730e9d1302801434a51e036d10"    # Example commit ID
+    model = "anthropic/claude-opus-4-5"
+
+    writingBot = WritingBot(
+        model=model,
+        folder_to_mount=repo_path
+    )
+
+    issue_text = (
+        f"Backport the changes from commit {upstream_commit_id} to the target commit "
+        f"{target_commit_id} in the repository. Ensure that the backported changes "
+        "are compatible with the target commit and do not introduce any conflicts."
+    )
+
+    response: BotRunResult = writingBot.run(
+        issue_text, timeout_in_seconds=1200, max_iterations=200
+    )
+
+    print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")

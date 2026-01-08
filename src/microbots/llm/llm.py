@@ -2,8 +2,16 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import json
 from logging import getLogger
+from typing import Optional, List
 
 logger = getLogger(__name__)
+
+
+@dataclass
+class DeferredTask:
+    """A deferred task with its context summary."""
+    task: str
+    summary: str = ""  # Summary/context at the point this task was deferred
 
 
 llm_output_format_str = """
@@ -31,6 +39,9 @@ class LLMInterface(ABC):
                 "content": self.system_prompt,
             }
         ]
+        # Deferred task stack (LIFO) - most recent deferred task is on top
+        self.deferred_tasks: List[DeferredTask] = []
+        self.llm_reward = 0
 
     @abstractmethod
     def ask(self, message: str) -> LLMAskResponse:
@@ -137,3 +148,123 @@ class LLMInterface(ABC):
 
         logger.debug("Last message before summarization: %s", recent_messages[-1])
         return recent_messages[-1]  # return the last user message that given before summarization
+
+    def do_later(self, current_task: str, deferred_task: str) -> str:
+        """
+        Defer a sub-task to later and focus on the current task.
+
+        This method:
+        1. Pushes the deferred_task onto the stack
+        2. Resets the conversation history
+        3. Updates the system prompt with current_task in place of summary
+        4. Returns a message for the LLM to start the current task
+
+        Args:
+            current_task: The immediate sub-task to work on now
+            deferred_task: The remaining task(s) to defer for later
+
+        Returns:
+            str: A user message to present to the LLM for starting current_task
+        """
+        self.llm_reward += 1
+        logger.debug("do_later called with current_task: %s, deferred_task: %s", current_task, deferred_task)
+
+        # Get current context summary before reset
+        current_summary = ""
+        if "__summary__" in self.system_prompt:
+            current_summary = self.system_prompt.split("__end_summary__")[0].split("__summary__")[1].strip()
+
+        # Push deferred task onto stack
+        self.deferred_tasks.append(DeferredTask(
+            task=deferred_task,
+            summary=current_summary
+        ))
+        logger.debug("Deferred task pushed onto stack. Stack size: %d", len(self.deferred_tasks))
+
+        # Get base system prompt (strip any existing summary)
+        base_system_prompt = self.system_prompt.split("__summary__")[0].rstrip()
+
+        # Update system prompt with current_task as the new context
+        new_system_prompt = f"{base_system_prompt}\n__summary__\n<current_task>\n{current_task}\n</current_task>\n__end_summary__"
+
+        # Replace line with # $$REWARD$$: <reward>
+        if "# $$REWARD$$:" in new_system_prompt:
+            new_system_prompt = "\n".join([
+                line if not line.startswith("# $$REWARD$$:") else f"# $$REWARD$$: {self.llm_reward}"
+                for line in new_system_prompt.splitlines()
+            ])
+
+        self.system_prompt = new_system_prompt
+        self.messages = [
+            {
+                "role": "system",
+                "content": new_system_prompt,
+            }
+        ]
+
+        logger.debug("Context reset with current_task. New system prompt: %s", new_system_prompt[:500])
+
+        # Return message to start the current task
+        return f"START TASK: {current_task}\n\nNote: You have deferred other task(s) for later. Focus only on this task now. When done, set task_done to true."
+
+    def complete_current_and_get_next(self) -> Optional[str]:
+        """
+        Pop the next deferred task from the stack.
+
+        This method is called when task_done is True.
+        It:
+        1. Pops the most recent deferred task from the stack
+        2. Resets llm.messages
+        3. Returns the deferred task as a new user message with its context
+
+        Returns:
+            Optional[str]: The deferred task message, or None if stack is empty
+        """
+        logger.debug("complete_current_and_get_next called. Stack size: %d", len(self.deferred_tasks))
+
+        if not self.deferred_tasks:
+            logger.debug("No deferred tasks in stack")
+            return None
+
+        # Pop the most recent deferred task
+        next_task = self.deferred_tasks.pop()
+        logger.debug("Popped deferred task: %s. Remaining stack size: %d", next_task.task, len(self.deferred_tasks))
+
+        # # Get base system prompt (strip any existing summary)
+        # base_system_prompt = self.system_prompt.split("__summary__")[0].rstrip()
+
+        # current_summary = ""
+        # if "__summary__" in self.system_prompt:
+        #     current_summary = self.system_prompt.split("__end_summary__")[0].split("__summary__")[1].strip()
+
+        # # Add context about completed work and next task
+        # if current_summary:
+        #     completed_summary = f"{current_summary}\nStatus: COMPLETE"
+        # else:
+        #     completed_summary = "Previous sub-task: COMPLETE" # Impossible case
+
+        # if next_task.summary:
+        #     completed_summary += f"\nContext from when this task was deferred:\n{next_task.summary}"
+
+        # new_system_prompt = f"{base_system_prompt}\n__summary__\n{completed_summary}\n__end_summary__"
+
+        # Replace line with # $$REWARD$$: <reward>
+        if "# $$REWARD$$:" in self.system_prompt:
+            new_system_prompt = "\n".join([
+                line if not line.startswith("# $$REWARD$$:") else f"# $$REWARD$$: {self.llm_reward}"
+                for line in self.system_prompt.splitlines()
+            ])
+            self.system_prompt = new_system_prompt
+
+        self.messages = [
+            {
+                "role": "system",
+                "content": self.system_prompt,
+            }
+        ]
+
+        logger.debug("Messages reset for deferred task: %s", next_task.task)
+
+        # Return the deferred task as a new user message
+        context_info = next_task.summary if next_task.summary else "Starting fresh on this deferred task."
+        return f"DEFERRED TASK (continue from where you left off):\n\n{next_task.task}\n\nContext: {context_info}"

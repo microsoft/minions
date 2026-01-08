@@ -25,9 +25,15 @@ class AnthropicApi(LLMInterface):
         )
         self.deployment_name = deployment_name
         super().__init__(system_prompt=system_prompt, max_retries=max_retries)
+        self.messages.pop()  # Remove initial system prompt added by parent as Anthropic does not use it.
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
+
+        # Handle system prompt for Anthropic
+        if len(self.messages) > 0 and self.messages[0]["role"] == "system":
+            self.system_prompt = self.messages[0]["content"]
+            self.messages = self.messages[1:]  # Remove system prompt from messages
 
         self.messages.append({"role": "user", "content": message})
 
