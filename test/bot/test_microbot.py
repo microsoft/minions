@@ -643,6 +643,72 @@ class TestMicrobotUnit:
             assert result is not None, f"Expected valid result for command '{command}', got None"
             assert result == expected_result, f"Command '{command}': expected {expected_result}, got {result}"
 
+    @pytest.mark.parametrize("command,expected_result", [
+        # Whitespace handling
+        ('summarize_context  2  "summary"', (2, "summary")),  # Extra spaces
+        ('  summarize_context 2 "summary"  ', (2, "summary")),  # Leading/trailing spaces
+        ('summarize_context\t2\t"summary"', (2, "summary")),  # Tab characters
+        # Large numbers
+        ('summarize_context 999999 "large number"', (999999, "large number")),
+        ('summarize_context 0 "zero turns"', (0, "zero turns")),
+        # Unicode content in summary
+        ('summarize_context 1 "Summary with émojis 🎉 and ünïcödé"', (1, "Summary with émojis 🎉 and ünïcödé")),
+        ('summarize_context 2 "中文内容"', (2, "中文内容")),
+        # Single quotes (shlex handles them)
+        ("summarize_context 2 'single quoted summary'", (2, "single quoted summary")),
+        # Literal backslash-n in summary (shlex does not interpret escape sequences)
+        ('summarize_context 1 "line1\\nline2"', (1, "line1\\nline2")),
+        # Empty summary edge cases
+        ('summarize_context 5 ""', (5, "")),
+        # Summary with special shell characters
+        ('summarize_context 2 "path: /home/user && echo test"', (2, "path: /home/user && echo test")),
+        ('summarize_context 2 "command: ls | grep foo"', (2, "command: ls | grep foo")),
+    ])
+    def test_parse_summarize_context_command_edge_cases(self, command, expected_result):
+        """Test edge cases for _parse_summarize_context_command."""
+        bot = MicroBot.__new__(MicroBot)
+        result = bot._parse_summarize_context_command(command)
+
+        if expected_result is None:
+            assert result is None, f"Expected None for command '{command}', got {result}"
+        else:
+            assert result is not None, f"Expected valid result for command '{command}', got None"
+            assert result == expected_result, f"Command '{command}': expected {expected_result}, got {result}"
+
+    @pytest.mark.parametrize("command", [
+        # Malformed quoted strings
+        'summarize_context 2 "unclosed quote',
+        "summarize_context 2 'unclosed single quote",
+        'summarize_context 2 "mismatched quotes\'',
+        # Too many arguments
+        'summarize_context 2 "summary" extra_arg',
+        'summarize_context 1 2 3 4',
+        # Empty or whitespace-only commands
+        '',
+        '   ',
+        '\t\n',
+        # Command with only summarize_context and spaces
+        'summarize_context   ',
+    ])
+    def test_parse_summarize_context_command_invalid_inputs(self, command):
+        """Test that invalid inputs return None."""
+        bot = MicroBot.__new__(MicroBot)
+        result = bot._parse_summarize_context_command(command)
+        assert result is None, f"Expected None for invalid command '{command}', got {result}"
+
+    def test_parse_summarize_context_command_returns_correct_types(self):
+        """Test that the return value has correct types."""
+        bot = MicroBot.__new__(MicroBot)
+        result = bot._parse_summarize_context_command('summarize_context 5 "test summary"')
+
+        assert result is not None
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        assert isinstance(result[0], int)
+        assert isinstance(result[1], str)
+        assert result[0] == 5
+        assert result[1] == "test summary"
+
     def test_get_summarize_context_syntax_error_format(self):
         """Test that syntax error message has correct format with usage examples."""
         bot = MicroBot.__new__(MicroBot)
