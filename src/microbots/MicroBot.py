@@ -26,8 +26,7 @@ system_prompt_common = f"""
 You are a helpful agent well versed in software development and debugging.
 
 You will be provided with a coding or debugging task to complete inside a sandboxed shell environment.
-There is a shell session open for you.
-You will be provided with a task and you should achieve it using the shell commands.
+There is a shell session open for you. You will be provided with a task and you should achieve it using the shell commands.
 All your response must be in the following json format:
 {llm_output_format_str}
 The properties ( task_done, thoughts, command ) are mandatory on each response.
@@ -46,6 +45,22 @@ Remember following important points
 1. If a command fails, analyze the error message and provide an alternative command in your next response. Same command will not pass again.
 2. Avoid using recursive commands like 'ls -R', 'rm -rf', 'tree', or 'find' without depth limits as they can produce excessive output or be destructive.
 3. You cannot run any interactive commands like vim, nano, etc.
+
+# TOOLS
+You have following special tools.
+
+    1. summarize_context: Use this tool if your input has too many irrelevant conversation turns.
+         You can use this tool to rewrite your own context in a concise manner focusing on important points only. For example, if you have a failed command output which you've solved in later steps deep down in the conversation, that is not required to be in the context. You can summarize the context to remove such irrelevant information. This tool will not update the system prompt. So, you can ignore details in the system prompt while summarizing.
+
+         Usage:
+            summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
+
+            <no_of_recent_turns_to_keep> : Number of recent conversation turns to keep as is without summarizing. 1 means last user-assistant pair will be kept as is.
+            "<your summary of the context>" : Your summarized context in double quotes. The summary can be empty if you finished a sub-task and want to remove previous context.
+
+        Important Notes:
+            - The summarize tool call step will not be added to your history.
+            - Try to be very precise and concise in your summary.
 """
 
 
@@ -197,7 +212,7 @@ class MicroBot:
                     f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
                 )
             logger.info(
-                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
+                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{llm_response.command}{LogTextColor.ENDC}",
             )
             # increment iteration count
             iteration_count += 1
@@ -217,6 +232,19 @@ class MicroBot:
                 )
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
+
+            # Handle context summarization
+            if llm_response.command.startswith("summarize_context"):
+                parsed_args = self._parse_summarize_context_command(llm_response.command)
+                if parsed_args is None:
+                    # Invalid syntax - ask LLM to correct it
+                    error_msg = self._get_summarize_context_syntax_error(llm_response.command)
+                    llm_response = self.llm.ask(error_msg)
+                    continue
+                last_n_messages, summary = parsed_args
+                last_msg = self.llm.summarize_context(last_n_messages=last_n_messages, summary=summary)
+                llm_response = self.llm.ask(last_msg["content"])
+                continue
 
             # Validate command for dangerous operations
             is_safe, explanation = self._is_safe_command(llm_response.command)
@@ -241,7 +269,7 @@ class MicroBot:
                     # HACK: anthropic-text-editor tool extra formats the output
                     try:
                         output_json = json.loads(llm_command_output.stdout)
-                        if "content" in output_json:
+                        if isinstance(output_json, dict) and "content" in output_json:
                             output_text = pformat(output_json["content"])
                     except json.JSONDecodeError:
                         pass
@@ -327,6 +355,62 @@ class MicroBot:
             raise ValueError(
                 "Only MOUNT mount type is supported for folder_to_mount"
             )
+
+    def _parse_summarize_context_command(self, command: str) -> tuple[int, str] | None:
+        """
+        Parse the summarize_context command and extract arguments.
+
+        Expected format: summarize_context <n> "<summary>"
+        Where <n> is an integer and <summary> is a quoted string.
+
+        Returns:
+            tuple[int, str]: (last_n_messages, summary) if valid
+            None: if invalid syntax
+        """
+        import shlex
+        try:
+            # Use shlex to properly handle quoted strings
+            parts = shlex.split(command)
+            if len(parts) < 2 or len(parts) > 3:
+                return None
+
+            # First part should be 'summarize_context'
+            if parts[0] != "summarize_context":
+                return None
+
+            # Second part should be an integer
+            try:
+                last_n_messages = int(parts[1])
+            except ValueError:
+                return None
+
+            # Third part is the summary (optional, defaults to empty string)
+            summary = parts[2] if len(parts) > 2 else ""
+
+            return (last_n_messages, summary)
+
+        except ValueError:
+            # shlex.split can raise ValueError for malformed strings
+            return None
+
+    def _get_summarize_context_syntax_error(self, command: str) -> str:
+        """
+        Generate an error message for invalid summarize_context syntax.
+
+        Returns a detailed error message guiding the LLM to use correct syntax.
+        """
+        return f"""COMMAND_ERROR: Invalid summarize_context syntax.
+Your command: {command}
+
+Correct usage:
+    summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
+
+Examples:
+    summarize_context 2 "Summary of previous work: explored files and found the bug"
+    summarize_context 0 ""
+    summarize_context 5 "Completed file exploration, ready to make changes"
+
+Please send the command again with correct syntax."""
 
     def _get_dangerous_command_explanation(self, command: str) -> Optional[str]:
         """Provides detailed explanation for why a command is dangerous and suggests alternatives.

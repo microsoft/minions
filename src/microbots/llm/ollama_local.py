@@ -46,15 +46,11 @@ class OllamaLocal(LLMInterface):
     def __init__(self, system_prompt, model_name=None, model_port=None, max_retries=3):
         self.model_name = model_name or os.environ.get("LOCAL_MODEL_NAME")
         self.model_port = model_port or os.environ.get("LOCAL_MODEL_PORT")
-        self.system_prompt = system_prompt
-        self.messages = [{"role": "system", "content": system_prompt}]
 
         if not self.model_name or not self.model_port:
             raise ValueError("LOCAL_MODEL_NAME and LOCAL_MODEL_PORT environment variables must be set or passed as arguments to OllamaLocal.")
 
-        # Set these values here. This logic will be handled in the parent class.
-        self.max_retries = max_retries
-        self.retries = 0
+        super().__init__(system_prompt=system_prompt, max_retries=max_retries)
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
