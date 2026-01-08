@@ -845,8 +845,8 @@ class TestMicrobotUnit:
 
         summarize_calls = []
 
-        def mock_summarize_context(command: str):
-            summarize_calls.append(command)
+        def mock_summarize_context(last_n_messages: int, summary: str):
+            summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous context message"}
 
         call_count = [0]
@@ -879,9 +879,9 @@ class TestMicrobotUnit:
             max_iterations=10
         )
 
-        # Verify summarize_context was called with the correct command
+        # Verify summarize_context was called with the correct parsed arguments
         assert len(summarize_calls) == 1
-        assert 'summarize_context 2 "Summary of previous work: explored files"' in summarize_calls[0]
+        assert summarize_calls[0] == (2, "Summary of previous work: explored files")
         assert response.status
 
     def test_summarize_context_does_not_increment_iteration(self, no_mount_microBot, monkeypatch):
@@ -890,8 +890,8 @@ class TestMicrobotUnit:
 
         summarize_calls = []
 
-        def mock_summarize_context(command: str):
-            summarize_calls.append(command)
+        def mock_summarize_context(last_n_messages: int, summary: str):
+            summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous message content"}
 
         call_count = [0]
@@ -958,8 +958,8 @@ class TestMicrobotUnit:
             executed_commands.append(command)
             return CmdReturn(return_code=0, stdout="executed", stderr="")
 
-        def mock_summarize_context(command: str):
-            summarize_calls.append(command)
+        def mock_summarize_context(last_n_messages: int, summary: str):
+            summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous message to continue"}
 
         call_count = [0]
@@ -1008,8 +1008,8 @@ class TestMicrobotUnit:
 
         summarize_calls = []
 
-        def mock_summarize_context(command: str):
-            summarize_calls.append(command)
+        def mock_summarize_context(last_n_messages: int, summary: str):
+            summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous context message"}
 
         call_count = [0]
@@ -1043,7 +1043,7 @@ class TestMicrobotUnit:
 
         # Verify summarize_context was called with empty summary
         assert len(summarize_calls) == 1
-        assert 'summarize_context 0 ""' in summarize_calls[0]
+        assert summarize_calls[0] == (0, "")
         assert response.status
 
     @pytest.mark.parametrize("summarize_command", [
