@@ -5,6 +5,8 @@ import pytest
 import os
 import socket
 import re
+import logging
+import time
 
 # Add src to path for imports
 import sys
@@ -14,6 +16,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from microbots.extras.mount import Mount
 from microbots.constants import DOCKER_WORKING_DIR
+
+logger = logging.getLogger(__name__)
 
 class TestLocalDockerEnvironmentIntegration:
     """Integration tests for LocalDockerEnvironment with real Docker containers"""
@@ -35,7 +39,6 @@ class TestLocalDockerEnvironmentIntegration:
             env = LocalDockerEnvironment(port=available_port)
 
             # Wait for container to be ready
-            import time
             time.sleep(2)
 
             # Verify it's working
@@ -86,8 +89,6 @@ class TestLocalDockerEnvironmentIntegration:
     @pytest.mark.docker
     def test_command_execution_complex(self, shared_env):
         """Test that heredoc commands are automatically converted to safe alternatives"""
-        import time
-
         # Test the specific heredoc command that was causing timeouts
         heredoc_command = """cat > /tmp/test_heredoc.py << EOF
 #!/usr/bin/env python3
@@ -110,7 +111,7 @@ if __name__ == "__main__":
         sys.exit(1)
 EOF"""
 
-        print("Testing heredoc command execution...")
+        logger.info("Testing heredoc command execution...")
         start_time = time.time()
 
         # Execute the heredoc command
@@ -118,10 +119,10 @@ EOF"""
         end_time = time.time()
         execution_time = end_time - start_time
 
-        print(f"Heredoc command completed in {execution_time:.2f} seconds")
-        print(f"Return code: {result.return_code}")
-        print(f"Stdout: {result.stdout}")
-        print(f"Stderr: {result.stderr}")
+        logger.info(f"Heredoc command completed in {execution_time:.2f} seconds")
+        logger.info(f"Return code: {result.return_code}")
+        logger.info(f"Stdout: {result.stdout}")
+        logger.info(f"Stderr: {result.stderr}")
 
         # The command should complete successfully (converted automatically)
         assert result.return_code == 0, f"Heredoc command failed with return code {result.return_code}"
@@ -134,7 +135,7 @@ EOF"""
         assert verify_result.return_code == 0
         assert "missing_colon_error" in verify_result.stdout
         assert re.search(r"if True$", verify_result.stdout, re.MULTILINE) is not None  # Check for "if True" at end of line (missing colon)
-        print(verify_result)
+        logger.info(f"Verify result: {verify_result}")
 
         # Test that the Python file has the expected syntax error
         python_result = shared_env.execute("python3 /tmp/test_heredoc.py")
@@ -142,7 +143,7 @@ EOF"""
         assert python_result.return_code != 0
         assert "SyntaxError" in python_result.stderr or "invalid syntax" in python_result.stderr
 
-        print("Heredoc command with automatic conversion test passed successfully")
+        logger.info("Heredoc command with automatic conversion test passed successfully")
 
     @pytest.mark.integration
     @pytest.mark.docker
@@ -308,3 +309,74 @@ EOF"""
         # Test copying non-existent file
         success = shared_env.copy_from_container("/nonexistent/file.txt", "/tmp/fail.txt")
         assert success is False
+
+    @pytest.mark.integration
+    @pytest.mark.docker
+    def test_command_timeout(self, shared_env):
+        """Test that commands timeout correctly and return appropriate error code"""
+        # Execute a command that should timeout
+        start_time = time.time()
+        result = shared_env.execute("sleep 10", timeout=2)
+        elapsed = time.time() - start_time
+
+        # Should timeout and return exit code 124
+        assert result.return_code == 124, f"Expected timeout exit code 124, got {result.return_code}"
+
+        # Should contain timeout message in stderr
+        assert "timeout" in result.stderr.lower() or "timed out" in result.stderr.lower(), \
+            f"Expected timeout message in stderr, got: {result.stderr}"
+
+        # Should timeout quickly - around 2s for command + 5s for recovery attempt
+        assert elapsed < 10, f"Command should timeout in ~2-7s (including recovery), took {elapsed:.1f}s"
+
+    @pytest.mark.integration
+    @pytest.mark.docker
+    def test_shell_recovery_after_timeout(self, shared_env):
+        """Test that shell remains responsive after a command timeout"""
+
+        # First, execute a command that will timeout
+        logger.info("1. Executing command that will timeout...")
+        result = shared_env.execute("sleep 10", timeout=2)
+        assert result.return_code == 124, "Command should timeout with exit code 124"
+        logger.info("   ✓ Command timed out as expected")
+
+        # Give recovery mechanism more time to work (shell recovery + HTTP recovery)
+        time.sleep(3)
+
+        # Now try to execute a normal command - shell should be responsive
+        logger.info("2. Testing if shell is still responsive after timeout...")
+        result = shared_env.execute("echo 'Shell is responsive'", timeout=10)
+
+        assert result.return_code == 0, \
+            f"Shell should be responsive after timeout. Got return code {result.return_code}, stderr: {result.stderr}"
+        assert "Shell is responsive" in result.stdout, \
+            f"Output should contain expected text. Got: {result.stdout}"
+        logger.info("   ✓ Shell recovered successfully")
+
+        # Execute multiple commands to ensure stability
+        logger.info("3. Testing multiple commands after recovery...")
+        for i in range(3):
+            result = shared_env.execute(f"echo 'Command {i+1}'", timeout=5)
+            assert result.return_code == 0, f"Command {i+1} should succeed after recovery"
+            assert f"Command {i+1}" in result.stdout, f"Command {i+1} output should be correct"
+            logger.info(f"   ✓ Command {i+1} successful")
+
+    @pytest.mark.integration
+    @pytest.mark.docker
+    def test_multiple_timeouts(self, shared_env):
+        """Test that shell can handle multiple consecutive timeouts"""
+        for i in range(3):
+            logger.info(f"Timeout test {i+1}/3...")
+
+            # Execute a command that will timeout
+            result = shared_env.execute("sleep 5", timeout=1)
+            assert result.return_code == 124, f"Timeout {i+1} should return exit code 124"
+
+            # Wait a moment for recovery
+            time.sleep(0.5)
+
+            # Verify shell is still responsive
+            result = shared_env.execute(f"echo 'After timeout {i+1}'", timeout=5)
+            assert result.return_code == 0, f"Shell should be responsive after timeout {i+1}"
+            assert f"After timeout {i+1}" in result.stdout, f"Output {i+1} should be correct"
+            logger.info(f"   ✓ Recovery {i+1} successful")

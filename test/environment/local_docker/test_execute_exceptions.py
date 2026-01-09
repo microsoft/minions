@@ -250,9 +250,14 @@ class TestExecuteExceptionHandling:
 
             assert result.return_code == 124
             # Verify timeout was passed to requests.post
-            mock_post.assert_called_once()
-            call_kwargs = mock_post.call_args[1]
-            assert call_kwargs['timeout'] == 300
+            # Should be called twice: original command + recovery attempt
+            assert mock_post.call_count == 2
+            # Check first call (original command) had timeout of 300
+            first_call_kwargs = mock_post.call_args_list[0][1]
+            assert first_call_kwargs['timeout'] == 300
+            # Check second call (recovery) had timeout of 5
+            second_call_kwargs = mock_post.call_args_list[1][1]
+            assert second_call_kwargs['timeout'] == 5
 
     def test_execute_with_custom_timeout(self, mock_env):
         """Test execute with custom timeout value"""
@@ -335,6 +340,56 @@ class TestExecuteExceptionHandling:
                 mock_env.execute("echo 'test'")
 
             # Error should be logged
+
+    def test_execute_timeout_recovery_fails_with_http_error(self, mock_env):
+        """Test when recovery returns non-200 status code"""
+        with patch('requests.post') as mock_post:
+            # First call times out, second returns 500 error
+            mock_recovery_response = Mock()
+            mock_recovery_response.status_code = 500
+            mock_post.side_effect = [
+                requests.exceptions.ReadTimeout(),
+                mock_recovery_response
+            ]
+            
+            result = mock_env.execute("sleep 10", timeout=2)
+            
+            assert result.return_code == 124
+            assert "timeout" in result.stderr.lower()
+            # Recovery should have been attempted (2 calls total)
+            assert mock_post.call_count == 2
+
+    def test_execute_timeout_recovery_fails_with_exception(self, mock_env):
+        """Test when recovery raises unexpected exception"""
+        with patch('requests.post') as mock_post:
+            # First call times out, second raises ConnectionError
+            mock_post.side_effect = [
+                requests.exceptions.ReadTimeout(),
+                requests.exceptions.ConnectionError("Network error")
+            ]
+            
+            result = mock_env.execute("sleep 10", timeout=2)
+            
+            assert result.return_code == 124
+            assert "timeout" in result.stderr.lower()
+            # Recovery should have been attempted (2 calls total)
+            assert mock_post.call_count == 2
+
+    def test_execute_timeout_recovery_times_out(self, mock_env):
+        """Test when both command and recovery timeout"""
+        with patch('requests.post') as mock_post:
+            # Both calls timeout
+            mock_post.side_effect = [
+                requests.exceptions.ReadTimeout(),
+                requests.exceptions.Timeout()
+            ]
+            
+            result = mock_env.execute("sleep 10", timeout=2)
+            
+            assert result.return_code == 124
+            assert "timeout" in result.stderr.lower()
+            # Recovery should have been attempted (2 calls total)
+            assert mock_post.call_count == 2
 
     def test_execute_performance_timing(self, mock_env):
         """Test that execution time is tracked correctly"""

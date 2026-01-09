@@ -217,6 +217,10 @@ class LocalDockerEnvironment(Environment):
             elapsed = time.perf_counter() - start_time
             msg = f"Read timeout after {elapsed:.1f}s while waiting for command output"
             logger.error("❌ %s", msg)
+
+            # Attempt to recover the shell by sending a simple command
+            self._attempt_shell_recovery()
+
             return CmdReturn(stdout="", stderr=msg, return_code=124)
 
         except requests.exceptions.RequestException as e:
@@ -235,6 +239,30 @@ class LocalDockerEnvironment(Environment):
                 e,
             )
             return CmdReturn(stdout="", stderr="Unexpected error", return_code=1)
+
+    def _attempt_shell_recovery(self):
+        """
+        Attempt to recover the shell after a timeout by sending a simple echo command.
+        This helps clear any stuck state in the shell communicator.
+        """
+        try:
+            logger.info("🛠️  Attempting to recover shell after timeout...")
+            # Send a simple command to trigger shell-level recovery
+            # Shell recovery needs ~2s (SIGINT + queue clear + marker check), so allow 5s total
+            response = requests.post(
+                f"http://localhost:{self.port}/",
+                json={"message": "echo '__RECOVERY__'"},
+                timeout=5,
+            )
+            if response.status_code == 200:
+                output = response.json().get("output", {})
+                logger.info("✅ Shell recovery successful (exit code: %d)", output.get("return_code", 0))
+            else:
+                logger.warning("⚠️  Shell recovery returned status %d", response.status_code)
+        except requests.exceptions.Timeout:
+            logger.warning("⚠️  Shell recovery timed out - shell may still be unresponsive")
+        except Exception as e:
+            logger.error("❌ Shell recovery failed: %s", e)
 
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:
         """
