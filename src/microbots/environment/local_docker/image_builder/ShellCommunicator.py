@@ -7,6 +7,7 @@ Supports interactive shell communication, command execution, and bidirectional d
 
 import os
 import queue
+import signal
 import subprocess
 import sys
 import threading
@@ -249,6 +250,41 @@ class ShellCommunicator:
                 error_lines.append(f"Command timed out after {timeout} seconds")
                 final_return_code = 124  # Standard timeout exit code
 
+                # Attempt to recover the shell by sending Ctrl+C to interrupt the running command
+                try:
+                    logger.info("🛠️ Attempting to interrupt timed-out command...")
+                    # Send SIGINT to the shell process to interrupt the running command
+                    if self.process and self.process.poll() is None:
+                        self.process.send_signal(subprocess.signal.SIGINT)
+                        time.sleep(0.5)  # Give it time to handle the interrupt
+
+                        # Clear any pending output from the interrupted command
+                        self._clear_output_queues()
+
+                        # Send a recovery marker to ensure shell is responsive
+                        recovery_marker = f"__RECOVERY_{int(time.time() * 1000000)}__"
+                        self.process.stdin.write(f"echo '{recovery_marker}'\n")
+                        self.process.stdin.flush()
+
+                        # Wait briefly for recovery marker
+                        recovery_timeout = time.time() + 2
+                        recovered = False
+                        while time.time() < recovery_timeout:
+                            try:
+                                stream_type, line = self.output_queue.get(timeout=0.1)
+                                if recovery_marker in line:
+                                    recovered = True
+                                    logger.info("✅ Shell recovered after timeout")
+                                    break
+                            except queue.Empty:
+                                continue
+
+                        if not recovered:
+                            logger.warning("⚠️ Shell may still be unresponsive after recovery attempt")
+
+                except Exception as e:
+                    logger.error("❌ Failed to recover shell after timeout: %s", e)
+
             return CmdReturn(
                 stdout="\n".join(output_lines) if output_lines else "",
                 stderr="\n".join(error_lines) if error_lines else "",
@@ -259,6 +295,28 @@ class ShellCommunicator:
             logger.exception("❌ Failed to send command: %s", e)
             return CmdReturn(stdout="", stderr=str(e), return_code=1)
 
+    def _clear_output_queues(self):
+        """
+        Clear all pending output from the output and error queues.
+        This is useful after a timeout to remove stale data.
+        """
+        cleared_count = 0
+        try:
+            while not self.output_queue.empty():
+                self.output_queue.get_nowait()
+                cleared_count += 1
+        except queue.Empty:
+            pass
+
+        try:
+            while not self.error_queue.empty():
+                self.error_queue.get_nowait()
+                cleared_count += 1
+        except queue.Empty:
+            pass
+
+        if cleared_count > 0:
+            logger.debug("🧹 Cleared %d stale messages from output queues", cleared_count)
 
     def is_alive(self) -> bool:
         """
