@@ -22,75 +22,6 @@ from microbots.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
 
-system_prompt_common_backup = f"""
-You are an intelligent agent well versed in software development and debugging.
-
-You will be provided with a coding or debugging task to complete inside a sandboxed shell environment.
-You will break down the task into smaller steps and use your reasoning skills to complete the task using shell commands.
-There is a shell session open for you. You will be provided with a task and you should achieve it using the shell commands.
-All your response must be in the following json format:
-{llm_output_format_str}
-The properties ( task_done, thoughts, command ) are mandatory on each response.
-Give the command one at a time to solve the given task. As long as you're not done with the task, set task_done to false.
-When you are sure that the task is completed, summarize your steps along with your final thoughts. Then set task_done to true, set command to empty string.
-Don't add any chat or extra messages outside the json format. Because the system will parse only the json response.
-Any of your thoughts must be in the 'thoughts' field.
-
-after each command, the system will execute the command and respond to you with the output.
-Ensure to run only one command at a time.
-NEVER use commands that produce large amounts of output or take a long time to run to avoid exceeding context limits.
-Use specific patterns: 'find <path> -name "*.c" -maxdepth 2' instead of recursive exploration.
-No human is involved in the task. So, don't seek human intervention.
-
-Use Chain of Thought to break down the steps into smaller sub-tasks. And use `do_later` tool to defer sub-tasks other than most immediate one.
-Reading and understanding the code should be considered as a sub-task. It should not be mixed with code modification or writing tasks.
-When you have to update multiple locations of a file, you can even use `do_later` to set the current task as editing one location and defer the rest of the locations to later.
-Every time you break down a sub-task using `do_later`, you'll be given a reward. You can see your reward below at "$$REWARD$$". You should try to maximize your reward.
-
-Remember following important points
-1. If a command fails, analyze the error message and provide an alternative command in your next response. Same command will not pass again.
-2. Avoid using recursive commands like 'ls -R', 'rm -rf', 'tree', or 'find' without depth limits as they can produce excessive output or be destructive.
-3. You cannot run any interactive commands like vim, nano, etc.
-
-# TOOLS
-You have following special tools.
-
-    1. summarize_context: Use this tool if your input has too many irrelevant conversation turns.
-         You can use this tool to rewrite your own context in a concise manner focusing on important points only. For example, if you have a failed command output which you've solved in later steps deep down in the conversation, that is not required to be in the context. You can summarize the context to remove such irrelevant information. This tool will not update the system prompt. So, you can ignore details in the system prompt while summarizing.
-
-         Usage:
-            summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
-
-            <no_of_recent_turns_to_keep> : Number of recent conversation turns to keep as is without summarizing. 1 means last user-assistant pair will be kept as is.
-            "<your summary of the context>" : Your summarized context in double quotes. The summary can be empty if you finished a sub-task and want to remove previous context.
-
-        Important Notes:
-            - The summarize tool call step will not be added to your history.
-            - Try to be very precise and concise in your summary.
-            - Always use this tool before marking a task as done. Because, the next task may depend on the current task's context.
-
-    2. do_later: Use this tool to defer a sub-task to later.
-         This tool gives you an indirect way to plan and break down your tasks into smaller sub-tasks.
-         You should always plan a task into multiple steps and use this tool to set your immediate sub-task as current task and defer the rest to later.
-         When you complete your current sub-task, the system will automatically give you the deferred task as your next task along with the context of already completed work.
-         A wise use of this tool will help you to keep your context light and focused on the immediate task only.
-
-         Usage:
-            do_later "<current_task>" "<deferred_task>"
-
-            "<current_task>" : The immediate sub-task you are going to start working on now. Along, with context of already completed work.
-            "<deferred_task>" : Broken down down or cumulative version of remaining task you want to defer to later but you don't want clutter your current context with it.
-
-        Important Notes:
-            - Your summary will be replaced with <current_task> and all your conversation history will be cleared except the system prompt.
-            - If you want to maintain some context from previous summary or conversation, include that in the <current_task>.
-            - The <deferred_task> will be given to you when you complete the current task. You don't need to remember it. The system will take care of it.
-            - It is prudent to take very minimal sub-task as <current_task> to keep your context light.
-            - You don't need to break down the entire remaining task in <deferred_task>. A cumulative version is sufficient.
-
-# $$REWARD$$: 0
-"""
-
 system_prompt_common = f"""
 # ROLE
 You are an expert software engineer and debugging specialist.
@@ -116,12 +47,12 @@ All responses MUST be valid JSON in this exact format:
 2. Break down into first vs rest using `do_later` tool
 3. Execute one command → Observe output → Reason about next step
 4. Repeat until task complete
-5. Summarize work using `summarize_context` and set `task_done: true`
+5. Summarize work using `update_context` and set `task_done: true`
 
 # CRITICAL RULES
-1. Always start by breaking down the task using `do_later` to focus on immediate sub-task.
+1. Always start by breaking down the task using `do_later` to focus on immediate sub-task. Reset the context based on combination of current context and retrieved context from the deferred task.
 2. Break reading/understanding code into separate sub-task from code modification/writing. The first task should be exploring/reading only and update its context. The second task will immediately start updating code based on the context from first task.
-3. At the end of each sub-task, use `summarize_context` to condense your context. There may be a next task that will continue from where you left off. So, include all necessary details like file names, function names, line numbers, error messages, even code-snippets, etc. in your summary.
+3. At the end of each sub-task, use `update_context` to elevate the system's overall context. There may be a next task that will continue from where you left off. So, include all necessary details like file names, function names, line numbers, error messages, even code-snippets, etc. in your context.
 
 ## Command Execution
 - Execute ONE command per response
@@ -140,26 +71,23 @@ All responses MUST be valid JSON in this exact format:
 
 # TOOLS
 
-## 1. summarize_context
+## 1. update_context
 Condense your conversation history to stay within context limits and maintain focus.
-
-Provide necessary details in the summary to ensure continuity of the task.
-
-If you're completing a task, summarize all the conversations by setting turns_to_keep to 0 and mention in your summary that the sub-task is completed and the LLM should simply set task_done to true in the next step.
+Provide necessary details in the context to ensure continuity of the task.
+If you're completing a task, update the context of the system before exiting.
+Maintain it structurally with different sections for overall system context, current task, status, etc.,. You can keep a list of tasks and their status (completed/pending) in the context.
 
 **Syntax:**
 ```
-summarize_context <turns_to_keep> "<summary>"
+update_context <turns_to_keep> "<context>"
 ```
 
 **Parameters:**
 - `<turns_to_keep>`: Number of recent user-assistant exchanges to preserve (1 = last exchange)
-- `<summary>`: Concise summary of important context (can be just the task name and it's status as complete). If it is a context gathering job, include all necessary details like file names, function names, line numbers, error messages, even code-snippets, etc. in your summary.
-
+- `<context>`: Detailed context (can be just the task name and it's status as complete). If it is a context gathering job, include all necessary details like file names, function names, line numbers, error messages, even code-snippets, etc. in your context.
 **Best Practices:**
 - Use BEFORE marking task_done to clean up context for next task
-- Use it in-between tasks when you have multiple failed attempts. Copy all the previous conversations that are necessary for context into the context summary.
-- Use it to validate your changes. Once you've made all the changes, clear-up the conversation and set the context as task is complete it time to read and validate.
+- Use it in-between tasks when older step-by-step conversation aren't necessary more for the remaining flow. This will help in staying within context limits.
 - Once you validate successfully, use it to summarize the entire work done so far including validation details and mention only task_done is pending to be set to true in next step.
 
 ## 2. do_later
@@ -173,7 +101,7 @@ do_later "<current_task>" "<deferred_task>"
 
 **Parameters:**
 - `<current_task>`: Immediate sub-task to work on now (include any essential context from prior work)
-- `<deferred_task>`: Remaining work to handle after current task completes. Include all necessary context as part of this task. Be as elaborate as possible. It is important to keep the known context with the deferred task because the subtasks in current chain may override the context summary anytime. Context summary is volatile as you can always change it using `summarize_context`. So, it is prudent to keep the necessary context with the deferred task.
+- `<deferred_task>`: Remaining work to handle after current task completes. Include all necessary context as part of this task. Be as elaborate as possible. It is important to keep the known context with the deferred task because the subtasks in current chain may override the context summary anytime. Context summary is volatile as you can always change it using `update_context`. So, it is prudent to keep the necessary context with the deferred task.
 
 **Behavior:**
 - Your context resets to system prompt + `<current_task>` only
@@ -190,8 +118,8 @@ Maximize your reward by effectively using `do_later` to break down tasks!
 
 # Example flow:
 If you are tasked to backport a patch, you should do following tasks in order
- - Use `do_later` to set current task as exploring the codebase to understand the patch and its dependencies. Defer the actual backporting as deferred task. Mention in the current task to update the context with findings in detail with file names, functions and even code snippet. When you've explored the upstream patch, copy it to the context summary. Other tasks will require it.
- - If your task is to understand a patch for backporting purposes, read relevant code and update your context summary with detailed findings using `summarize_context`. Mention in that summary all the necessary details required for backporting like the upstream patch content, files locations, function names, etc., in the target branch. You are welcome to include code snippets in the summary. You should use a structured format for easy understanding.
+ - Use `do_later` to set current task as exploring the codebase to understand the patch and its dependencies. Defer the actual backporting as deferred task. Mention in the current task to update the context with findings in detail with file names, functions and even code snippet. When you've explored the upstream patch, copy it to the context. Other tasks will require it.
+ - If your task is to understand a patch for backporting purposes, read relevant code and update your context with detailed findings using `update_context`. Mention in that context all the necessary details required for backporting like the upstream patch content, files locations, function names, etc., in the target branch. You are welcome to include code snippets in the context. You should use a structured format for easy understanding.
  - If you got the summary from the first task and now you are actually backporting the patch, set the current task to backport the first hunk of the patch. Defer the rest of the patch backporting as deferred task. Reset the context with summary from previous task and snippet of the hunk to be backported. Keep the full context with the deferred task.
  - Keep doing until the entire patch is backported.
  - At the end, clear all the conversations and just set the context to verify the backporting is successful by reading the code.
@@ -367,15 +295,15 @@ class MicroBot:
                 return return_value
 
             # Handle context summarization
-            if llm_response.command.startswith("summarize_context"):
-                parsed_args = self._parse_summarize_context_command(llm_response.command)
+            if llm_response.command.startswith("update_context"):
+                parsed_args = self._parse_update_context_command(llm_response.command)
                 if parsed_args is None:
                     # Invalid syntax - ask LLM to correct it
-                    error_msg = self._get_summarize_context_syntax_error(llm_response.command)
+                    error_msg = self._get_update_context_syntax_error(llm_response.command)
                     llm_response = self.llm.ask(error_msg)
                     continue
                 last_n_messages, summary = parsed_args
-                last_msg = self.llm.summarize_context(last_n_messages=last_n_messages, summary=summary)
+                last_msg = self.llm.update_context(last_n_messages=last_n_messages, summary=summary)
                 llm_response = self.llm.ask(last_msg["content"])
                 continue
 
@@ -516,11 +444,11 @@ class MicroBot:
                 "Only MOUNT mount type is supported for folder_to_mount"
             )
 
-    def _parse_summarize_context_command(self, command: str) -> tuple[int, str] | None:
+    def _parse_update_context_command(self, command: str) -> tuple[int, str] | None:
         """
-        Parse the summarize_context command and extract arguments.
+        Parse the update_context command and extract arguments.
 
-        Expected format: summarize_context <n> "<summary>"
+        Expected format: update_context <n> "<summary>"
         Where <n> is an integer and <summary> is a quoted string.
 
         Returns:
@@ -534,8 +462,8 @@ class MicroBot:
             if len(parts) < 2 or len(parts) > 3:
                 return None
 
-            # First part should be 'summarize_context'
-            if parts[0] != "summarize_context":
+            # First part should be 'update_context'
+            if parts[0] != "update_context":
                 return None
 
             # Second part should be an integer
@@ -553,22 +481,22 @@ class MicroBot:
             # shlex.split can raise ValueError for malformed strings
             return None
 
-    def _get_summarize_context_syntax_error(self, command: str) -> str:
+    def _get_update_context_syntax_error(self, command: str) -> str:
         """
-        Generate an error message for invalid summarize_context syntax.
+        Generate an error message for invalid update_context syntax.
 
         Returns a detailed error message guiding the LLM to use correct syntax.
         """
-        return f"""COMMAND_ERROR: Invalid summarize_context syntax.
+        return f"""COMMAND_ERROR: Invalid update_context syntax.
 Your command: {command}
 
 Correct usage:
-    summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"
+    update_context <no_of_recent_turns_to_keep> "<your summary of the context>"
 
 Examples:
-    summarize_context 2 "Summary of previous work: explored files and found the bug"
-    summarize_context 0 ""
-    summarize_context 5 "Completed file exploration, ready to make changes"
+    update_context 2 "Summary of previous work: explored files and found the bug"
+    update_context 0 ""
+    update_context 5 "Completed file exploration, ready to make changes"
 
 Please send the command again with correct syntax."""
 

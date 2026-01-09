@@ -215,10 +215,10 @@ class TestMicrobotIntegration:
             assert isinstance(bot.llm, AnthropicApi)
             del bot
 
-    def test_summarize_context_invalid_syntax_asks_llm_to_retry(self, no_mount_microBot, caplog):
-        """Integration test: LLM sends invalid summarize_context syntax, bot asks LLM to correct it.
+    def test_update_context_invalid_syntax_asks_llm_to_retry(self, no_mount_microBot, caplog):
+        """Integration test: LLM sends invalid update_context syntax, bot asks LLM to correct it.
 
-        This test verifies that when the LLM sends an improperly formatted summarize_context
+        This test verifies that when the LLM sends an improperly formatted update_context
         command, the MicroBot:
         1. Detects the invalid syntax
         2. Sends an error message back to the LLM with correct usage instructions
@@ -239,25 +239,25 @@ class TestMicrobotIntegration:
             logger.info(f"mock_ask called (count={call_count[0]}): {message[:100]}...")
 
             if call_count[0] == 1:
-                # First call (initial prompt) - LLM sends invalid summarize_context (missing quotes)
+                # First call (initial prompt) - LLM sends invalid update_context (missing quotes)
                 res = LLMAskResponse(
                     task_done=False,
                     thoughts="Context is getting long, let me summarize",
-                    command='summarize_context 2 missing quotes around summary',  # Invalid: summary not quoted
+                    command='update_context 2 missing quotes around summary',  # Invalid: summary not quoted
                 )
             elif call_count[0] == 2:
                 # Second call - should receive error message about invalid syntax
-                assert "COMMAND_ERROR: Invalid summarize_context syntax" in message
+                assert "COMMAND_ERROR: Invalid update_context syntax" in message
                 assert "Correct usage:" in message
-                assert 'summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"' in message
+                assert 'update_context <no_of_recent_turns_to_keep> "<your summary of the context>"' in message
                 # Now LLM sends correct syntax
                 res = LLMAskResponse(
                     task_done=False,
                     thoughts="Let me fix the syntax",
-                    command='summarize_context 2 "This is a proper summary with quotes"',
+                    command='update_context 2 "This is a proper summary with quotes"',
                 )
             elif call_count[0] == 3:
-                # Third call - after successful summarize_context, receives the previous message
+                # Third call - after successful update_context, receives the previous message
                 # Complete the task
                 res = LLMAskResponse(
                     task_done=True,
@@ -274,7 +274,7 @@ class TestMicrobotIntegration:
         no_mount_microBot.llm.ask = mock_ask
 
         response: BotRunResult = no_mount_microBot.run(
-            "Test summarize_context invalid syntax handling",
+            "Test update_context invalid syntax handling",
             timeout_in_seconds=60,
             max_iterations=10
         )
@@ -285,18 +285,18 @@ class TestMicrobotIntegration:
         assert call_count[0] >= 3, "Should have had at least 3 LLM calls (initial, retry, complete)"
 
         # Verify error message was logged
-        assert "Invalid summarize_context syntax" in caplog.text or call_count[0] >= 2
+        assert "Invalid update_context syntax" in caplog.text or call_count[0] >= 2
 
-    def test_summarize_context_various_invalid_syntaxes(self, no_mount_microBot):
-        """Integration test: Various invalid summarize_context syntaxes are properly rejected.
+    def test_update_context_various_invalid_syntaxes(self, no_mount_microBot):
+        """Integration test: Various invalid update_context syntaxes are properly rejected.
 
         Tests multiple edge cases of invalid syntax to ensure robust parsing.
         """
         test_cases = [
-            ('summarize_context', "Missing all arguments"),
-            ('summarize_context abc "summary"', "Non-integer first argument"),
-            ('summarize_context 2', "Missing summary (should work with empty default)"),
-            ('summarize_context "summary" 2', "Arguments in wrong order"),
+            ('update_context', "Missing all arguments"),
+            ('update_context abc "summary"', "Non-integer first argument"),
+            ('update_context 2', "Missing summary (should work with empty default)"),
+            ('update_context "summary" 2', "Arguments in wrong order"),
         ]
 
         call_count = [0]
@@ -342,7 +342,7 @@ class TestMicrobotIntegration:
 
         # Check that the first test case (missing arguments) was rejected
         assert len(received_errors) > 0 or response.status
-        # Either we got an error for invalid syntax, or "summarize_context" alone wasn't enough
+        # Either we got an error for invalid syntax, or "update_context" alone wasn't enough
 
 
 @pytest.mark.unit
@@ -617,25 +617,25 @@ class TestMicrobotUnit:
 
     @pytest.mark.parametrize("command,expected_result", [
         # Valid commands
-        ('summarize_context 2 "This is a summary"', (2, "This is a summary")),
-        ('summarize_context 0 ""', (0, "")),
-        ('summarize_context 5 "Keep 5 turns, summary: completed file exploration"', (5, "Keep 5 turns, summary: completed file exploration")),
-        ('summarize_context 10 "Multi word summary with special chars: @#$%"', (10, "Multi word summary with special chars: @#$%")),
-        ('summarize_context 1 "Summary with \\"escaped quotes\\""', (1, 'Summary with "escaped quotes"')),
+        ('update_context 2 "This is a summary"', (2, "This is a summary")),
+        ('update_context 0 ""', (0, "")),
+        ('update_context 5 "Keep 5 turns, summary: completed file exploration"', (5, "Keep 5 turns, summary: completed file exploration")),
+        ('update_context 10 "Multi word summary with special chars: @#$%"', (10, "Multi word summary with special chars: @#$%")),
+        ('update_context 1 "Summary with \\"escaped quotes\\""', (1, 'Summary with "escaped quotes"')),
         # Valid with default empty summary
-        ('summarize_context 3', (3, "")),
+        ('update_context 3', (3, "")),
         # Invalid commands
-        ('summarize_context', None),  # Missing all arguments
-        ('summarize_context abc "summary"', None),  # Non-integer first argument
-        ('summarize_context -1 "negative"', (-1, "negative")),  # Negative is valid parsing (validation elsewhere)
-        ('summarize_context "summary" 2', None),  # Wrong order
-        ('not_summarize_context 2 "summary"', None),  # Wrong command name
-        ('summarize_context 2 missing quotes', None),  # Summary without quotes (shlex will split)
+        ('update_context', None),  # Missing all arguments
+        ('update_context abc "summary"', None),  # Non-integer first argument
+        ('update_context -1 "negative"', (-1, "negative")),  # Negative is valid parsing (validation elsewhere)
+        ('update_context "summary" 2', None),  # Wrong order
+        ('not_update_context 2 "summary"', None),  # Wrong command name
+        ('update_context 2 missing quotes', None),  # Summary without quotes (shlex will split)
     ])
-    def test_parse_summarize_context_command(self, command, expected_result):
-        """Test parsing of summarize_context command syntax."""
+    def test_parse_update_context_command(self, command, expected_result):
+        """Test parsing of update_context command syntax."""
         bot = MicroBot.__new__(MicroBot)
-        result = bot._parse_summarize_context_command(command)
+        result = bot._parse_update_context_command(command)
 
         if expected_result is None:
             assert result is None, f"Expected None for invalid command '{command}', got {result}"
@@ -645,29 +645,29 @@ class TestMicrobotUnit:
 
     @pytest.mark.parametrize("command,expected_result", [
         # Whitespace handling
-        ('summarize_context  2  "summary"', (2, "summary")),  # Extra spaces
-        ('  summarize_context 2 "summary"  ', (2, "summary")),  # Leading/trailing spaces
-        ('summarize_context\t2\t"summary"', (2, "summary")),  # Tab characters
+        ('update_context  2  "summary"', (2, "summary")),  # Extra spaces
+        ('  update_context 2 "summary"  ', (2, "summary")),  # Leading/trailing spaces
+        ('update_context\t2\t"summary"', (2, "summary")),  # Tab characters
         # Large numbers
-        ('summarize_context 999999 "large number"', (999999, "large number")),
-        ('summarize_context 0 "zero turns"', (0, "zero turns")),
+        ('update_context 999999 "large number"', (999999, "large number")),
+        ('update_context 0 "zero turns"', (0, "zero turns")),
         # Unicode content in summary
-        ('summarize_context 1 "Summary with émojis 🎉 and ünïcödé"', (1, "Summary with émojis 🎉 and ünïcödé")),
-        ('summarize_context 2 "中文内容"', (2, "中文内容")),
+        ('update_context 1 "Summary with émojis 🎉 and ünïcödé"', (1, "Summary with émojis 🎉 and ünïcödé")),
+        ('update_context 2 "中文内容"', (2, "中文内容")),
         # Single quotes (shlex handles them)
-        ("summarize_context 2 'single quoted summary'", (2, "single quoted summary")),
+        ("update_context 2 'single quoted summary'", (2, "single quoted summary")),
         # Literal backslash-n in summary (shlex does not interpret escape sequences)
-        ('summarize_context 1 "line1\\nline2"', (1, "line1\\nline2")),
+        ('update_context 1 "line1\\nline2"', (1, "line1\\nline2")),
         # Empty summary edge cases
-        ('summarize_context 5 ""', (5, "")),
+        ('update_context 5 ""', (5, "")),
         # Summary with special shell characters
-        ('summarize_context 2 "path: /home/user && echo test"', (2, "path: /home/user && echo test")),
-        ('summarize_context 2 "command: ls | grep foo"', (2, "command: ls | grep foo")),
+        ('update_context 2 "path: /home/user && echo test"', (2, "path: /home/user && echo test")),
+        ('update_context 2 "command: ls | grep foo"', (2, "command: ls | grep foo")),
     ])
-    def test_parse_summarize_context_command_edge_cases(self, command, expected_result):
-        """Test edge cases for _parse_summarize_context_command."""
+    def test_parse_update_context_command_edge_cases(self, command, expected_result):
+        """Test edge cases for _parse_update_context_command."""
         bot = MicroBot.__new__(MicroBot)
-        result = bot._parse_summarize_context_command(command)
+        result = bot._parse_update_context_command(command)
 
         if expected_result is None:
             assert result is None, f"Expected None for command '{command}', got {result}"
@@ -677,29 +677,29 @@ class TestMicrobotUnit:
 
     @pytest.mark.parametrize("command", [
         # Malformed quoted strings
-        'summarize_context 2 "unclosed quote',
-        "summarize_context 2 'unclosed single quote",
-        'summarize_context 2 "mismatched quotes\'',
+        'update_context 2 "unclosed quote',
+        "update_context 2 'unclosed single quote",
+        'update_context 2 "mismatched quotes\'',
         # Too many arguments
-        'summarize_context 2 "summary" extra_arg',
-        'summarize_context 1 2 3 4',
+        'update_context 2 "summary" extra_arg',
+        'update_context 1 2 3 4',
         # Empty or whitespace-only commands
         '',
         '   ',
         '\t\n',
-        # Command with only summarize_context and spaces
-        'summarize_context   ',
+        # Command with only update_context and spaces
+        'update_context   ',
     ])
-    def test_parse_summarize_context_command_invalid_inputs(self, command):
+    def test_parse_update_context_command_invalid_inputs(self, command):
         """Test that invalid inputs return None."""
         bot = MicroBot.__new__(MicroBot)
-        result = bot._parse_summarize_context_command(command)
+        result = bot._parse_update_context_command(command)
         assert result is None, f"Expected None for invalid command '{command}', got {result}"
 
-    def test_parse_summarize_context_command_returns_correct_types(self):
+    def test_parse_update_context_command_returns_correct_types(self):
         """Test that the return value has correct types."""
         bot = MicroBot.__new__(MicroBot)
-        result = bot._parse_summarize_context_command('summarize_context 5 "test summary"')
+        result = bot._parse_update_context_command('update_context 5 "test summary"')
 
         assert result is not None
         assert isinstance(result, tuple)
@@ -709,15 +709,15 @@ class TestMicrobotUnit:
         assert result[0] == 5
         assert result[1] == "test summary"
 
-    def test_get_summarize_context_syntax_error_format(self):
+    def test_get_update_context_syntax_error_format(self):
         """Test that syntax error message has correct format with usage examples."""
         bot = MicroBot.__new__(MicroBot)
-        error_msg = bot._get_summarize_context_syntax_error('summarize_context bad syntax')
+        error_msg = bot._get_update_context_syntax_error('update_context bad syntax')
 
-        assert "COMMAND_ERROR: Invalid summarize_context syntax" in error_msg
-        assert "Your command: summarize_context bad syntax" in error_msg
+        assert "COMMAND_ERROR: Invalid update_context syntax" in error_msg
+        assert "Your command: update_context bad syntax" in error_msg
         assert "Correct usage:" in error_msg
-        assert 'summarize_context <no_of_recent_turns_to_keep> "<your summary of the context>"' in error_msg
+        assert 'update_context <no_of_recent_turns_to_keep> "<your summary of the context>"' in error_msg
         assert "Examples:" in error_msg
         assert "Please send the command again with correct syntax" in error_msg
 
@@ -905,13 +905,13 @@ class TestMicrobotUnit:
             assert isinstance(bot.llm, OllamaLocal)
             assert bot.llm.system_prompt == base_system_prompt
 
-    def test_summarize_context_command_calls_llm_summarize(self, no_mount_microBot, monkeypatch):
-        """Test that summarize_context command triggers LLM's summarize_context method."""
+    def test_update_context_command_calls_llm_summarize(self, no_mount_microBot, monkeypatch):
+        """Test that update_context command triggers LLM's update_context method."""
         assert no_mount_microBot is not None
 
         summarize_calls = []
 
-        def mock_summarize_context(last_n_messages: int, summary: str):
+        def mock_update_context(last_n_messages: int, summary: str):
             summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous context message"}
 
@@ -921,9 +921,9 @@ class TestMicrobotUnit:
             no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
-                # First call (initial prompt) returns summarize_context command
+                # First call (initial prompt) returns update_context command
                 res = LLMAskResponse(
-                    command='summarize_context 2 "Summary of previous work: explored files"',
+                    command='update_context 2 "Summary of previous work: explored files"',
                     task_done=False,
                     thoughts="Need to summarize context"
                 )
@@ -937,7 +937,7 @@ class TestMicrobotUnit:
             return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
-        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+        monkeypatch.setattr(no_mount_microBot.llm, "update_context", mock_update_context)
 
         response: BotRunResult = no_mount_microBot.run(
             "Test summarize context",
@@ -945,18 +945,18 @@ class TestMicrobotUnit:
             max_iterations=10
         )
 
-        # Verify summarize_context was called with the correct parsed arguments
+        # Verify update_context was called with the correct parsed arguments
         assert len(summarize_calls) == 1
         assert summarize_calls[0] == (2, "Summary of previous work: explored files")
         assert response.status
 
-    def test_summarize_context_does_not_increment_iteration(self, no_mount_microBot, monkeypatch):
-        """Test that summarize_context command does not count towards max_iterations."""
+    def test_update_context_does_not_increment_iteration(self, no_mount_microBot, monkeypatch):
+        """Test that update_context command does not count towards max_iterations."""
         assert no_mount_microBot is not None
 
         summarize_calls = []
 
-        def mock_summarize_context(last_n_messages: int, summary: str):
+        def mock_update_context(last_n_messages: int, summary: str):
             summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous message content"}
 
@@ -966,21 +966,21 @@ class TestMicrobotUnit:
             no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             # Flow with max_iterations=5:
-            # 1. Initial prompt -> summarize_context
-            # 2. Last message from summarize -> another summarize_context
+            # 1. Initial prompt -> update_context
+            # 2. Last message from summarize -> another update_context
             # 3. Last message from summarize -> actual command
             # 4. Command result -> complete
             if call_count[0] == 1:
-                # First call: return summarize_context
+                # First call: return update_context
                 res = LLMAskResponse(
-                    command='summarize_context 1 "Summarized"',
+                    command='update_context 1 "Summarized"',
                     task_done=False,
                     thoughts=""
                 )
             elif call_count[0] == 2:
-                # Second call (with returned last message): return another summarize_context
+                # Second call (with returned last message): return another update_context
                 res = LLMAskResponse(
-                    command='summarize_context 1 "Summarized again"',
+                    command='update_context 1 "Summarized again"',
                     task_done=False,
                     thoughts=""
                 )
@@ -994,11 +994,11 @@ class TestMicrobotUnit:
             return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
-        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+        monkeypatch.setattr(no_mount_microBot.llm, "update_context", mock_update_context)
 
         # With max_iterations=5, we have enough iterations to complete:
-        # iteration 2: first summarize_context
-        # iteration 3: second summarize_context
+        # iteration 2: first update_context
+        # iteration 3: second update_context
         # iteration 4: actual command (echo 'test')
         # iteration 5: task_done=True
         response: BotRunResult = no_mount_microBot.run(
@@ -1013,8 +1013,8 @@ class TestMicrobotUnit:
         assert response.status
         assert response.error is None
 
-    def test_summarize_context_continues_loop(self, no_mount_microBot, monkeypatch):
-        """Test that after summarize_context, the bot continues processing without executing command."""
+    def test_update_context_continues_loop(self, no_mount_microBot, monkeypatch):
+        """Test that after update_context, the bot continues processing without executing command."""
         assert no_mount_microBot is not None
 
         executed_commands = []
@@ -1024,7 +1024,7 @@ class TestMicrobotUnit:
             executed_commands.append(command)
             return CmdReturn(return_code=0, stdout="executed", stderr="")
 
-        def mock_summarize_context(last_n_messages: int, summary: str):
+        def mock_update_context(last_n_messages: int, summary: str):
             summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous message to continue"}
 
@@ -1034,9 +1034,9 @@ class TestMicrobotUnit:
             no_mount_microBot.llm.messages.append({"role": "user", "content": message})
             call_count[0] += 1
             if call_count[0] == 1:
-                # Initial prompt: return summarize_context command
+                # Initial prompt: return update_context command
                 res = LLMAskResponse(
-                    command='summarize_context 1 "Context summary"',
+                    command='update_context 1 "Context summary"',
                     task_done=False,
                     thoughts=""
                 )
@@ -1049,7 +1049,7 @@ class TestMicrobotUnit:
             return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
-        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+        monkeypatch.setattr(no_mount_microBot.llm, "update_context", mock_update_context)
         monkeypatch.setattr(no_mount_microBot.environment, "execute", mock_execute)
 
         response: BotRunResult = no_mount_microBot.run(
@@ -1058,23 +1058,23 @@ class TestMicrobotUnit:
             max_iterations=10
         )
 
-        # Verify summarize_context was called
+        # Verify update_context was called
         assert len(summarize_calls) == 1
 
-        # Verify the summarize_context command was NOT executed in the environment
-        assert 'summarize_context 1 "Context summary"' not in executed_commands
+        # Verify the update_context command was NOT executed in the environment
+        assert 'update_context 1 "Context summary"' not in executed_commands
 
         # Verify actual commands were executed
         assert "echo 'actual command'" in executed_commands
         assert response.status
 
-    def test_summarize_context_with_empty_summary(self, no_mount_microBot, monkeypatch):
-        """Test summarize_context with empty summary (used to clear context after sub-task)."""
+    def test_update_context_with_empty_summary(self, no_mount_microBot, monkeypatch):
+        """Test update_context with empty summary (used to clear context after sub-task)."""
         assert no_mount_microBot is not None
 
         summarize_calls = []
 
-        def mock_summarize_context(last_n_messages: int, summary: str):
+        def mock_update_context(last_n_messages: int, summary: str):
             summarize_calls.append((last_n_messages, summary))
             return {"role": "user", "content": "Previous context message"}
 
@@ -1086,7 +1086,7 @@ class TestMicrobotUnit:
             if call_count[0] == 1:
                 # Empty summary - used to clear previous context
                 res = LLMAskResponse(
-                    command='summarize_context 0 ""',
+                    command='update_context 0 ""',
                     task_done=False,
                     thoughts="Clearing context after completing sub-task"
                 )
@@ -1099,7 +1099,7 @@ class TestMicrobotUnit:
             return res
 
         monkeypatch.setattr(no_mount_microBot.llm, "ask", mock_ask)
-        monkeypatch.setattr(no_mount_microBot.llm, "summarize_context", mock_summarize_context)
+        monkeypatch.setattr(no_mount_microBot.llm, "update_context", mock_update_context)
 
         response: BotRunResult = no_mount_microBot.run(
             "Test empty summarize",
@@ -1107,18 +1107,18 @@ class TestMicrobotUnit:
             max_iterations=10
         )
 
-        # Verify summarize_context was called with empty summary
+        # Verify update_context was called with empty summary
         assert len(summarize_calls) == 1
         assert summarize_calls[0] == (0, "")
         assert response.status
 
     @pytest.mark.parametrize("summarize_command", [
-        'summarize_context 1 "Simple summary"',
-        'summarize_context 2 "Summary with multiple words and details"',
-        'summarize_context 0 ""',
-        'summarize_context 5 "Keep 5 turns, summary: completed file exploration"',
+        'update_context 1 "Simple summary"',
+        'update_context 2 "Summary with multiple words and details"',
+        'update_context 0 ""',
+        'update_context 5 "Keep 5 turns, summary: completed file exploration"',
     ])
-    def test_summarize_context_various_formats(self, summarize_command):
-        """Test that various summarize_context command formats are detected correctly."""
-        # Verify the command starts with summarize_context
-        assert summarize_command.startswith("summarize_context")
+    def test_update_context_various_formats(self, summarize_command):
+        """Test that various update_context command formats are detected correctly."""
+        # Verify the command starts with update_context
+        assert summarize_command.startswith("update_context")
