@@ -53,12 +53,6 @@ debug_handler.setLevel(logging.DEBUG)
 debug_handler.setFormatter(formatter)
 root_logger.addHandler(debug_handler)
 
-# Console handler for INFO level output
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(formatter)
-root_logger.addHandler(console_handler)
-
 # Module-specific logger for this test file
 logger = logging.getLogger(__name__)
 
@@ -139,6 +133,7 @@ def test_writing_bot_backport_patch():
         f"{target_commit_id} in the repository. Ensure that the backported changes "
         "are compatible with the target commit and do not introduce any conflicts."
     )
+    # issue_text = ("It is a test task for `summarize_context`. Try using it.")
 
     response: BotRunResult = writingBot.run(
         issue_text, timeout_in_seconds=1200, max_iterations=200

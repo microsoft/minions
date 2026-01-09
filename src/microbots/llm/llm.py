@@ -115,8 +115,13 @@ class LLMInterface(ABC):
         summary can be empty. If empty, empty summary will be added.
         """
         logger.debug("Messages : %s", self.messages)
+
         # Keep the system prompt
-        msg0 = self.messages[0]["content"]
+        if self.messages[0]["role"] == "system":
+            msg0 = self.messages[0]["content"]
+        else:
+            msg0 = self.system_prompt
+
         # Pop the last message which asked for summarization
         self.messages.pop()
         # Get the last N conversations (user + assistant)
@@ -142,12 +147,19 @@ class LLMInterface(ABC):
 
         new_system_prompt = f"{system_prompt}\n__summary__\n{combined_summary}\n__end_summary__"
 
-        # Append without previous user message
-        self.messages = [{"role": "system", "content": new_system_prompt}] + recent_messages[:-1]
-        logger.debug("Context summarized. New system prompt: %s", new_system_prompt)
+        if recent_messages:
+            # Append without previous user message
+            self.messages = [{"role": "system", "content": new_system_prompt}] + recent_messages[:-1]
+            logger.debug("Context summarized. New system prompt: %s", new_system_prompt)
 
-        logger.debug("Last message before summarization: %s", recent_messages[-1])
-        return recent_messages[-1]  # return the last user message that given before summarization
+            logger.debug("Last message before summarization: %s", recent_messages[-1])
+            return recent_messages[-1]  # return the last user message that given before summarization
+
+        else:
+            # No recent messages, just keep system prompt
+            self.messages = [{"role": "system", "content": new_system_prompt}]
+            logger.debug("No recent messages to keep after summarization. New system prompt: %s", new_system_prompt)
+            return "Continue the task based on the system prompt."
 
     def do_later(self, current_task: str, deferred_task: str) -> str:
         """
