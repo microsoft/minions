@@ -250,9 +250,14 @@ class TestExecuteExceptionHandling:
 
             assert result.return_code == 124
             # Verify timeout was passed to requests.post
-            mock_post.assert_called_once()
-            call_kwargs = mock_post.call_args[1]
-            assert call_kwargs['timeout'] == 300
+            # Should be called twice: original command + recovery attempt
+            assert mock_post.call_count == 2
+            # Check first call (original command) had timeout of 300
+            first_call_kwargs = mock_post.call_args_list[0][1]
+            assert first_call_kwargs['timeout'] == 300
+            # Check second call (recovery) had timeout of 5
+            second_call_kwargs = mock_post.call_args_list[1][1]
+            assert second_call_kwargs['timeout'] == 5
 
     def test_execute_with_custom_timeout(self, mock_env):
         """Test execute with custom timeout value"""
