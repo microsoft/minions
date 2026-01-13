@@ -4,5 +4,6 @@
         "microbots",
         "ollama",
         "qwen"
-    ]
+    ],
+    "python.testing.pytestEnabled": true
 }
