@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "microbots"
-dynamic = ["version", "dependencies"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 description = "container-based autonomous agent framework"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -23,6 +23,7 @@ requires-python = ">=3.11"
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
+optional-dependencies.dev = { file = ["requirements-dev.txt"] }
 
 [tool.setuptools_scm]
 # This tells setuptools-scm to get version from git tags
