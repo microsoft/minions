@@ -5,6 +5,8 @@ import pytest
 import os
 import socket
 import re
+from unittest.mock import Mock, patch
+import docker.errors
 
 # Add src to path for imports
 import sys
@@ -14,6 +16,107 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from microbots.extras.mount import Mount
 from microbots.constants import DOCKER_WORKING_DIR
+
+
+@pytest.mark.unit
+class TestResolveImageUnit:
+    """Unit tests for _resolve_image method with fallback logic"""
+
+    @pytest.fixture
+    def mock_docker_client(self):
+        """Create a mock Docker client"""
+        mock_client = Mock()
+        mock_client.images = Mock()
+        return mock_client
+
+    def test_resolve_image_primary_success(self, mock_docker_client):
+        """Test successful pull of primary image"""
+        primary_image = "microbotsacr.azurecr.io/shell_server:latest"
+        fallback_image = "kavyasree261002/shell_server:latest"
+        
+        mock_docker_client.images.pull.return_value = Mock()
+        
+        with patch.object(LocalDockerEnvironment, 'start'):
+            env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+            env.client = mock_docker_client
+            
+            result = env._resolve_image(primary_image, fallback_image)
+        
+        assert result == primary_image
+        mock_docker_client.images.pull.assert_called_once_with(primary_image)
+
+    def test_resolve_image_primary_not_found_fallback_success(self, mock_docker_client):
+        """Test fallback to secondary image when primary not found"""
+        primary_image = "microbotsacr.azurecr.io/shell_server:latest"
+        fallback_image = "kavyasree261002/shell_server:latest"
+        
+        mock_docker_client.images.pull.side_effect = [
+            docker.errors.ImageNotFound("Image not found"),
+            Mock()
+        ]
+        
+        with patch.object(LocalDockerEnvironment, 'start'):
+            env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+            env.client = mock_docker_client
+            
+            result = env._resolve_image(primary_image, fallback_image)
+        
+        assert result == fallback_image
+        assert mock_docker_client.images.pull.call_count == 2
+
+    def test_resolve_image_primary_api_error_fallback_success(self, mock_docker_client):
+        """Test fallback when primary image has API error"""
+        primary_image = "microbotsacr.azurecr.io/shell_server:latest"
+        fallback_image = "kavyasree261002/shell_server:latest"
+        
+        mock_docker_client.images.pull.side_effect = [
+            docker.errors.APIError("API connection failed"),
+            Mock()
+        ]
+        
+        with patch.object(LocalDockerEnvironment, 'start'):
+            env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+            env.client = mock_docker_client
+            
+            result = env._resolve_image(primary_image, fallback_image)
+        
+        assert result == fallback_image
+        assert mock_docker_client.images.pull.call_count == 2
+
+    def test_resolve_image_both_fail_returns_primary(self, mock_docker_client):
+        """Test that primary image is returned when both fail"""
+        primary_image = "microbotsacr.azurecr.io/shell_server:latest"
+        fallback_image = "kavyasree261002/shell_server:latest"
+        
+        mock_docker_client.images.pull.side_effect = [
+            docker.errors.ImageNotFound("Primary not found"),
+            docker.errors.ImageNotFound("Fallback not found")
+        ]
+        
+        with patch.object(LocalDockerEnvironment, 'start'):
+            env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+            env.client = mock_docker_client
+            
+            result = env._resolve_image(primary_image, fallback_image)
+        
+        assert result == primary_image
+        assert mock_docker_client.images.pull.call_count == 2
+
+    def test_resolve_image_no_fallback_returns_primary(self, mock_docker_client):
+        """Test that primary is returned when no fallback provided and primary fails"""
+        primary_image = "microbotsacr.azurecr.io/shell_server:latest"
+        
+        mock_docker_client.images.pull.side_effect = docker.errors.ImageNotFound("Image not found")
+        
+        with patch.object(LocalDockerEnvironment, 'start'):
+            env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+            env.client = mock_docker_client
+            
+            result = env._resolve_image(primary_image, None)
+        
+        assert result == primary_image
+        mock_docker_client.images.pull.assert_called_once_with(primary_image)
+
 
 class TestLocalDockerEnvironmentIntegration:
     """Integration tests for LocalDockerEnvironment with real Docker containers"""
