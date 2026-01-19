@@ -126,26 +126,44 @@ class LLMInterface(ABC):
         self.messages.pop()
         # Get the last N conversations (user + assistant)
         # If there are not enough messages, take all except system prompt
-        if (len(self.messages) > (last_n_messages*2 - 1)):
-            logger.debug("Summarizing last %d messages", last_n_messages)
-            recent_messages = self.messages[-(last_n_messages*2 - 1):]
+        if last_n_messages == 0:
+            logger.debug("last_n_messages is 0. Summarizing all conversations so far.")
+            recent_messages = []
+        elif (len(self.messages) > (last_n_messages*2)):
+            # [s, u1, a1, u2, a2, u3, a3]
+            #
+            # last_n_messages = 1
+            # len(messages) = 7 > 2
+            # recent_messages = messages[-2:] => [u3, a3]
+            #
+            # last_n_messages = 2
+            # len(messages) = 7 > 4
+            # recent_messages = messages[-4:] => [u2, a2, u3, a3]
+            #
+            # last_n_messages = 3
+            # len(messages) = 7 > 6
+            # recent_messages = messages[-6:] => [u1, a1, u2, a2, u3, a3]
+            logger.debug("Summarizing last %d conversations", (len(self.messages) - last_n_messages))
+            recent_messages = self.messages[-(last_n_messages*2):]
         else:
             logger.debug("Not enough messages to summarize, taking all except system prompt")
             recent_messages = self.messages[1:]
         logger.debug("Recent messages that will not be summarized: %s", recent_messages)
 
         # Update system prompt if it already has a summary
-        # summary will be between __context__ and __end_summary__
+        # summary will be between __context__ and __end_context__
         if "__context__" in msg0:
             system_prompt = msg0.split("__context__")[0]
-            old_summary = msg0.split("__end_summary__")[0].split("__context__")[1]
-            logger.debug("Old summary found: %s", old_summary)
-            combined_summary = old_summary + "\n" + summary
+            # old_summary = msg0.split("__end_context__")[0].split("__context__")[1]
+            # logger.debug("Old summary found: %s", old_summary)
+            # combined_summary = old_summary + "\n" + summary
         else:
             system_prompt = msg0
-            combined_summary = summary
+            # combined_summary = summary
 
-        new_system_prompt = f"{system_prompt}\n__context__\n{combined_summary}\n__end_summary__"
+        combined_summary = summary
+
+        new_system_prompt = f"{system_prompt}\n__context__\n{combined_summary}\n__end_context__"
 
         if recent_messages:
             # Append without previous user message
@@ -159,7 +177,7 @@ class LLMInterface(ABC):
             # No recent messages, just keep system prompt
             self.messages = [{"role": "system", "content": new_system_prompt}]
             logger.debug("No recent messages to keep after summarization. New system prompt: %s", new_system_prompt)
-            return "Continue the task based on the system prompt."
+            return "Context is updated as per your request.\nContinue the task based on the system prompt or set task_done to true if the task is complete."
 
     def do_later(self, current_task: str, deferred_task: str) -> str:
         """
@@ -184,7 +202,7 @@ class LLMInterface(ABC):
         # Get current context summary before reset
         current_summary = ""
         if "__context__" in self.system_prompt:
-            current_summary = self.system_prompt.split("__end_summary__")[0].split("__context__")[1].strip()
+            current_summary = self.system_prompt.split("__end_context__")[0].split("__context__")[1].strip()
 
         # Push deferred task onto stack
         self.deferred_tasks.append(DeferredTask(
@@ -197,7 +215,7 @@ class LLMInterface(ABC):
         base_system_prompt = self.system_prompt.split("__context__")[0].rstrip()
 
         # Update system prompt with current_task as the new context
-        new_system_prompt = f"{base_system_prompt}\n__context__\n<current_task>\n{current_task}\n</current_task>\n__end_summary__"
+        new_system_prompt = f"{base_system_prompt}\n__context__\n<current_task>\n{current_task}\n</current_task>\n__end_context__"
 
         # Replace line with # $$REWARD$$: <reward>
         if "# $$REWARD$$:" in new_system_prompt:
@@ -242,31 +260,36 @@ class LLMInterface(ABC):
         next_task = self.deferred_tasks.pop()
         logger.debug("Popped deferred task: %s. Remaining stack size: %d", next_task.task, len(self.deferred_tasks))
 
-        # # Get base system prompt (strip any existing summary)
-        # base_system_prompt = self.system_prompt.split("__context__")[0].rstrip()
+        # Get base system prompt (strip any existing summary)
+        if "__context__" in self.system_prompt:
+            base_system_prompt = self.system_prompt.split("__context__")[0].rstrip()
+        else:
+            base_system_prompt = self.system_prompt
 
-        # current_summary = ""
-        # if "__context__" in self.system_prompt:
-        #     current_summary = self.system_prompt.split("__end_summary__")[0].split("__context__")[1].strip()
+        current_summary = ""
+        if "__context__" in self.system_prompt:
+            current_summary = self.system_prompt.split("__end_context__")[0].split("__context__")[1].strip()
 
-        # # Add context about completed work and next task
-        # if current_summary:
-        #     completed_summary = f"{current_summary}\nStatus: COMPLETE"
-        # else:
-        #     completed_summary = "Previous sub-task: COMPLETE" # Impossible case
+        # Add context about completed work and next task
+        completed_summary = ""
+        if current_summary:
+            completed_summary = f"{current_summary}\nStatus: COMPLETE"
+        else:
+            completed_summary = "Previous sub-task: COMPLETE" # Impossible case
 
-        # if next_task.summary:
-        #     completed_summary += f"\nContext from when this task was deferred:\n{next_task.summary}"
+        if next_task.summary:
+            completed_summary += f"\n\n---\nContext from when this task was deferred:\n{next_task.summary}"
 
-        # new_system_prompt = f"{base_system_prompt}\n__context__\n{completed_summary}\n__end_summary__"
+        new_system_prompt = f"{base_system_prompt}\n__context__\n{completed_summary}\n__end_context__" + "\n\nBased on current state of the project, either use `do_later` to take a sub-task and continue. Or update your context using `update_context` if needed. Then continue working on the remaining task.\nYOU SHOULD BE VERY CAREFUL WHILE MANAGING CONTEXT FOR CURRENT TASK AND DEFERRED TASKS."
 
         # Replace line with # $$REWARD$$: <reward>
-        if "# $$REWARD$$:" in self.system_prompt:
+        if "$$REWARD$$:" in new_system_prompt:
             new_system_prompt = "\n".join([
-                line if not line.startswith("# $$REWARD$$:") else f"# $$REWARD$$: {self.llm_reward}"
-                for line in self.system_prompt.splitlines()
+                line if not line.startswith("$$REWARD$$:") else f"$$REWARD$$: {self.llm_reward}"
+                for line in new_system_prompt.splitlines()
             ])
-            self.system_prompt = new_system_prompt
+
+        self.system_prompt = new_system_prompt
 
         self.messages = [
             {
@@ -278,5 +301,5 @@ class LLMInterface(ABC):
         logger.debug("Messages reset for deferred task: %s", next_task.task)
 
         # Return the deferred task as a new user message
-        context_info = next_task.summary if next_task.summary else "Starting fresh on this deferred task."
-        return f"DEFERRED TASK (continue from where you left off):\n\n{next_task.task}\n\nContext: {context_info}"
+        # context_info = next_task.summary if next_task.summary else "Starting fresh on this deferred task."
+        return f"DEFERRED TASK (continue from where you left off):\n\n{next_task.task}"

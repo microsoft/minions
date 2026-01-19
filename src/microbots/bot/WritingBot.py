@@ -23,21 +23,23 @@ class WritingBot(MicroBot):
             folder_to_mount, f"/{DOCKER_WORKING_DIR}/{os.path.basename(folder_to_mount)}", PermissionLabels.READ_WRITE
         )
 
-        system_prompt = f"""
-        {system_prompt_common}
-        You are a writing bot.
-        You are only provided access to write files inside the mounted directory.
-        The directory is mounted at  {folder_mount_info.sandbox_path} in your current environment.
-        You can access files using paths like {folder_mount_info.sandbox_path}/filename.txt or by changing to that directory first.
-        Once all the commands are done, and task is verified finally give me the result.
+        # system_prompt = f"""
+        # {system_prompt_common}
+        # You are a writing bot.
+        # You are only provided access to write files inside the mounted directory.
+        # The directory is mounted at  {folder_mount_info.sandbox_path} in your current environment.
+        # You can access files using paths like {folder_mount_info.sandbox_path}/filename.txt or by changing to that directory first.
+        # Once all the commands are done, and task is verified finally give me the result.
 
-        COMMAND USAGE RESTRICTIONS:
-        - Use ONLY standard Linux commands: `git`, `sed`, `awk`, `grep`, `patch`, `find`, `cat`, `head`, `tail`, `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `diff` etc.
-        - DO NOT use non-existent commands like `applypatch`, `edit`, `modify` - use `git apply` or `patch` instead
-        - For file editing, use `sed`, `awk`, or direct file operations with standard tools
-        - When using `grep` with special characters, escape them properly
-        - Break complex operations into smaller, verifiable steps
-        """
+        # COMMAND USAGE RESTRICTIONS:
+        # - Use ONLY standard Linux commands: `git`, `sed`, `awk`, `grep`, `patch`, `find`, `cat`, `head`, `tail`, `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `diff` etc.
+        # - DO NOT use non-existent commands like `applypatch`, `edit`, `modify` - use `git apply` or `patch` instead
+        # - For file editing, use `sed`, `awk`, or direct file operations with standard tools
+        # - When using `grep` with special characters, escape them properly
+        # - Break complex operations into smaller, verifiable steps
+        # """
+
+        system_prompt = system_prompt_common
 
         super().__init__(
             model=model,

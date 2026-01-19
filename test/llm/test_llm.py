@@ -775,7 +775,7 @@ class TestSummarizeContext:
         assert llm.messages[0]["role"] == "system"
         assert "__context__" in llm.messages[0]["content"]
         assert "This is a summary" in llm.messages[0]["content"]
-        assert "__end_summary__" in llm.messages[0]["content"]
+        assert "__end_context__" in llm.messages[0]["content"]
         # Verify the last user message is returned
         assert last_msg["content"] == "Message 24"
 
@@ -814,16 +814,16 @@ class TestSummarizeContext:
 
         assert len(llm.messages) == 2  # system + Hello (recent_messages[:-1])
         assert "__context__" in llm.messages[0]["content"]
-        assert "__end_summary__" in llm.messages[0]["content"]
+        assert "__end_context__" in llm.messages[0]["content"]
         # Empty summary should still have the markers
-        assert "\n__context__\n\n__end_summary__" in llm.messages[0]["content"]
+        assert "\n__context__\n\n__end_context__" in llm.messages[0]["content"]
         # Verify the last user message is returned
         assert last_msg["content"] == "Hi"
 
     def test_summarize_updates_existing_summary(self, llm):
         """Test that existing summary is updated when system prompt already has one"""
         llm.messages = [
-            {"role": "system", "content": "You are a helpful assistant.\n__context__\nOld summary content\n__end_summary__"},
+            {"role": "system", "content": "You are a helpful assistant.\n__context__\nOld summary content\n__end_context__"},
             {"role": "user", "content": "Hello"},
             {"role": "assistant", "content": "Hi"},
             {"role": "user", "content": "Summarize"}  # Will be popped
@@ -836,7 +836,7 @@ class TestSummarizeContext:
         assert "New summary content" in llm.messages[0]["content"]
         # Check that the old and new summaries are combined
         content = llm.messages[0]["content"]
-        summary_section = content.split("__context__")[1].split("__end_summary__")[0]
+        summary_section = content.split("__context__")[1].split("__end_context__")[0]
         assert "Old summary content" in summary_section
         assert "New summary content" in summary_section
         # Verify the last user message is returned
@@ -944,7 +944,7 @@ class TestSummarizeContext:
         last_msg = llm.update_context(last_n_messages=10)
 
         assert "__context__" in llm.messages[0]["content"]
-        assert "__end_summary__" in llm.messages[0]["content"]
+        assert "__end_context__" in llm.messages[0]["content"]
         # Verify return value
         assert last_msg["content"] == "Response"
 
@@ -970,7 +970,7 @@ Line 3 with details"""
     def test_summarize_combines_old_and_new_summary_with_newline(self, llm):
         """Test that old and new summaries are combined with newline separator"""
         llm.messages = [
-            {"role": "system", "content": "Prompt\n__context__\nFirst summary\n__end_summary__"},
+            {"role": "system", "content": "Prompt\n__context__\nFirst summary\n__end_context__"},
             {"role": "user", "content": "Hello"},
             {"role": "user", "content": "Summarize"}
         ]
@@ -978,7 +978,7 @@ Line 3 with details"""
         last_msg = llm.update_context(last_n_messages=10, summary="Second summary")
 
         content = llm.messages[0]["content"]
-        summary_section = content.split("__context__")[1].split("__end_summary__")[0]
+        summary_section = content.split("__context__")[1].split("__end_context__")[0]
         # Check newline separator between summaries
         assert "\nFirst summary\n\nSecond summary\n" in content or "First summary\n\nSecond summary" in summary_section
         # Verify return value

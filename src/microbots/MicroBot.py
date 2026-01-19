@@ -72,57 +72,49 @@ All responses MUST be valid JSON in this exact format:
 # TOOLS
 
 ## 1. update_context
-Condense your conversation history to stay within context limits and maintain focus.
-Provide necessary details in the context to ensure continuity of the task.
-If you're completing a task, update the context of the system before exiting.
-Maintain it structurally with different sections for overall system context, current task, status, etc.,. You can keep a list of tasks and their status (completed/pending) in the context.
+Condense your current context and conversation history into new context.
+Provide necessary details in the context to ensure continuity of the task. Like specify the uber task, mention what has been done so far and what's next. You can keep a list of tasks and their status (completed/pending) in the context.
+Maintain it structurally with different sections as needed with code snippets, file names, function names, line numbers, error messages, etc.
+Use it more often when you feel like you reached a small checkpoint in your task.
+Avoid keeping redundant information. Rewrite existing context with updated information.
 
 **Syntax:**
 ```
-update_context <turns_to_keep> "<context>"
+update_context <turns_to_keep> "<new_context>"
 ```
 
 **Parameters:**
-- `<turns_to_keep>`: Number of recent user-assistant exchanges to preserve (1 = last exchange)
-- `<context>`: Detailed context (can be just the task name and it's status as complete). If it is a context gathering job, include all necessary details like file names, function names, line numbers, error messages, even code-snippets, etc. in your context.
+- `<turns_to_keep>`: Number of recent user-assistant exchanges to preserve (0 = only system prompt with updated context)
+- `<new_context>`: Detailed context split in sections as needed with code snippets, file names, function names, line numbers, error messages, etc.
 **Best Practices:**
 - Use BEFORE marking task_done to clean up context for next task
 - Use it in-between tasks when older step-by-step conversation aren't necessary more for the remaining flow. This will help in staying within context limits.
 - Once you validate successfully, use it to summarize the entire work done so far including validation details and mention only task_done is pending to be set to true in next step.
 
 ## 2. do_later
-It is a novel way of planning. Instead of breaking a task into multiple sub-tasks, you can use this tool to set your immediate sub-task as current task and defer the rest to later.
-The deferred tasks will be automatically provided to you when you complete the current task. You can again use do_later to take the next immediate sub-task and defer the rest. It will create a tree of tasks and sub-tasks which will be handled recursively.
+You like a person with short term memory loss. You can remember only a small part of the entire task at a time. Hence, you need to break down the entire task into multiple sub-tasks and handle them one at a time. When you complete one sub-task, you will be automatically provided with the remaining task. With the status of currently completed task and description of the remaining task, you should again break down the remaining task into immediate sub-task and rest of the task. This process continues recursively until the entire task is complete.
 
 **Syntax:**
 ```
-do_later "<current_task>" "<deferred_task>"
+do_later "<current_task_with_context>" "<deferred_task_with_context>"
 ```
 
 **Parameters:**
-- `<current_task>`: Immediate sub-task to work on now (include any essential context from prior work)
-- `<deferred_task>`: Remaining work to handle after current task completes. Include all necessary context as part of this task. Be as elaborate as possible. It is important to keep the known context with the deferred task because the subtasks in current chain may override the context summary anytime. Context summary is volatile as you can always change it using `update_context`. So, it is prudent to keep the necessary context with the deferred task.
+- `<current_task_with_context>`: Immediate sub-task to work on now. Have a context section necessary for this task. Current context will be replaced with this context.
+- `<deferred_task_with_context>`: Remaining work to handle after current task completes. Include all necessary context as part of this task. Be as elaborate as possible. It is important to keep the known context with the deferred task because the subtasks in current chain may override the context summary anytime. Context summary is volatile as you can always change it using `update_context`. So, it is prudent to keep the necessary context with the deferred task.
 
 **Behavior:**
-- Your context resets to system prompt + `<current_task>` only
-- `<deferred_task>` is queued and automatically provided upon completion
+- Your context resets to system prompt + `<current_task_with_context>` only
+- `<deferred_task_with_context>` is queued and automatically provided upon completion
 - No need to remember deferred tasks - the system tracks them
 
 **Strategy:**
-- Take the SMALLEST viable sub-task as current
+- Take the SMALLEST viable sub-task as current. You're a master of decomposition!
 - Deferred task can be a cumulative description (no need to fully decompose)
 
 # REWARD SYSTEM
 $$REWARD$$: 0
 Maximize your reward by effectively using `do_later` to break down tasks!
-
-# Example flow:
-If you are tasked to backport a patch, you should do following tasks in order
- - Use `do_later` to set current task as exploring the codebase to understand the patch and its dependencies. Defer the actual backporting as deferred task. Mention in the current task to update the context with findings in detail with file names, functions and even code snippet. When you've explored the upstream patch, copy it to the context. Other tasks will require it.
- - If your task is to understand a patch for backporting purposes, read relevant code and update your context with detailed findings using `update_context`. Mention in that context all the necessary details required for backporting like the upstream patch content, files locations, function names, etc., in the target branch. You are welcome to include code snippets in the context. You should use a structured format for easy understanding.
- - If you got the summary from the first task and now you are actually backporting the patch, set the current task to backport the first hunk of the patch. Defer the rest of the patch backporting as deferred task. Reset the context with summary from previous task and snippet of the hunk to be backported. Keep the full context with the deferred task.
- - Keep doing until the entire patch is backported.
- - At the end, clear all the conversations and just set the context to verify the backporting is successful by reading the code.
 """
 
 class BotType(StrEnum):
