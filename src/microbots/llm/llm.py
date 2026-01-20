@@ -143,7 +143,7 @@ class LLMInterface(ABC):
             # last_n_messages = 3
             # len(messages) = 7 > 6
             # recent_messages = messages[-6:] => [u1, a1, u2, a2, u3, a3]
-            logger.debug("Summarizing last %d conversations", (len(self.messages) - last_n_messages))
+            logger.debug("Summarizing first %d conversations", (len(self.messages) - last_n_messages))
             recent_messages = self.messages[-(last_n_messages*2):]
         else:
             logger.debug("Not enough messages to summarize, taking all except system prompt")
@@ -163,7 +163,7 @@ class LLMInterface(ABC):
 
         combined_summary = summary
 
-        new_system_prompt = f"{system_prompt}\n__context__\n{combined_summary}\n__end_context__"
+        new_system_prompt = f"{system_prompt}\n\n__context__\n{combined_summary}\n__end_context__"
 
         if recent_messages:
             # Append without previous user message
@@ -171,13 +171,13 @@ class LLMInterface(ABC):
             logger.debug("Context summarized. New system prompt: %s", new_system_prompt)
 
             logger.debug("Last message before summarization: %s", recent_messages[-1])
-            return recent_messages[-1]  # return the last user message that given before summarization
+            return recent_messages[-1]["content"]  # return the last user message that given before summarization
 
         else:
             # No recent messages, just keep system prompt
             self.messages = [{"role": "system", "content": new_system_prompt}]
             logger.debug("No recent messages to keep after summarization. New system prompt: %s", new_system_prompt)
-            return "Context is updated as per your request.\nContinue the task based on the system prompt or set task_done to true if the task is complete."
+            return "Context is updated as per your request.\nIf you think the current task is complete, set task_done to true. Deferred tasks (if any) will be given to you next."
 
     def do_later(self, current_task: str, deferred_task: str) -> str:
         """
@@ -235,7 +235,8 @@ class LLMInterface(ABC):
         logger.debug("Context reset with current_task. New system prompt: %s", new_system_prompt[:500])
 
         # Return message to start the current task
-        return f"START TASK: {current_task}\n\nNote: You have deferred other task(s) for later. Focus only on this task now. When done, set task_done to true."
+        # return f"START TASK: {current_task}\n\nNote: You have deferred other task(s) for later. Focus only on this task now. When done, set task_done to true."
+        return current_task
 
     def complete_current_and_get_next(self) -> Optional[str]:
         """
@@ -277,10 +278,13 @@ class LLMInterface(ABC):
         else:
             completed_summary = "Previous sub-task: COMPLETE" # Impossible case
 
+        if len(self.messages) > 1:
+            completed_summary += "\n\n<conversation>\n" + "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.messages[1:]]) + "\n</conversation>"
+
         if next_task.summary:
             completed_summary += f"\n\n---\nContext from when this task was deferred:\n{next_task.summary}"
 
-        new_system_prompt = f"{base_system_prompt}\n__context__\n{completed_summary}\n__end_context__" + "\n\nBased on current state of the project, either use `do_later` to take a sub-task and continue. Or update your context using `update_context` if needed. Then continue working on the remaining task.\nYOU SHOULD BE VERY CAREFUL WHILE MANAGING CONTEXT FOR CURRENT TASK AND DEFERRED TASKS."
+        new_system_prompt = f"{base_system_prompt}\n__context__\n{completed_summary}\n__end_context__" + "\n\nBased on current state of the project, first update your context with all necessary information. Then either use `do_later` to take a sub-task or set task_done to true if all tasks are complete.\nYOU SHOULD BE VERY CAREFUL WHILE MANAGING CONTEXT FOR CURRENT TASK AND DEFERRED TASKS."
 
         # Replace line with # $$REWARD$$: <reward>
         if "$$REWARD$$:" in new_system_prompt:

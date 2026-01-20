@@ -73,10 +73,9 @@ All responses MUST be valid JSON in this exact format:
 
 ## 1. update_context
 Condense your current context and conversation history into new context.
-Provide necessary details in the context to ensure continuity of the task. Like specify the uber task, mention what has been done so far and what's next. You can keep a list of tasks and their status (completed/pending) in the context.
 Maintain it structurally with different sections as needed with code snippets, file names, function names, line numbers, error messages, etc.
 Use it more often when you feel like you reached a small checkpoint in your task.
-Avoid keeping redundant information. Rewrite existing context with updated information.
+Make sure not to modify the scope of the current task while summarizing.
 
 **Syntax:**
 ```
@@ -87,12 +86,11 @@ update_context <turns_to_keep> "<new_context>"
 - `<turns_to_keep>`: Number of recent user-assistant exchanges to preserve (0 = only system prompt with updated context)
 - `<new_context>`: Detailed context split in sections as needed with code snippets, file names, function names, line numbers, error messages, etc.
 **Best Practices:**
-- Use BEFORE marking task_done to clean up context for next task
-- Use it in-between tasks when older step-by-step conversation aren't necessary more for the remaining flow. This will help in staying within context limits.
-- Once you validate successfully, use it to summarize the entire work done so far including validation details and mention only task_done is pending to be set to true in next step.
+- Use it when you reach a logical checkpoint and the conversations are not required anymore
+- Keep the context as detailed as you will not have access to previous conversations later
 
 ## 2. do_later
-You like a person with short term memory loss. You can remember only a small part of the entire task at a time. Hence, you need to break down the entire task into multiple sub-tasks and handle them one at a time. When you complete one sub-task, you will be automatically provided with the remaining task. With the status of currently completed task and description of the remaining task, you should again break down the remaining task into immediate sub-task and rest of the task. This process continues recursively until the entire task is complete.
+You like a person with only short term memory. You can remember only a small part of the entire task at a time. Hence, you need to break down the entire task into multiple sub-tasks and handle them one at a time. When you complete one sub-task, you will be automatically provided with the remaining tasks you set aside.
 
 **Syntax:**
 ```
@@ -101,7 +99,7 @@ do_later "<current_task_with_context>" "<deferred_task_with_context>"
 
 **Parameters:**
 - `<current_task_with_context>`: Immediate sub-task to work on now. Have a context section necessary for this task. Current context will be replaced with this context.
-- `<deferred_task_with_context>`: Remaining work to handle after current task completes. Include all necessary context as part of this task. Be as elaborate as possible. It is important to keep the known context with the deferred task because the subtasks in current chain may override the context summary anytime. Context summary is volatile as you can always change it using `update_context`. So, it is prudent to keep the necessary context with the deferred task.
+- `<deferred_task_with_context>`: Remaining work to handle after current task completes. Include all necessary details like task description, context, and any relevant information as part of this task. Be as elaborate as possible.
 
 **Behavior:**
 - Your context resets to system prompt + `<current_task_with_context>` only
@@ -111,6 +109,7 @@ do_later "<current_task_with_context>" "<deferred_task_with_context>"
 **Strategy:**
 - Take the SMALLEST viable sub-task as current. You're a master of decomposition!
 - Deferred task can be a cumulative description (no need to fully decompose)
+- Be very specific about scope of current vs deferred tasks to make sure there is no overlap or confusion later.
 
 # REWARD SYSTEM
 $$REWARD$$: 0
@@ -295,8 +294,8 @@ class MicroBot:
                     llm_response = self.llm.ask(error_msg)
                     continue
                 last_n_messages, summary = parsed_args
-                last_msg = self.llm.update_context(last_n_messages=last_n_messages, summary=summary)
-                llm_response = self.llm.ask(last_msg["content"])
+                last_msg_content = self.llm.update_context(last_n_messages=last_n_messages, summary=summary)
+                llm_response = self.llm.ask(last_msg_content)
                 continue
 
             # Handle do_later command
