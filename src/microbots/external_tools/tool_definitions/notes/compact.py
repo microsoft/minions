@@ -4,10 +4,17 @@ logger = logging.getLogger(" 🔧 Compact Tool ")
 
 from microbots.MicroBot import MicroBot  # noqa: E402
 from microbots.external_tools.external_tool import ExternalTool  # noqa: E402
+# Reuse command return format from internal tools
+from microbots.environment.Environment import CmdReturn  # noqa: E402
+# class CmdReturn:
+#     stdout: str
+#     stderr: str
+#     return_code: int
 
 
 TOOL_USAGE_INSTRUCTIONS = """
 Use this tool to summarize conversations into notes. It will update the notes section of the system prompt surrounded by <notes></notes> tags.
+You must use this tool when you feel like you have reached a logical checkpoint to keep your context updated in the notes.
 
 Usage:
     compact <number_of_recent_messages_to_preserve> "<note_content>"
@@ -29,21 +36,28 @@ Notes:
 """
 
 class Compact(ExternalTool):
-    name: str = "Compact"
-    command: str = "compact"
-    description: str = (
-        "A tool for generating notes from conversations."
-        "It allows LLM to summarize conversations into notes."
-    )
-    usage_instructions_to_llm: str = TOOL_USAGE_INSTRUCTIONS
 
-    def call(self, microbot: MicroBot, command: str) -> str:
+    def __init__(self):
+        super().__init__(
+            name="compact",
+            description=(
+                "A tool for generating notes from conversations."
+                "It allows LLM to summarize conversations into notes."
+            ),
+            usage_instructions_to_llm=TOOL_USAGE_INSTRUCTIONS,
+        )
+
+    def call(self, microbot: MicroBot, command: str) -> CmdReturn:
         logger.debug("Compact tool called with command: %s", command)
         try:
             parts = command.split(" ", 2)
             if len(parts) != 3:
                 logger.error("Invalid command format: %s", command)
-                return "Error: Invalid command format. Use: compact <number_of_recent_messages_to_preserve> \"<note_content>\""
+                return CmdReturn(
+                    stdout="",
+                    stderr="Error: Invalid command format. Expected format: compact <number_of_recent_messages_to_preserve> \"<note_content>\"",
+                    return_code=1,
+                )
 
             _, num_messages_str, note_content = parts
             logger.debug("Parsed num_messages: %s, note_content: %s", num_messages_str, note_content)
@@ -51,7 +65,11 @@ class Compact(ExternalTool):
 
             if num_messages < 0:
                 logger.error("Negative number of messages to preserve: %d", num_messages)
-                return "Error: <number_of_recent_messages_to_preserve> must be a non-negative integer."
+                return CmdReturn(
+                    stdout="",
+                    stderr="Error: <number_of_recent_messages_to_preserve> must be a non-negative integer.",
+                    return_code=1,
+                )
 
             # Update notes in the system prompt
             system_prompt = microbot.llm_interface.messages[0]["content"]
@@ -66,7 +84,11 @@ class Compact(ExternalTool):
 
             if start_index == -1 or end_index == -1:
                 logger.error("Notes section not found in the system prompt.")
-                return "Error: Notes section not found in the system prompt."
+                return CmdReturn(
+                    stdout="",
+                    stderr="Error: Notes section not found in the system prompt.",
+                    return_code=1,
+                )
 
             new_system_prompt = (
                 system_prompt[: start_index + len(start_tag)]
@@ -103,11 +125,23 @@ class Compact(ExternalTool):
             logger.debug("Conversation history after compaction: %s", microbot.llm_interface.messages)
 
             logger.info("Notes updated and conversation history compacted successfully.")
-            return f"Notes updated and conversation history compacted to preserve the last {num_messages} user-assistant pairs."
+            return CmdReturn(
+                stdout=f"Notes updated and conversation history compacted to preserve the last {num_messages} user-assistant pairs.",
+                stderr="",
+                return_code=0,
+            )
 
         except ValueError:
             logger.error("Invalid number format for <number_of_recent_messages_to_preserve>: %s", num_messages_str)
-            return "Error: <number_of_recent_messages_to_preserve> must be an integer."
+            return CmdReturn(
+                stdout="",
+                stderr="Error: <number_of_recent_messages_to_preserve> must be an integer.",
+                return_code=1,
+            )
         except Exception as e:
             logger.exception("An unexpected error occurred: %s", str(e))
-            return f"An unexpected error occurred: {str(e)}"
+            return CmdReturn(
+                stdout="",
+                stderr=f"An unexpected error occurred: {str(e)}",
+                return_code=1,
+            )

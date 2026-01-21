@@ -31,7 +31,8 @@ sys.path.insert(
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from microbots import WritingBot, BotRunResult
+from microbots import WritingBot, BotRunResult # noqa: E402
+from microbots.external_tools.tool_definitions.notes.compact import Compact # noqa: E402
 
 @pytest.mark.integration
 @pytest.mark.slow
@@ -88,3 +89,43 @@ def test_writing_bot_ollama(test_repo, issue_1, ollama_local_ready):
     # So, we use qwen2.5-coder which is faster but hallucinates more.
     # Hence, we decided to avoid the verification. But to keep the test meaningful,
     # we at least check if the bot run was successful.
+
+use_compact_system_prompt = """
+You must use `compact` to break-down the the task into multiple steps.
+
+You MUST break-down the given task into multiple sub-tasks and write them as notes in the notes section of the system prompt.
+Keep different sections in your notes as such task-breakdown, current task, completed tasks, etc.,
+Every time you complete a sub-task, update the notes with findings like patch, code, filename, function name.
+With `compact` tool, your conversation will be lost. So, keep your notes updated with all the context you need to solve the task.
+And update your task lists with the progress. Keep continuing until the main task is fully solved.
+"""
+
+@pytest.mark.integration
+@pytest.mark.slow
+def test_writing_bot_backport_patch():
+    repo_path = os.path.abspath("/home/bala/linux_source/")
+    upstream_commit_id = "081056dc00a27bccb55ccc3c6f230a3d5fd3f7e0"  # Example commit ID
+    target_commit_id = "37d49f91e523e5730e9d1302801434a51e036d10"    # Example commit ID
+    model = "anthropic/claude-opus-4-5"
+
+    compaction_tool = Compact()
+
+    writingBot = WritingBot(
+        system_prompt=use_compact_system_prompt,
+        model=model,
+        folder_to_mount=repo_path,
+        additional_tools=[compaction_tool],
+    )
+
+    issue_text = (
+        f"Backport the changes from commit {upstream_commit_id} to the target commit "
+        f"{target_commit_id} in the repository. Ensure that the backported changes "
+        "are compatible with the target commit and do not introduce any conflicts."
+    )
+    # issue_text = ("It is a test task for `update_context`. Try using it.")
+
+    response: BotRunResult = writingBot.run(
+        issue_text, timeout_in_seconds=1200, max_iterations=200
+    )
+
+    print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")

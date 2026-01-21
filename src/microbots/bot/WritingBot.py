@@ -13,6 +13,7 @@ class WritingBot(MicroBot):
         self,
         model: str,
         folder_to_mount: str,
+        system_prompt: str = "",
         environment: Optional[any] = None,
         additional_tools: Optional[list[Tool]] = [],
     ):
@@ -25,6 +26,9 @@ class WritingBot(MicroBot):
 
         system_prompt = f"""
         {system_prompt_common}
+
+        {system_prompt}
+
         You are a writing bot.
         You are only provided access to write files inside the mounted directory.
         The directory is mounted at  {folder_mount_info.sandbox_path} in your current environment.

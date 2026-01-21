@@ -11,6 +11,7 @@ from microbots.constants import ModelProvider
 from microbots.environment.local_docker.LocalDockerEnvironment import (
     LocalDockerEnvironment,
 )
+from microbots.environment.Environment import CmdReturn  # noqa: E402
 from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
@@ -221,15 +222,18 @@ class MicroBot:
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
 
-            # Validate command for dangerous operations
-            is_safe, explanation = self._is_safe_command(llm_response.command)
-            if not is_safe:
-                error_msg = f"Dangerous command detected and blocked: {llm_response.command}\n{explanation}"
-                logger.info("%s %s", LogLevelEmoji.WARNING, error_msg)
-                llm_response = self.llm.ask(f"COMMAND_ERROR: {error_msg}\nPlease provide a safer alternative command.")
-                continue
+            if self._is_external_tool_call(llm_response.command):
+                llm_command_output = self._execute_external_tool_call(llm_response.command)
+            else:
+                # Validate command for dangerous operations
+                is_safe, explanation = self._is_safe_command(llm_response.command)
+                if not is_safe:
+                    error_msg = f"Dangerous command detected and blocked: {llm_response.command}\n{explanation}"
+                    logger.info("%s %s", LogLevelEmoji.WARNING, error_msg)
+                    llm_response = self.llm.ask(f"COMMAND_ERROR: {error_msg}\nPlease provide a safer alternative command.")
+                    continue
 
-            llm_command_output = self.environment.execute(llm_response.command)
+                llm_command_output = self.environment.execute(llm_response.command)
 
             logger.debug(
                     " 🔧  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
@@ -263,6 +267,26 @@ class MicroBot:
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.thoughts, error=None)
 
+    def _is_external_tool_call(self, command: str) -> bool:
+        logger.debug("Checking if command is an external tool call: %s", command)
+        command = command.split()[0]
+        for tool in self.additional_tools:
+            if tool.is_external_tool and command == tool.name:
+                logger.debug("Command %s is an external tool call to %s", command, tool.name)
+                return True
+        return False
+
+    def _execute_external_tool_call(self, command: str) -> CmdReturn:
+        if not self._is_external_tool_call(command):
+            # Shouldn't have happened as we already checked before calling this method
+            raise ValueError(f"Impossible Code Reached: Command {command} is not an external tool call")
+        command = command.split()[0]
+        for tool in self.additional_tools:
+            if tool.is_external_tool and command == tool.name:
+                logger.debug("Executing external tool call: %s", command)
+                return tool.call(self, command)
+        return CmdReturn(stdout="", stderr="Tool not found", return_code=1)
+
     def _mount_additional(self, mount: Mount):
         if mount.mount_type != MountType.COPY:
             logger.error(
@@ -295,9 +319,13 @@ class MicroBot:
         # Append tool usage instructions to system prompt
         system_prompt_with_tools = self.system_prompt if self.system_prompt else ""
         if self.additional_tools:
+            system_prompt_with_tools += "\n\nYou have access to the following tools:"
+            tool_index = 1
             for tool in self.additional_tools:
                 if tool.usage_instructions_to_llm:
+                    system_prompt_with_tools += f"\n{tool_index}. {tool.name}\n\n{tool.description}"
                     system_prompt_with_tools += f"\n\n{tool.usage_instructions_to_llm}"
+                    tool_index += 1
 
         if self.model_provider == ModelProvider.OPENAI:
             self.llm = OpenAIApi(
