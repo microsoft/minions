@@ -29,6 +29,12 @@ class AnthropicApi(LLMInterface):
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
 
+        if (isinstance(self.messages, list)
+            and self.messages
+            and self.messages[0]["role"] == "system"):
+            self.system_prompt = self.messages[0]["content"]
+            self.messages = self.messages[1:]
+
         self.messages.append({"role": "user", "content": message})
 
         valid = False
