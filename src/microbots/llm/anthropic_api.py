@@ -34,12 +34,6 @@ class AnthropicApi(LLMInterface):
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
 
-        if (isinstance(self.messages, list)
-            and self.messages
-            and self.messages[0]["role"] == "system"):
-            self.system_prompt = self.messages[0]["content"]
-            self.messages = self.messages[1:]
-
         self.messages.append({"role": "user", "content": message})
 
         valid = False
@@ -50,17 +44,17 @@ class AnthropicApi(LLMInterface):
                 messages=self.messages,
                 max_tokens=4096,
             )
-            
+
             # Extract text content from response
             response_text = response.content[0].text if response.content else ""
             logger.debug("Raw Anthropic response (first 500 chars): %s", response_text[:500])
-            
+
             # Try to extract JSON if wrapped in markdown code blocks
             import re
             json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
             if json_match:
                 response_text = json_match.group(1)
-            
+
             valid, askResponse = self._validate_llm_response(response=response_text)
 
         self.messages.append({"role": "assistant", "content": json.dumps(asdict(askResponse))})
