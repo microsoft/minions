@@ -1,3 +1,5 @@
+import json
+from pprint import pprint
 from datasets import load_dataset
 import logging
 from pathlib import Path
@@ -14,6 +16,10 @@ from microbots import WritingBot
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Verification method
+# `pip install swebench`
+# `python -m swebench.harness.run_evaluation --dataset_name princeton-nlp/SWE-bench_Verified --max_workers 2 --predictions_path predictions.jsonl --run_id minion`
+
 """
 Difficulty Levels:
 1-4 hours
@@ -21,10 +27,20 @@ Difficulty Levels:
 <15 min fix
 >4 hours
 """
+DIFFICULTY_ENUM = {
+    "EASY": "<15 min fix",
+    "MEDIUM": "15 min - 1 hour",
+    "HARD": "1-4 hours",
+    "VERY_HARD": ">4 hours",
+}
+
 # SWE_BENCH_SUITE = "SWE-bench/SWE-bench_Lite"
-SWE_BENCH_SUITE = "SWE-bench/SWE-bench_Verified"
+SWE_BENCH_SUITE = "princeton-nlp/SWE-bench_Verified"
 # TEST_DIR = Path(__file__).parent.resolve() / "test_dir"
 TEST_DIR = Path("/tmp/swe_bench_test_dir")
+PREDICTION_PATH = "./predictions.jsonl"
+TEST_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS = {}
 
 
 def clone_repo_and_checkout(repo_url, commit_hash, dest_path):
@@ -48,6 +64,10 @@ def setup_test_directory(dataset):
 
 def verify_fix(dataset, test_path):
     logger.info(f"Verifying fix for dataset: {dataset['instance_id']}")
+    RESULTS[dataset['instance_id']] = {
+        "FAIL_TO_PASS": {},
+        "PASS_TO_PASS": {}
+    }
 
     for fail_to_pass_test in dataset["FAIL_TO_PASS"]:
         logger.info(f"Running test expected to fail then pass: {fail_to_pass_test}")
@@ -56,10 +76,11 @@ def verify_fix(dataset, test_path):
                 [sys.executable, str(test_path / fail_to_pass_test)],
                 check=True
             )
-            logger.error(f"Test {fail_to_pass_test} was expected to fail but passed.")
+            RESULTS[dataset['instance_id']]["FAIL_TO_PASS"][fail_to_pass_test] = "PASS"
+            logger.info(f"Test {fail_to_pass_test} passed as expected.")
         except subprocess.CalledProcessError:
-            logger.info(f"Test {fail_to_pass_test} failed as expected.")
-        logger.info(f"Test {fail_to_pass_test} passed as expected.")
+            RESULTS[dataset['instance_id']]["FAIL_TO_PASS"][fail_to_pass_test] = "FAIL"
+            logger.error(f"Test {fail_to_pass_test} failed unexpectedly.")
 
     for pass_to_pass_test in dataset["PASS_TO_PASS"]:
         try:
@@ -67,9 +88,11 @@ def verify_fix(dataset, test_path):
                 [sys.executable, str(test_path / pass_to_pass_test)],
                 check=True
             )
-            logger.error(f"Test {pass_to_pass_test} was expected to fail but passed.")
+            RESULTS[dataset['instance_id']]["PASS_TO_PASS"][pass_to_pass_test] = "PASS"
+            logger.info(f"Test {pass_to_pass_test} passed as expected.")
         except subprocess.CalledProcessError:
-            logger.info(f"Test {pass_to_pass_test} failed as expected.")
+            RESULTS[dataset['instance_id']]["PASS_TO_PASS"][pass_to_pass_test] = "FAIL"
+            logger.error(f"Test {pass_to_pass_test} failed unexpectedly.")
 
 
 def run_agent(dataset):
@@ -79,17 +102,53 @@ def run_agent(dataset):
     )
     myBot.run(
         task=dataset['problem_statement'] + "\n\nHint: " +dataset['hints_text'],
-        max_iterations=50,
+        max_iterations=100,
+        timeout_in_seconds=3600*4, # 4 hours
     )
 
-    verify_fix(dataset, TEST_DIR / dataset['instance_id'])
+
+def generate_prediction(dataset):
+    repo_path = TEST_DIR / dataset['instance_id']
+    diff_output = subprocess.run(
+        ["git", "diff"],
+        cwd=str(repo_path),
+        capture_output=True,
+        text=True
+    )
+    # if prediction file exist, load json data
+    if os.path.exists(PREDICTION_PATH):
+        with open(PREDICTION_PATH, "r") as f:
+            existing_predictions = [json.loads(line) for line in f.readlines()]
+    else:
+        existing_predictions = []
+
+    for pred in existing_predictions:
+        if pred["instance_id"] == dataset['instance_id']:
+            logger.info(f"Prediction for {dataset['instance_id']} already exists. Updating.")
+            pred["model_patch"] = diff_output.stdout
+            break
+    else:
+        prediction = {
+            "instance_id": dataset['instance_id'],
+            "model_name_or_path": "microbots-opus-4-5",
+            "model_patch": diff_output.stdout
+        }
+        existing_predictions.append(prediction)
+
+    with open(PREDICTION_PATH, "w") as f:
+        for pred in existing_predictions:
+            f.write(json.dumps(pred) + "\n")
 
 
 def test_swe_bench():
     datasets = load_dataset(SWE_BENCH_SUITE, split="test")
 
     for dataset in datasets:
-        logger.info(dataset)
-        setup_test_directory(dataset)
-        run_agent(dataset)
-        return # For demo purposes, we run only one dataset
+        if "astropy" in dataset['instance_id'] and dataset['difficulty'] == DIFFICULTY_ENUM["HARD"]:
+            logger.info(f"DATASET: {pprint(dataset)}")
+            setup_test_directory(dataset)
+            run_agent(dataset)
+            generate_prediction(dataset)
+            # verify_fix(dataset, TEST_DIR / dataset['instance_id'])
+            break # For testing purpose. Remove this to run all datasets.
+
