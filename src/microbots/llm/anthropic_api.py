@@ -24,7 +24,12 @@ class AnthropicApi(LLMInterface):
             base_url=endpoint
         )
         self.deployment_name = deployment_name
-        super().__init__(system_prompt=system_prompt, max_retries=max_retries)
+        self.system_prompt = system_prompt
+        self.messages = []
+
+        # Set these values here. This logic will be handled in the parent class.
+        self.max_retries = max_retries
+        self.retries = 0
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
@@ -45,17 +50,17 @@ class AnthropicApi(LLMInterface):
                 messages=self.messages,
                 max_tokens=4096,
             )
-
+            
             # Extract text content from response
             response_text = response.content[0].text if response.content else ""
             logger.debug("Raw Anthropic response (first 500 chars): %s", response_text[:500])
-
+            
             # Try to extract JSON if wrapped in markdown code blocks
             import re
             json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
             if json_match:
                 response_text = json_match.group(1)
-
+            
             valid, askResponse = self._validate_llm_response(response=response_text)
 
         self.messages.append({"role": "assistant", "content": json.dumps(asdict(askResponse))})
