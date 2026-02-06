@@ -24,7 +24,12 @@ class AnthropicApi(LLMInterface):
             base_url=endpoint
         )
         self.deployment_name = deployment_name
-        super().__init__(system_prompt=system_prompt, max_retries=max_retries)
+        self.system_prompt = system_prompt
+        self.messages = []
+
+        # Set these values here. This logic will be handled in the parent class.
+        self.max_retries = max_retries
+        self.retries = 0
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
