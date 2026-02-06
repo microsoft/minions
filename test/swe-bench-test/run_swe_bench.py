@@ -38,7 +38,8 @@ DIFFICULTY_ENUM = {
 SWE_BENCH_SUITE = "princeton-nlp/SWE-bench_Verified"
 # TEST_DIR = Path(__file__).parent.resolve() / "test_dir"
 TEST_DIR = Path("/tmp/swe_bench_test_dir")
-PREDICTION_PATH = "./predictions.jsonl"
+PREDICTION_PATH = TEST_DIR / "predictions.jsonl"
+REPORT_PATH = TEST_DIR / "report.jsonl"
 TEST_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS = {}
 
@@ -62,37 +63,23 @@ def setup_test_directory(dataset):
     clone_repo_and_checkout(f"https://github.com/{dataset['repo']}.git", dataset['base_commit'], test_path)
 
 
-def verify_fix(dataset, test_path):
-    logger.info(f"Verifying fix for dataset: {dataset['instance_id']}")
-    RESULTS[dataset['instance_id']] = {
-        "FAIL_TO_PASS": {},
-        "PASS_TO_PASS": {}
-    }
-
-    for fail_to_pass_test in dataset["FAIL_TO_PASS"]:
-        logger.info(f"Running test expected to fail then pass: {fail_to_pass_test}")
-        try:
-            subprocess.run(
-                [sys.executable, str(test_path / fail_to_pass_test)],
-                check=True
-            )
-            RESULTS[dataset['instance_id']]["FAIL_TO_PASS"][fail_to_pass_test] = "PASS"
-            logger.info(f"Test {fail_to_pass_test} passed as expected.")
-        except subprocess.CalledProcessError:
-            RESULTS[dataset['instance_id']]["FAIL_TO_PASS"][fail_to_pass_test] = "FAIL"
-            logger.error(f"Test {fail_to_pass_test} failed unexpectedly.")
-
-    for pass_to_pass_test in dataset["PASS_TO_PASS"]:
-        try:
-            subprocess.run(
-                [sys.executable, str(test_path / pass_to_pass_test)],
-                check=True
-            )
-            RESULTS[dataset['instance_id']]["PASS_TO_PASS"][pass_to_pass_test] = "PASS"
-            logger.info(f"Test {pass_to_pass_test} passed as expected.")
-        except subprocess.CalledProcessError:
-            RESULTS[dataset['instance_id']]["PASS_TO_PASS"][pass_to_pass_test] = "FAIL"
-            logger.error(f"Test {pass_to_pass_test} failed unexpectedly.")
+def verify_fix():
+    logger.info(f"Verifying predictions from {PREDICTION_PATH} using SWE-bench evaluation harness.")
+    result = None
+    result = subprocess.run(
+        [
+            sys.executable, "-m", "swebench.harness.run_evaluation",
+            "--dataset_name", SWE_BENCH_SUITE,
+            "--max_workers", "2",
+            "--predictions_path", str(PREDICTION_PATH),
+            "--run_id", "minion",
+            "--report_dir", str(REPORT_PATH) # This option is not working
+        ],
+        capture_output=True,
+        text=True
+    )
+    logger.info(f"Evaluation result: {result}")
+    logger.info("Evaluation completed successfully.")
 
 
 def run_agent(dataset):
@@ -145,10 +132,14 @@ def test_swe_bench():
 
     for dataset in datasets:
         if "astropy" in dataset['instance_id'] and dataset['difficulty'] == DIFFICULTY_ENUM["HARD"]:
-            logger.info(f"DATASET: {pprint(dataset)}")
-            setup_test_directory(dataset)
-            run_agent(dataset)
-            generate_prediction(dataset)
-            # verify_fix(dataset, TEST_DIR / dataset['instance_id'])
+            # logger.info(f"DATASET: {pprint(dataset)}")
+            # setup_test_directory(dataset)
+            # run_agent(dataset)
+            # generate_prediction(dataset)
             break # For testing purpose. Remove this to run all datasets.
 
+        verify_fix()
+
+
+if __name__ == "__main__":
+    test_swe_bench()
