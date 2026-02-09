@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MicroBots - AI Agent Framework for Automation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --slide-w: 1024px;
+    --slide-h: 768px;
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --bg-card-alt: #162032;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --accent3: #34d399;
+    --accent4: #fb923c;
+    --accent5: #f472b6;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-bright: #f8fafc;
+    --border: #334155;
+    --code-bg: #0d1520;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #090e1a;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+  }
+
+  .slide {
+    width: var(--slide-w);
+    height: var(--slide-h);
+    background: var(--bg-dark);
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    page-break-inside: avoid;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .slide:last-child { page-break-after: auto; }
+
+  /* ── Slide Header ── */
+  .slide-header {
+    padding: 36px 56px 0;
+    flex-shrink: 0;
+  }
+  .slide-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-bright);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+  .slide-header h1 .hl { color: var(--accent); }
+  .slide-header h1 .hl2 { color: var(--accent2); }
+  .slide-header h1 .hl3 { color: var(--accent3); }
+  .slide-header .subtitle {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-weight: 400;
+  }
+  .slide-header .divider {
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), transparent);
+    margin-top: 16px;
+    border-radius: 2px;
+  }
+
+  /* ── Slide Body ── */
+  .slide-body {
+    flex: 1;
+    padding: 24px 56px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+  }
+
+  /* ── Footer ── */
+  .slide-footer {
+    height: 36px;
+    padding: 0 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: rgba(15,23,42,0.8);
+  }
+  .slide-footer .logo-text {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+  }
+  .card-sm {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+  .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text-bright); }
+  .card p, .card-sm p { font-size: 13px; line-height: 1.55; color: var(--text); }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #c9d1d9;
+    overflow: hidden;
+    white-space: pre;
+  }
+  pre .kw { color: #ff7b72; }
+  pre .str { color: #a5d6ff; }
+  pre .fn { color: #d2a8ff; }
+  pre .cm { color: #8b949e; }
+  pre .cls { color: #79c0ff; }
+  pre .num { color: #79c0ff; }
+  pre .op { color: #ff7b72; }
+  pre .param { color: #ffa657; }
+  pre .type { color: #7ee787; }
+  pre .dec { color: #d2a8ff; }
+
+  /* ── Tags / Badges ── */
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .tag-blue { background: rgba(56,189,248,0.15); color: var(--accent); border: 1px solid rgba(56,189,248,0.3); }
+  .tag-purple { background: rgba(129,140,248,0.15); color: var(--accent2); border: 1px solid rgba(129,140,248,0.3); }
+  .tag-green { background: rgba(52,211,153,0.15); color: var(--accent3); border: 1px solid rgba(52,211,153,0.3); }
+  .tag-orange { background: rgba(251,146,60,0.15); color: var(--accent4); border: 1px solid rgba(251,146,60,0.3); }
+  .tag-pink { background: rgba(244,114,182,0.15); color: var(--accent5); border: 1px solid rgba(244,114,182,0.3); }
+
+  /* ── Bullet lists ── */
+  ul.bullets {
+    list-style: none;
+    padding: 0;
+  }
+  ul.bullets li {
+    font-size: 14px;
+    line-height: 1.6;
+    padding-left: 22px;
+    position: relative;
+    margin-bottom: 6px;
+  }
+  ul.bullets li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  ul.bullets.green li::before { background: var(--accent3); }
+  ul.bullets.purple li::before { background: var(--accent2); }
+  ul.bullets.orange li::before { background: var(--accent4); }
+
+  /* ── Flowchart / Diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    justify-content: center;
+  }
+  .flow-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 130px;
+  }
+  .flow-box .icon { font-size: 26px; margin-bottom: 6px; }
+  .flow-box .label { font-size: 12px; font-weight: 600; color: var(--text-bright); }
+  .flow-box .desc { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+  .flow-arrow {
+    font-size: 22px;
+    color: var(--accent);
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+  .flow-box.highlight { border-color: var(--accent); box-shadow: 0 0 20px rgba(56,189,248,0.15); }
+
+  /* ── Special title slide ── */
+  .title-slide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 50%, #0f172a 100%);
+  }
+  .title-slide .glow {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .title-slide h1 {
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    color: var(--text-bright);
+    line-height: 1.1;
+    position: relative;
+  }
+  .title-slide h2 {
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text-dim);
+    margin-top: 16px;
+    max-width: 650px;
+    line-height: 1.5;
+    position: relative;
+  }
+  .title-slide .tags {
+    margin-top: 32px;
+    display: flex;
+    gap: 10px;
+    position: relative;
+  }
+  .title-slide .version {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 40px;
+    position: relative;
+  }
+
+  /* ── Section divider slide ── */
+  .section-slide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(135deg, #0f172a 0%, #162032 100%);
+  }
+  .section-slide .section-num {
+    font-size: 72px;
+    font-weight: 900;
+    color: rgba(56,189,248,0.12);
+    line-height: 1;
+  }
+  .section-slide h1 {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--text-bright);
+    margin-top: -10px;
+  }
+  .section-slide p {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-top: 12px;
+    max-width: 500px;
+  }
+
+  /* ── Architecture diagram ── */
+  .arch-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+  .arch-layer {
+    width: 100%;
+    padding: 14px 24px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    position: relative;
+  }
+  .arch-layer .layer-desc {
+    font-weight: 400;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 2px;
+  }
+  .arch-arrow-down {
+    color: var(--text-dim);
+    font-size: 18px;
+    text-align: center;
+  }
+
+  /* ── Comparison columns ── */
+  .bot-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .bot-card .bot-icon { font-size: 32px; }
+  .bot-card .bot-name { font-size: 16px; font-weight: 700; color: var(--text-bright); }
+  .bot-card .bot-perm { font-size: 11px; font-weight: 600; }
+  .bot-card .bot-desc { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .bot-card .bot-uses { font-size: 11px; color: var(--text-dim); }
+  .bot-card .bot-uses strong { color: var(--text); }
+
+  /* ── Numbered steps ── */
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .step-num {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--bg-dark);
+    flex-shrink: 0;
+  }
+  .step-content h4 { font-size: 14px; font-weight: 700; color: var(--text-bright); }
+  .step-content p { font-size: 12px; color: var(--text); margin-top: 3px; line-height: 1.5; }
+
+  /* ── Tool lifecycle ── */
+  .lifecycle {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    justify-content: center;
+  }
+  .lifecycle-step {
+    flex: 1;
+    padding: 16px;
+    text-align: center;
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+  .lifecycle-step:first-child { border-radius: 10px 0 0 10px; }
+  .lifecycle-step:last-child { border-radius: 0 10px 10px 0; }
+  .lifecycle-step .lc-num { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .lifecycle-step .lc-label { font-size: 12px; font-weight: 700; color: var(--text-bright); margin-top: 4px; }
+  .lifecycle-step .lc-desc { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+  .lifecycle-step::after {
+    content: '\25B6';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 14px;
+    z-index: 1;
+  }
+  .lifecycle-step:last-child::after { display: none; }
+
+  /* ── Inline key-value ── */
+  .kv { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+  .kv .k { font-size: 12px; font-weight: 600; color: var(--accent); min-width: 130px; }
+  .kv .v { font-size: 12px; color: var(--text); }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; padding: 0; }
+    .slide {
+      margin: 0;
+      box-shadow: none;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @page {
+      size: 1024px 768px;
+      margin: 0;
+    }
+  }
+
+  /* ── Screen gaps ── */
+  @media screen {
+    .slide {
+      margin: 20px 0;
+      box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+      border-radius: 6px;
+    }
+  }
+
+  .text-accent { color: var(--accent); }
+  .text-accent2 { color: var(--accent2); }
+  .text-accent3 { color: var(--accent3); }
+  .text-accent4 { color: var(--accent4); }
+  .text-accent5 { color: var(--accent5); }
+  .fw-700 { font-weight: 700; }
+  .fs-13 { font-size: 13px; }
+  .fs-12 { font-size: 12px; }
+  .fs-11 { font-size: 11px; }
+  .mt-4 { margin-top: 4px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .flex-1 { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 1 — Title                                           ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide title-slide">
+  <div class="glow"></div>
+  <h1>Micro<span style="color:var(--accent)">Bots</span></h1>
+  <h2>A lightweight, extensible AI agent framework for code comprehension &amp; controlled file edits in automation pipelines</h2>
+  <div class="tags">
+    <span class="tag tag-blue">AI Agents</span>
+    <span class="tag tag-purple">Docker Sandboxing</span>
+    <span class="tag tag-green">Least-Privilege</span>
+    <span class="tag tag-orange">CI/CD Ready</span>
+    <span class="tag tag-pink">Extensible Tools</span>
+  </div>
+  <div class="version">
+    <code style="color:var(--accent)">pip install microbots</code>&nbsp;&nbsp;|&nbsp;&nbsp;Python &bull; Docker &bull; Multi-LLM
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 2 — What is MicroBots?                              ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>What is <span class="hl">MicroBots</span>?</h1>
+    <p class="subtitle">The bridge between LLMs and your automation workflows</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="card" style="flex:1">
+          <h3 style="color:var(--accent)">The Problem</h3>
+          <ul class="bullets" style="margin-top:8px">
+            <li>LLMs are powerful but lack safe execution environments</li>
+            <li>Giving AI direct filesystem access is risky</li>
+            <li>No standardized way to plug AI into CI/CD</li>
+            <li>Manual code fixes don't scale in large codebases</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="card" style="flex:1">
+          <h3 style="color:var(--accent3)">The MicroBots Solution</h3>
+          <ul class="bullets green" style="margin-top:8px">
+            <li>Containerized Docker sandbox for every task</li>
+            <li>Explicit <strong class="text-accent3">read-only</strong> or <strong class="text-accent3">read-write</strong> permission per mount</li>
+            <li>LLM-agnostic: OpenAI, Anthropic, or local Ollama</li>
+            <li>Pluggable tools installable via simple YAML configs</li>
+            <li>Purpose-built bot types for specific workflows</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px 22px">
+      <p style="font-size:13px; text-align:center;">
+        <strong class="text-accent">One-liner:</strong>&nbsp;
+        MicroBots mounts your code into a sandbox, lets an LLM inspect or modify it via shell commands, and returns structured results &mdash; all with least-privilege access controls.
+      </p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>2 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 3 — Architecture Overview                           ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Architecture <span class="hl">Overview</span></h1>
+    <p class="subtitle">Three-layer design: LLM &rarr; Bot Agent &rarr; Sandbox Environment</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body" style="justify-content:center; gap:20px;">
+    <div class="grid-2" style="gap:30px; align-items:center;">
+      <div class="arch-stack" style="gap:8px;">
+        <div class="arch-layer" style="background:linear-gradient(135deg, rgba(129,140,248,0.2), rgba(129,140,248,0.05)); border:1px solid rgba(129,140,248,0.4);">
+          LLM Layer
+          <div class="layer-desc">Azure OpenAI &bull; Anthropic Claude &bull; Ollama Local</div>
+        </div>
+        <div class="arch-arrow-down">&darr;&nbsp; JSON: { task_done, thoughts, command } &nbsp;&darr;</div>
+        <div class="arch-layer" style="background:linear-gradient(135deg, rgba(56,189,248,0.2), rgba(56,189,248,0.05)); border:1px solid rgba(56,189,248,0.4);">
+          MicroBot Agent Layer
+          <div class="layer-desc">ReadingBot &bull; WritingBot &bull; BrowsingBot &bull; LogAnalysisBot &bull; CustomBot</div>
+        </div>
+        <div class="arch-arrow-down">&darr;&nbsp; HTTP POST (FastAPI) &nbsp;&darr;</div>
+        <div class="arch-layer" style="background:linear-gradient(135deg, rgba(52,211,153,0.2), rgba(52,211,153,0.05)); border:1px solid rgba(52,211,153,0.4);">
+          Docker Sandbox Environment
+          <div class="layer-desc">Overlay FS (RO) &bull; Direct Mount (RW) &bull; Shell Server &bull; Tool Runtime</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent2);">Agentic Loop</h3>
+          <p style="font-size:12px;">The bot sends a task to the LLM. The LLM responds with a shell command. The bot executes it in the sandbox and feeds the output back. This loop continues until the LLM sets <code style="color:var(--accent)">task_done=true</code> or limits are hit.</p>
+        </div>
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent);">Safety Controls</h3>
+          <p style="font-size:12px;">Dangerous commands (<code>rm -rf</code>, <code>ls -R</code>, <code>find</code> without depth limit) are automatically blocked before execution with explanatory feedback to the LLM.</p>
+        </div>
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent3);">Context Management</h3>
+          <p style="font-size:12px;">Built-in <code style="color:var(--accent3)">summarize_context</code> capability lets the LLM compress its conversation history to stay within token limits during long tasks.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>3 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 4 — The MicroBot Class                              ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>The <span class="hl">MicroBot</span> Class</h1>
+    <p class="subtitle">Core autonomous agent &mdash; the engine behind all bot types</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <pre style="flex:1"><span class="kw">class</span> <span class="cls">MicroBot</span>:
+
+  <span class="kw">def</span> <span class="fn">__init__</span>(<span class="param">self</span>,
+    <span class="param">model</span>: <span class="type">str</span>,            <span class="cm"># "azure-openai/gpt-5"</span>
+    <span class="param">bot_type</span>: <span class="type">BotType</span>,     <span class="cm"># CUSTOM_BOT (default)</span>
+    <span class="param">system_prompt</span>: <span class="type">str</span>,    <span class="cm"># LLM instructions</span>
+    <span class="param">environment</span>: <span class="type">any</span>,      <span class="cm"># Docker env (auto)</span>
+    <span class="param">additional_tools</span>: <span class="type">list[Tool]</span>,
+    <span class="param">folder_to_mount</span>: <span class="type">Mount</span>,
+  ):
+    <span class="cm"># Creates Docker environment</span>
+    <span class="cm"># Initializes LLM connection</span>
+    <span class="cm"># Installs additional tools</span>
+
+  <span class="kw">def</span> <span class="fn">run</span>(<span class="param">self</span>,
+    <span class="param">task</span>: <span class="type">str</span>,
+    <span class="param">additional_mounts</span>: <span class="type">list[Mount]</span>,
+    <span class="param">max_iterations</span>: <span class="type">int</span> = <span class="num">20</span>,
+    <span class="param">timeout_in_seconds</span>: <span class="type">int</span> = <span class="num">200</span>,
+  ) -> <span class="type">BotRunResult</span>:</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm">
+          <h3 style="font-size:13px;">Key Attributes</h3>
+          <div class="kv"><span class="k text-accent">model</span><span class="v"><code>&lt;provider&gt;/&lt;model_name&gt;</code></span></div>
+          <div class="kv"><span class="k text-accent">system_prompt</span><span class="v">Instructions that guide LLM behavior</span></div>
+          <div class="kv"><span class="k text-accent">environment</span><span class="v">Docker sandbox (auto-created)</span></div>
+          <div class="kv"><span class="k text-accent">additional_tools</span><span class="v">Plugins installed in sandbox</span></div>
+          <div class="kv"><span class="k text-accent">folder_to_mount</span><span class="v">Code directory with RO/RW perms</span></div>
+        </div>
+        <div class="card-sm">
+          <h3 style="font-size:13px;">BotRunResult</h3>
+          <pre style="font-size:11px; padding:10px 14px;"><span class="dec">@dataclass</span>
+<span class="kw">class</span> <span class="cls">BotRunResult</span>:
+  <span class="param">status</span>: <span class="type">bool</span>           <span class="cm"># Success or failure</span>
+  <span class="param">result</span>: <span class="type">str | None</span>    <span class="cm"># LLM's final answer</span>
+  <span class="param">error</span>:  <span class="type">Optional[str]</span> <span class="cm"># Error details</span></pre>
+        </div>
+        <div class="card-sm" style="background:rgba(56,189,248,0.05); border-color:rgba(56,189,248,0.2);">
+          <p style="font-size:12px;"><strong class="text-accent">Custom Bot Pattern:</strong> Use <code>MicroBot</code> directly with a custom <code>system_prompt</code> and <code>Mount</code> to create any specialized agent without subclassing.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>4 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 5 — Agentic Execution Loop                          ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Agentic <span class="hl">Execution Loop</span></h1>
+    <p class="subtitle">How MicroBot orchestrates LLM &harr; Environment interaction</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body" style="justify-content:center; gap:24px;">
+    <div class="flow">
+      <div class="flow-box">
+        <div class="icon">📋</div>
+        <div class="label">Task Input</div>
+        <div class="desc">User provides task string</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box highlight">
+        <div class="icon">🧠</div>
+        <div class="label">LLM</div>
+        <div class="desc">Returns JSON response</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box">
+        <div class="icon">🛡️</div>
+        <div class="label">Safety Check</div>
+        <div class="desc">Validate command</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box">
+        <div class="icon">🐳</div>
+        <div class="label">Docker Exec</div>
+        <div class="desc">Run in sandbox</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box">
+        <div class="icon">📤</div>
+        <div class="label">Output</div>
+        <div class="desc">Feed back to LLM</div>
+      </div>
+    </div>
+    <div class="grid-2" style="gap:20px;">
+      <div class="card-sm">
+        <h3 style="font-size:13px;">LLM Response Format</h3>
+        <pre style="font-size:11.5px; padding:10px 14px;">{
+  <span class="str">"task_done"</span>: <span class="kw">false</span>,
+  <span class="str">"thoughts"</span>: <span class="str">"Need to check the file..."</span>,
+  <span class="str">"command"</span>:  <span class="str">"cat /workdir/src/app.py"</span>
+}</pre>
+      </div>
+      <div class="card-sm">
+        <h3 style="font-size:13px;">Loop Termination Conditions</h3>
+        <ul class="bullets" style="margin-top:6px;">
+          <li>LLM sets <code style="color:var(--accent3)">task_done = true</code> &rarr; success</li>
+          <li>Iteration count exceeds <code>max_iterations</code></li>
+          <li>Elapsed time exceeds <code>timeout_in_seconds</code></li>
+          <li>Each step: Safety check &rarr; Execute &rarr; Capture &rarr; Feedback</li>
+        </ul>
+      </div>
+    </div>
+     <div class="card-sm" style="text-align:center; background:rgba(52,211,153,0.05); border-color:rgba(52,211,153,0.2);">
+      <p style="font-size:12px;">The loop runs <strong>autonomously</strong> &mdash; no human intervention needed. The LLM reasons, acts, observes, and decides when the task is complete.</p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>5 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 6 — Section: Bot Types                              ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide section-slide">
+  <div class="section-num">II</div>
+  <h1>Bot <span style="color:var(--accent)">Types</span></h1>
+  <p>Purpose-built agents extending MicroBot for specific automation workflows</p>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 7 — Bot Types Overview                              ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Bot Types <span class="hl">at a Glance</span></h1>
+    <p class="subtitle">Each extends MicroBot with tailored permissions, prompts, and behavior</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body" style="justify-content:center;">
+    <div class="grid-4" style="gap:14px;">
+      <div class="bot-card" style="border-top: 3px solid var(--accent);">
+        <div class="bot-icon">📖</div>
+        <div class="bot-name">ReadingBot</div>
+        <div class="bot-perm tag tag-blue" style="width:fit-content">READ_ONLY</div>
+        <div class="bot-desc">Mounts code with overlay filesystem. LLM can inspect but never modify files.</div>
+        <div class="bot-uses"><strong>Use for:</strong> Bug analysis, code review, understanding codebases</div>
+      </div>
+      <div class="bot-card" style="border-top: 3px solid var(--accent3);">
+        <div class="bot-icon">✍️</div>
+        <div class="bot-name">WritingBot</div>
+        <div class="bot-perm tag tag-green" style="width:fit-content">READ_WRITE</div>
+        <div class="bot-desc">Direct mount with full access. LLM uses standard Linux tools to edit files.</div>
+        <div class="bot-uses"><strong>Use for:</strong> Bug fixes, refactoring, code generation</div>
+      </div>
+      <div class="bot-card" style="border-top: 3px solid var(--accent2);">
+        <div class="bot-icon">🌐</div>
+        <div class="bot-name">BrowsingBot</div>
+        <div class="bot-perm tag tag-purple" style="width:fit-content">NO MOUNT</div>
+        <div class="bot-desc">Standalone web agent with Playwright browser automation. No code mount needed.</div>
+        <div class="bot-uses"><strong>Use for:</strong> Web scraping, info gathering, checking releases</div>
+      </div>
+      <div class="bot-card" style="border-top: 3px solid var(--accent4);">
+        <div class="bot-icon">📊</div>
+        <div class="bot-name">LogAnalysisBot</div>
+        <div class="bot-perm tag tag-orange" style="width:fit-content">RO + COPY</div>
+        <div class="bot-desc">Source code as RO mount, log files copied in. Specialized for root cause analysis.</div>
+        <div class="bot-uses"><strong>Use for:</strong> Failure analysis, production debugging</div>
+      </div>
+    </div>
+    <div class="card" style="padding:14px 22px; margin-top:4px; text-align:center;">
+      <p style="font-size:13px;">
+        <strong class="text-accent5">CustomBot:</strong>&nbsp;
+        Use <code>MicroBot</code> directly with your own <code>system_prompt</code> and <code>Mount</code> configuration to create any specialized agent &mdash; no subclassing required.
+      </p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>7 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 8 — ReadingBot Deep Dive                            ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1><span class="hl">ReadingBot</span> &mdash; Safe Code Analysis</h1>
+    <p class="subtitle">Read-only access with overlay filesystems for zero-risk code inspection</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm" style="flex:1">
+          <h3 style="font-size:13px; color:var(--accent);">How It Works</h3>
+          <ul class="bullets" style="margin-top:8px;">
+            <li>Extends <code>MicroBot</code> with <code>READ_ONLY</code> permission</li>
+            <li>Uses Docker <strong>overlay filesystem</strong> &mdash; writes go to a temporary upper layer and never touch host files</li>
+            <li>LLM can read, grep, and navigate code freely</li>
+            <li>System prompt instructs: <em>"set task_done=true once the issue is identified"</em></li>
+          </ul>
+        </div>
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent3);">Automation Use Cases</h3>
+          <ul class="bullets green" style="margin-top:6px;">
+            <li>Pre-merge code review in CI pipelines</li>
+            <li>Static bug analysis before hotfix assignment</li>
+            <li>Architecture documentation generation</li>
+            <li>Security vulnerability scanning</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <pre style="flex:1"><span class="kw">from</span> microbots <span class="kw">import</span> ReadingBot
+
+bot = <span class="fn">ReadingBot</span>(
+    <span class="param">model</span>=<span class="str">"azure-openai/gpt-5"</span>,
+    <span class="param">folder_to_mount</span>=<span class="str">"/repo/my-project"</span>,
+)
+
+result = bot.<span class="fn">run</span>(
+  <span class="str">"""Run tests/app_test.py and find
+  why the SyntaxError occurs.
+  Explain the root cause."""</span>,
+  <span class="param">timeout_in_seconds</span>=<span class="num">600</span>,
+)
+
+<span class="kw">print</span>(result.status)  <span class="cm"># True</span>
+<span class="kw">print</span>(result.result)  <span class="cm"># "Line 12: missing</span>
+                      <span class="cm">#  colon after def..."</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>8 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 9 — WritingBot Deep Dive                            ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1><span class="hl3">WritingBot</span> &mdash; Controlled Code Edits</h1>
+    <p class="subtitle">Read-write access with command restrictions for safe file modification</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm" style="flex:1">
+          <h3 style="font-size:13px; color:var(--accent3);">How It Works</h3>
+          <ul class="bullets green" style="margin-top:8px;">
+            <li>Extends <code>MicroBot</code> with <code>READ_WRITE</code> permission</li>
+            <li>Direct Docker mount &mdash; changes persist to host</li>
+            <li>Restricted to standard Linux tools: <code>sed</code>, <code>awk</code>, <code>grep</code>, <code>git</code>, <code>patch</code>, etc.</li>
+            <li>Blocks non-existent commands like <code>applypatch</code> or <code>edit</code></li>
+            <li>Instructs LLM to break edits into small, verifiable steps</li>
+          </ul>
+        </div>
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent4);">Automation Use Cases</h3>
+          <ul class="bullets orange" style="margin-top:6px;">
+            <li>Automated bug fixes in CI/CD pipelines</li>
+            <li>Code refactoring across large codebases</li>
+            <li>Applying patches and resolving merge conflicts</li>
+            <li>Generating boilerplate and test files</li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <pre style="flex:1"><span class="kw">from</span> microbots <span class="kw">import</span> WritingBot
+
+bot = <span class="fn">WritingBot</span>(
+    <span class="param">model</span>=<span class="str">"azure-openai/gpt-5"</span>,
+    <span class="param">folder_to_mount</span>=<span class="str">"/repo/my-project"</span>,
+)
+
+result = bot.<span class="fn">run</span>(
+  <span class="str">"""The python script tests/app.py has
+  a SyntaxError. Fix the error and
+  verify the code runs without errors.
+  Then run the test suite."""</span>,
+  <span class="param">timeout_in_seconds</span>=<span class="num">600</span>,
+)
+
+<span class="kw">print</span>(result.status)  <span class="cm"># True</span>
+<span class="kw">print</span>(result.result)
+<span class="cm"># "Fixed missing colon on line 12.</span>
+<span class="cm">#  All tests pass."</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>9 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 10 — CustomBot with MicroBot                        ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1><span class="hl2">CustomBot</span> &mdash; Build Your Own Agent</h1>
+    <p class="subtitle">Use MicroBot directly with a custom system prompt and mount configuration</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <pre style="flex:1"><span class="kw">from</span> microbots <span class="kw">import</span> MicroBot
+<span class="kw">from</span> microbots.extras.mount <span class="kw">import</span> Mount
+<span class="kw">from</span> microbots.constants <span class="kw">import</span> PermissionLabels
+
+<span class="cm"># Define custom mount</span>
+mount = <span class="fn">Mount</span>(
+  <span class="param">host_path</span>=<span class="str">"/home/user/project"</span>,
+  <span class="param">sandbox_path</span>=<span class="str">"/workdir/project"</span>,
+  <span class="param">permission</span>=PermissionLabels.<span class="cls">READ_WRITE</span>,
+)
+
+<span class="cm"># Create a fully custom bot</span>
+bot = <span class="fn">MicroBot</span>(
+  <span class="param">model</span>=<span class="str">"anthropic/claude-sonnet-4-20250514"</span>,
+  <span class="param">system_prompt</span>=<span class="str">"""You are an expert
+  at analyzing Python performance.
+  Profile the code and suggest
+  optimizations."""</span>,
+  <span class="param">folder_to_mount</span>=mount,
+)
+
+result = bot.<span class="fn">run</span>(
+  <span class="str">"Profile and optimize slow functions"</span>,
+  <span class="param">max_iterations</span>=<span class="num">50</span>,
+  <span class="param">timeout_in_seconds</span>=<span class="num">1200</span>,
+)</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent2);">Why CustomBot?</h3>
+          <p style="font-size:12px; margin-top:6px;">ReadingBot and WritingBot handle common patterns. But when you need a <strong>specialized agent</strong>&mdash;for security auditing, performance profiling, documentation generation, or domain-specific analysis&mdash;use <code>MicroBot</code> directly.</p>
+        </div>
+        <div class="card-sm">
+          <h3 style="font-size:13px;">What You Control</h3>
+          <div class="kv"><span class="k text-accent2">system_prompt</span><span class="v">Full control over LLM behavior</span></div>
+          <div class="kv"><span class="k text-accent2">model</span><span class="v">Any supported provider/model</span></div>
+          <div class="kv"><span class="k text-accent2">Mount</span><span class="v">Custom path + RO/RW permission</span></div>
+          <div class="kv"><span class="k text-accent2">tools</span><span class="v">Install any tool into sandbox</span></div>
+          <div class="kv"><span class="k text-accent2">limits</span><span class="v">Custom iteration &amp; timeout</span></div>
+        </div>
+        <div class="card-sm" style="background:rgba(129,140,248,0.05); border-color:rgba(129,140,248,0.2);">
+          <p style="font-size:12px;"><strong class="text-accent2">Pattern:</strong> All built-in bots (ReadingBot, WritingBot, etc.) simply call <code>super().__init__()</code> with pre-configured prompts and mount permissions. You can replicate any of them.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>10 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 11 — Section: Tools & Plugins                       ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide section-slide">
+  <div class="section-num">III</div>
+  <h1>Tools &amp; <span style="color:var(--accent3)">Plugins</span></h1>
+  <p>Extensible tool system that installs capabilities into the sandbox environment</p>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 12 — Tool System                                    ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>The <span class="hl3">Tool</span> System</h1>
+    <p class="subtitle">Define, install, and use tools as plugins in any bot's sandbox</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <pre style="flex:1; font-size:11px"><span class="dec">@dataclass</span>
+<span class="kw">class</span> <span class="cls">Tool</span>:
+  <span class="param">name</span>: <span class="type">str</span>
+  <span class="param">description</span>: <span class="type">str</span>
+
+  <span class="cm"># Appended to system prompt so</span>
+  <span class="cm"># the LLM knows how to use it</span>
+  <span class="param">usage_instructions_to_llm</span>: <span class="type">str</span>
+
+  <span class="cm"># Executed after sandbox starts</span>
+  <span class="param">install_commands</span>: <span class="type">List[str]</span>
+
+  <span class="cm"># Optional fields</span>
+  <span class="param">parameters</span>: <span class="type">Optional[dict]</span>
+  <span class="param">env_variables</span>: <span class="type">Optional[List[str]]</span>
+  <span class="param">files_to_copy</span>: <span class="type">Optional[List[EnvFileCopies]]</span>
+  <span class="param">verify_commands</span>: <span class="type">Optional[List[str]]</span>
+  <span class="param">setup_commands</span>: <span class="type">Optional[List[str]]</span>
+  <span class="param">uninstall_commands</span>: <span class="type">Optional[List[str]]</span></pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent3);">Tool Lifecycle</h3>
+        </div>
+        <div class="lifecycle" style="font-size:11px;">
+          <div class="lifecycle-step">
+            <div class="lc-num">1</div>
+            <div class="lc-label">Install</div>
+            <div class="lc-desc">Run install_commands, copy env vars &amp; files</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lc-num">2</div>
+            <div class="lc-label">Verify</div>
+            <div class="lc-desc">Run verify_commands to confirm install</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lc-num">3</div>
+            <div class="lc-label">Setup</div>
+            <div class="lc-desc">Run setup_commands after code mount</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lc-num">4</div>
+            <div class="lc-label">Use</div>
+            <div class="lc-desc">LLM uses tool via shell commands</div>
+          </div>
+        </div>
+        <div class="card-sm" style="flex:1">
+          <h3 style="font-size:13px;">Adding Tools to a Bot</h3>
+          <pre style="font-size:11px; padding:10px 14px;"><span class="kw">from</span> microbots.tools.tool <span class="kw">import</span> (
+    parse_tool_definition, Tool
+)
+
+<span class="cm"># Load from YAML</span>
+cscope = <span class="fn">parse_tool_definition</span>(<span class="str">"cscope.yaml"</span>)
+
+<span class="cm"># Pass to any bot</span>
+bot = <span class="fn">WritingBot</span>(
+  <span class="param">model</span>=<span class="str">"azure-openai/gpt-5"</span>,
+  <span class="param">folder_to_mount</span>=<span class="str">"/repo"</span>,
+  <span class="param">additional_tools</span>=[cscope],
+)</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>12 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 13 — Built-in Tools                                 ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Built-in <span class="hl">Tools</span></h1>
+    <p class="subtitle">Ready-to-use plugins defined as YAML &mdash; drop into any customer environment</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body" style="gap:18px;">
+    <div class="grid-2" style="gap:20px; flex:1;">
+      <!-- Cscope -->
+      <div class="card" style="border-left:4px solid var(--accent);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <span style="font-size:24px;">🔍</span>
+          <div>
+            <h3 style="margin-bottom:0;">Cscope</h3>
+            <span class="tag tag-blue" style="font-size:10px;">Code Navigation</span>
+          </div>
+        </div>
+        <p style="font-size:12px; margin-bottom:10px;">Developer tool for browsing source code. Finds symbol definitions, function callers/callees, text patterns, and file includes.</p>
+        <pre style="font-size:10.5px; padding:10px 14px;"><span class="cm"># YAML definition (cscope.yaml)</span>
+<span class="param">install_commands</span>:
+  - apt-get install -y cscope
+<span class="param">setup_commands</span>:
+  - cscope -R  <span class="cm"># Build cross-ref DB</span>
+<span class="param">verify_commands</span>:
+  - cscope --version
+
+<span class="cm"># LLM uses batch mode queries:</span>
+<span class="cm"># cscope -L -1 myFunction  (find def)</span>
+<span class="cm"># cscope -L -3 myFunction  (find callers)</span>
+<span class="cm"># cscope -L -6 "^class.*Bot"  (regex)</span></pre>
+      </div>
+      <!-- Browser-Use -->
+      <div class="card" style="border-left:4px solid var(--accent2);">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <span style="font-size:24px;">🌐</span>
+          <div>
+            <h3 style="margin-bottom:0;">Browser-Use</h3>
+            <span class="tag tag-purple" style="font-size:10px;">Web Browsing</span>
+          </div>
+        </div>
+        <p style="font-size:12px; margin-bottom:10px;">AI-powered CLI web browser using Playwright. Fetches information from the internet with natural language queries.</p>
+        <pre style="font-size:10.5px; padding:10px 14px;"><span class="cm"># YAML definition (browser-use.yaml)</span>
+<span class="param">install_commands</span>:
+  - pip install browser-use playwright
+  - playwright install chromium
+<span class="param">env_variables</span>:
+  - AZURE_OPENAI_API_KEY
+  - AZURE_OPENAI_ENDPOINT
+<span class="param">files_to_copy</span>:
+  - <span class="param">src</span>: browser-use/browser.py
+    <span class="param">dest</span>: /sbin/browser
+
+<span class="cm"># LLM usage:</span>
+<span class="cm"># browser "latest release of curl"</span></pre>
+      </div>
+    </div>
+    <div class="card" style="padding:14px 22px; text-align:center; background:rgba(52,211,153,0.05); border-color:rgba(52,211,153,0.2);">
+      <p style="font-size:13px;"><strong class="text-accent3">Customer Environments:</strong>&nbsp; Tools are simple YAML files. Customers can create their own tool definitions (linters, formatters, custom CLIs) and pass them via <code>additional_tools</code> &mdash; no framework changes needed.</p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>13 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 14 — Creating Custom Tools                          ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Creating <span class="hl3">Custom Tools</span></h1>
+    <p class="subtitle">Write a YAML file or define in code &mdash; it's that simple</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body">
+    <div class="grid-2" style="flex:1; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent4);">Option A: YAML Definition</h3>
+        </div>
+        <pre style="flex:1; font-size:11px"><span class="cm"># my-linter.yaml</span>
+<span class="param">name</span>: <span class="str">eslint</span>
+<span class="param">description</span>: <span class="str">JavaScript linter</span>
+
+<span class="param">install_commands</span>:
+  - npm install -g eslint
+
+<span class="param">verify_commands</span>:
+  - eslint --version
+
+<span class="param">setup_commands</span>:
+  - eslint --init
+
+<span class="param">usage_instructions_to_llm</span>: |
+  <span class="cm"># Run ESLint to find issues:</span>
+  <span class="cm">#   eslint src/</span>
+  <span class="cm"># Auto-fix issues:</span>
+  <span class="cm">#   eslint --fix src/</span>
+
+<span class="param">uninstall_commands</span>:
+  - npm uninstall -g eslint</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm">
+          <h3 style="font-size:13px; color:var(--accent2);">Option B: Programmatic Definition</h3>
+        </div>
+        <pre style="flex:1; font-size:11px"><span class="kw">from</span> microbots.tools.tool <span class="kw">import</span> Tool
+
+my_tool = <span class="fn">Tool</span>(
+  <span class="param">name</span>=<span class="str">"pylint"</span>,
+  <span class="param">description</span>=<span class="str">"Python code analyzer"</span>,
+  <span class="param">install_commands</span>=[
+    <span class="str">"pip install pylint"</span>,
+  ],
+  <span class="param">verify_commands</span>=[
+    <span class="str">"pylint --version"</span>,
+  ],
+  <span class="param">usage_instructions_to_llm</span>=<span class="str">"""
+  # Run pylint on a file:
+  #   pylint myfile.py
+  # Run on entire directory:
+  #   pylint src/
+  """</span>,
+)
+
+bot = <span class="fn">WritingBot</span>(
+  <span class="param">model</span>=<span class="str">"azure-openai/gpt-5"</span>,
+  <span class="param">folder_to_mount</span>=<span class="str">"/repo"</span>,
+  <span class="param">additional_tools</span>=[my_tool],
+)</pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>14 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 15 — Automation Workflow Integration                 ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Automation <span class="hl">Workflow</span> Integration</h1>
+    <p class="subtitle">How MicroBots fits into your CI/CD and daily automation pipelines</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body" style="gap:20px;">
+    <div class="flow" style="margin-bottom:4px;">
+      <div class="flow-box" style="min-width:110px;">
+        <div class="icon">📡</div>
+        <div class="label">Trigger</div>
+        <div class="desc">CI/CD event, cron, webhook</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box" style="min-width:110px;">
+        <div class="icon">📖</div>
+        <div class="label">ReadingBot</div>
+        <div class="desc">Analyze &amp; diagnose</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box highlight" style="min-width:110px;">
+        <div class="icon">✍️</div>
+        <div class="label">WritingBot</div>
+        <div class="desc">Fix &amp; verify</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box" style="min-width:110px;">
+        <div class="icon">✅</div>
+        <div class="label">Validate</div>
+        <div class="desc">Tests &amp; build</div>
+      </div>
+      <div class="flow-arrow">&#x2192;</div>
+      <div class="flow-box" style="min-width:110px;">
+        <div class="icon">🚀</div>
+        <div class="label">Deploy</div>
+        <div class="desc">Ship the fix</div>
+      </div>
+    </div>
+    <div class="grid-2" style="flex:1; gap:16px;">
+      <div class="card" style="padding:16px 20px;">
+        <h3 style="font-size:14px; color:var(--accent);">Pipeline Example: Auto Bug Fix</h3>
+        <pre style="font-size:10.5px; padding:12px 14px; margin-top:8px"><span class="cm"># automation_pipeline.py</span>
+<span class="kw">from</span> microbots <span class="kw">import</span> ReadingBot, WritingBot
+
+<span class="cm"># Step 1: Diagnose the issue</span>
+reader = <span class="fn">ReadingBot</span>(
+  <span class="param">model</span>=<span class="str">"azure-openai/gpt-5"</span>,
+  <span class="param">folder_to_mount</span>=<span class="str">"/repo"</span>,
+)
+diagnosis = reader.<span class="fn">run</span>(
+  <span class="str">"Find why tests/app_test.py fails"</span>,
+  <span class="param">timeout_in_seconds</span>=<span class="num">300</span>,
+)
+
+<span class="cm"># Step 2: Fix based on diagnosis</span>
+writer = <span class="fn">WritingBot</span>(
+  <span class="param">model</span>=<span class="str">"azure-openai/gpt-5"</span>,
+  <span class="param">folder_to_mount</span>=<span class="str">"/repo"</span>,
+)
+fix = writer.<span class="fn">run</span>(
+  <span class="kw">f</span><span class="str">"Fix this: {diagnosis.result}"</span>,
+  <span class="param">timeout_in_seconds</span>=<span class="num">600</span>,
+)</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm" style="flex:1">
+          <h3 style="font-size:13px; color:var(--accent3);">Common Automation Patterns</h3>
+          <ul class="bullets green" style="margin-top:8px; font-size:12px;">
+            <li><strong>PR Review Bot:</strong> ReadingBot scans PRs for bugs and security issues on every push</li>
+            <li><strong>Auto-Fixer:</strong> WritingBot patches build failures and re-runs CI</li>
+            <li><strong>Log Investigator:</strong> LogAnalysisBot analyzes production errors from alerting systems</li>
+            <li><strong>Release Checker:</strong> BrowsingBot fetches latest dependency versions for upgrade PRs</li>
+            <li><strong>Custom Pipelines:</strong> Chain bots together for multi-stage autonomous workflows</li>
+          </ul>
+        </div>
+        <div class="card-sm" style="background:rgba(56,189,248,0.05); border-color:rgba(56,189,248,0.2);">
+          <p style="font-size:12px;"><strong class="text-accent">Key Benefit:</strong> Every bot runs in an isolated Docker container. No shared state, no side effects, no risk to your production environment.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>15 / 16</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 16 — Summary & Getting Started                      ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1>Summary &amp; <span class="hl">Getting Started</span></h1>
+    <p class="subtitle">Everything you need to start building with MicroBots</p>
+    <div class="divider"></div>
+  </div>
+  <div class="slide-body" style="gap:16px;">
+    <div class="grid-3" style="gap:14px;">
+      <div class="card-sm" style="border-top:3px solid var(--accent); text-align:center;">
+        <h3 style="font-size:28px; color:var(--accent); margin-bottom:4px;">4</h3>
+        <p style="font-size:12px; font-weight:600;">Built-in Bot Types</p>
+        <p style="font-size:11px; color:var(--text-dim);">ReadingBot, WritingBot, BrowsingBot, LogAnalysisBot</p>
+      </div>
+      <div class="card-sm" style="border-top:3px solid var(--accent3); text-align:center;">
+        <h3 style="font-size:28px; color:var(--accent3); margin-bottom:4px;">3</h3>
+        <p style="font-size:12px; font-weight:600;">LLM Providers</p>
+        <p style="font-size:11px; color:var(--text-dim);">Azure OpenAI, Anthropic Claude, Ollama Local</p>
+      </div>
+      <div class="card-sm" style="border-top:3px solid var(--accent2); text-align:center;">
+        <h3 style="font-size:28px; color:var(--accent2); margin-bottom:4px;">&infin;</h3>
+        <p style="font-size:12px; font-weight:600;">Custom Tools via YAML</p>
+        <p style="font-size:11px; color:var(--text-dim);">Extensible plugin system for any CLI tool</p>
+      </div>
+    </div>
+    <div class="grid-2" style="flex:1; gap:16px;">
+      <div class="card" style="padding:16px 20px;">
+        <h3 style="font-size:14px; color:var(--accent);">Quick Start</h3>
+        <pre style="font-size:11px; padding:12px 14px; margin-top:8px"><span class="cm"># 1. Install</span>
+pip install microbots
+
+<span class="cm"># 2. Set environment variables</span>
+<span class="kw">export</span> OPEN_AI_END_POINT=<span class="str">"https://..."</span>
+<span class="kw">export</span> OPEN_AI_KEY=<span class="str">"sk-..."</span>
+
+<span class="cm"># 3. Ensure Docker is running</span>
+docker ps
+
+<span class="cm"># 4. Write your first bot</span>
+python my_bot.py</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm" style="flex:1">
+          <h3 style="font-size:13px;">Key Takeaways</h3>
+          <ul class="bullets" style="margin-top:6px; font-size:12px;">
+            <li><strong>Sandboxed by default</strong> &mdash; every task runs in Docker</li>
+            <li><strong>Least-privilege access</strong> &mdash; explicit RO/RW per mount</li>
+            <li><strong>Autonomous agentic loop</strong> &mdash; no human needed</li>
+            <li><strong>Plug-in tools</strong> &mdash; YAML configs, no code changes</li>
+            <li><strong>Multi-LLM</strong> &mdash; swap providers with one string</li>
+            <li><strong>Pipeline-ready</strong> &mdash; import and run from any script</li>
+          </ul>
+        </div>
+        <div class="card-sm" style="text-align:center; background:linear-gradient(135deg, rgba(56,189,248,0.08), rgba(129,140,248,0.08));">
+          <p style="font-size:16px; font-weight:700; color:var(--text-bright);">pip install microbots</p>
+          <p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Start building AI-powered automation today</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>16 / 16</span>
+  </div>
+</div>
+
+</body>
+</html>
