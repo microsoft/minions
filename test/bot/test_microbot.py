@@ -84,7 +84,7 @@ class TestMicrobotIntegration:
 
     @pytest.fixture(scope="function")
     def anthropic_microBot(self):
-        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4')
+        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
              patch('microbots.llm.anthropic_api.deployment_name', anthropic_deployment), \
              patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
@@ -197,7 +197,7 @@ class TestMicrobotIntegration:
         test_repo_mount_ro = Mount(
             str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
         )
-        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4')
+        anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
              patch('microbots.llm.anthropic_api.deployment_name', anthropic_deployment), \
              patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
@@ -547,7 +547,7 @@ class TestMicrobotUnit:
     def test_tool_usage_instructions_appended_to_system_prompt(self):
         """Test that tool usage instructions are appended to the system prompt when creating LLM."""
         from microbots.tools.tool import Tool
-        
+
         # Create a mock tool with usage instructions
         mock_tool = Tool(
             name="test_tool",
@@ -558,13 +558,13 @@ class TestMicrobotUnit:
             env_variables=[],
             files_to_copy=[],
         )
-        
+
         base_system_prompt = "You are a helpful assistant."
-        
+
         # Create a mock environment
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
-        
+
         # Mock the environment and LLM creation to avoid actual Docker/API calls
         with patch('microbots.llm.openai_api.OpenAI'):
             # Create a MicroBot with the mock tool
@@ -574,7 +574,7 @@ class TestMicrobotUnit:
                 additional_tools=[mock_tool],
                 environment=mock_env,
             )
-            
+
             # Verify that the LLM was created with the combined system prompt
             # The system prompt should include both the base prompt and the tool usage instructions
             from microbots.llm.openai_api import OpenAIApi
@@ -586,7 +586,7 @@ class TestMicrobotUnit:
     def test_multiple_tool_usage_instructions_appended(self):
         """Test that multiple tool usage instructions are all appended to the system prompt."""
         from microbots.tools.tool import Tool
-        
+
         # Create multiple mock tools with usage instructions
         tool1 = Tool(
             name="tool1",
@@ -597,7 +597,7 @@ class TestMicrobotUnit:
             env_variables=[],
             files_to_copy=[],
         )
-        
+
         tool2 = Tool(
             name="tool2",
             description="Second tool",
@@ -607,22 +607,22 @@ class TestMicrobotUnit:
             env_variables=[],
             files_to_copy=[],
         )
-        
+
         base_system_prompt = "You are a helpful assistant."
-        
+
         # Create a mock environment
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
-        
+
         # Mock the environment and LLM creation
         with patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
-                model="anthropic/claude-sonnet-4",
+                model="anthropic/claude-sonnet-4-5",
                 system_prompt=base_system_prompt,
                 additional_tools=[tool1, tool2],
                 environment=mock_env,
             )
-            
+
             # Verify both tool instructions are in the system prompt
             from microbots.llm.anthropic_api import AnthropicApi
             assert isinstance(bot.llm, AnthropicApi)
@@ -635,22 +635,22 @@ class TestMicrobotUnit:
     def test_no_tool_usage_instructions_when_no_tools(self):
         """Test that system prompt remains unchanged when no tools are provided."""
         base_system_prompt = "You are a helpful assistant."
-        
+
         # Create a mock environment
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
-        
+
         # Mock the environment and LLM creation
         with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
              patch('microbots.llm.ollama_local.requests'):
-            
+
             bot = MicroBot(
                 model="ollama-local/test-model",
                 system_prompt=base_system_prompt,
                 additional_tools=[],
                 environment=mock_env,
             )
-            
+
             # Verify the system prompt is unchanged
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)
