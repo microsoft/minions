@@ -127,18 +127,23 @@ def generate_prediction(dataset):
             f.write(json.dumps(pred) + "\n")
 
 
+selected_dataset = [
+    "astropy__astropy-12907", # Medium
+    "astropy__astropy-13033", # Medium
+    "astropy__astropy-13398", # Hard
+    ]
 def test_swe_bench():
     datasets = load_dataset(SWE_BENCH_SUITE, split="test")
 
-    for dataset in datasets:
-        if "astropy" in dataset['instance_id'] and dataset['difficulty'] == DIFFICULTY_ENUM["HARD"]:
-            # logger.info(f"DATASET: {pprint(dataset)}")
-            # setup_test_directory(dataset)
-            # run_agent(dataset)
-            # generate_prediction(dataset)
-            break # For testing purpose. Remove this to run all datasets.
+    for instance in selected_dataset:
+        dataset = datasets.filter(lambda x: x['instance_id'] == instance)[0]
+        logger.info(f"DATASET: {pprint(dataset)}")
+        setup_test_directory(dataset)
+        run_agent(dataset)
+        generate_prediction(dataset)
+        # break # For testing purpose. Remove this to run all datasets.
 
-        verify_fix()
+    verify_fix()
 
 
 if __name__ == "__main__":
