@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MicroBots - AI Agent Framework for Automation</title>
+<title>MicroBots - Secure AI Agent Framework for Automation</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -18,6 +18,8 @@
     --accent3: #34d399;
     --accent4: #fb923c;
     --accent5: #f472b6;
+    --accent-sec: #22d3ee;
+    --shield-gold: #fbbf24;
     --text: #e2e8f0;
     --text-dim: #94a3b8;
     --text-bright: #f8fafc;
@@ -75,7 +77,7 @@
   }
   .slide-header .divider {
     height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2), transparent);
+    background: linear-gradient(90deg, var(--accent-sec), var(--accent), var(--accent2), transparent);
     margin-top: 16px;
     border-radius: 2px;
   }
@@ -105,7 +107,7 @@
   }
   .slide-footer .logo-text {
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-sec);
     font-size: 12px;
   }
 
@@ -168,6 +170,8 @@
   .tag-green { background: rgba(52,211,153,0.15); color: var(--accent3); border: 1px solid rgba(52,211,153,0.3); }
   .tag-orange { background: rgba(251,146,60,0.15); color: var(--accent4); border: 1px solid rgba(251,146,60,0.3); }
   .tag-pink { background: rgba(244,114,182,0.15); color: var(--accent5); border: 1px solid rgba(244,114,182,0.3); }
+  .tag-cyan { background: rgba(34,211,238,0.15); color: var(--accent-sec); border: 1px solid rgba(34,211,238,0.3); }
+  .tag-gold { background: rgba(251,191,36,0.15); color: var(--shield-gold); border: 1px solid rgba(251,191,36,0.3); }
 
   /* ── Bullet lists ── */
   ul.bullets {
@@ -228,18 +232,38 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 50%, #0f172a 100%);
+    background: linear-gradient(135deg, #0a0f1e 0%, #111832 30%, #0d1a2d 60%, #0a0f1e 100%);
   }
   .title-slide .glow {
     position: absolute;
-    width: 500px;
-    height: 500px;
+    width: 600px;
+    height: 600px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(34,211,238,0.07) 0%, rgba(56,189,248,0.04) 40%, transparent 70%);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
+  }
+  .title-slide .glow-sec {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(251,191,36,0.06) 0%, transparent 70%);
+    top: 28%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .title-slide .shield-logo {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .title-slide .shield-logo svg {
+    width: 100px;
+    height: 110px;
+    filter: drop-shadow(0 0 30px rgba(34,211,238,0.3)) drop-shadow(0 0 60px rgba(56,189,248,0.15));
   }
   .title-slide h1 {
     font-size: 56px;
@@ -432,6 +456,8 @@
   .text-accent3 { color: var(--accent3); }
   .text-accent4 { color: var(--accent4); }
   .text-accent5 { color: var(--accent5); }
+  .text-sec { color: var(--accent-sec); }
+  .text-gold { color: var(--shield-gold); }
   .fw-700 { font-weight: 700; }
   .fs-13 { font-size: 13px; }
   .fs-12 { font-size: 12px; }
@@ -449,17 +475,63 @@
 <!-- ╚══════════════════════════════════════════════════════════════╝ -->
 <div class="slide title-slide">
   <div class="glow"></div>
-  <h1>Micro<span style="color:var(--accent)">Bots</span></h1>
-  <h2>A lightweight, extensible AI agent framework for code comprehension &amp; controlled file edits in automation pipelines</h2>
+  <div class="glow-sec"></div>
+  <div class="shield-logo">
+    <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Shield body -->
+      <defs>
+        <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:0.9" />
+          <stop offset="50%" style="stop-color:#38bdf8;stop-opacity:0.8" />
+          <stop offset="100%" style="stop-color:#818cf8;stop-opacity:0.9" />
+        </linearGradient>
+        <linearGradient id="shieldInner" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#0f172a;stop-opacity:0.95" />
+          <stop offset="100%" style="stop-color:#1e293b;stop-opacity:0.9" />
+        </linearGradient>
+      </defs>
+      <!-- Outer shield -->
+      <path d="M50 4 L92 22 L92 58 Q92 90 50 114 Q8 90 8 58 L8 22 Z" fill="url(#shieldGrad)" stroke="rgba(34,211,238,0.6)" stroke-width="1.5"/>
+      <!-- Inner shield -->
+      <path d="M50 12 L84 27 L84 56 Q84 84 50 106 Q16 84 16 56 L16 27 Z" fill="url(#shieldInner)"/>
+      <!-- AI Brain / Circuit icon inside shield -->
+      <circle cx="50" cy="54" r="18" fill="none" stroke="#22d3ee" stroke-width="1.5" opacity="0.6"/>
+      <circle cx="50" cy="54" r="10" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.8"/>
+      <circle cx="50" cy="54" r="3.5" fill="#22d3ee" opacity="0.9"/>
+      <!-- Circuit nodes -->
+      <line x1="50" y1="36" x2="50" y2="44" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+      <line x1="50" y1="64" x2="50" y2="72" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+      <line x1="32" y1="54" x2="40" y2="54" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+      <line x1="60" y1="54" x2="68" y2="54" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+      <!-- Diagonal circuit lines -->
+      <line x1="37" y1="41" x2="43" y2="47" stroke="#818cf8" stroke-width="1" opacity="0.5"/>
+      <line x1="63" y1="41" x2="57" y2="47" stroke="#818cf8" stroke-width="1" opacity="0.5"/>
+      <line x1="37" y1="67" x2="43" y2="61" stroke="#818cf8" stroke-width="1" opacity="0.5"/>
+      <line x1="63" y1="67" x2="57" y2="61" stroke="#818cf8" stroke-width="1" opacity="0.5"/>
+      <!-- Circuit node dots -->
+      <circle cx="50" cy="36" r="2" fill="#22d3ee" opacity="0.8"/>
+      <circle cx="50" cy="72" r="2" fill="#22d3ee" opacity="0.8"/>
+      <circle cx="32" cy="54" r="2" fill="#22d3ee" opacity="0.8"/>
+      <circle cx="68" cy="54" r="2" fill="#22d3ee" opacity="0.8"/>
+      <circle cx="37" cy="41" r="1.5" fill="#818cf8" opacity="0.6"/>
+      <circle cx="63" cy="41" r="1.5" fill="#818cf8" opacity="0.6"/>
+      <circle cx="37" cy="67" r="1.5" fill="#818cf8" opacity="0.6"/>
+      <circle cx="63" cy="67" r="1.5" fill="#818cf8" opacity="0.6"/>
+      <!-- Checkmark/lock at bottom of shield -->
+      <path d="M42 82 L48 88 L60 76" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+    </svg>
+  </div>
+  <h1>Micro<span style="color:var(--accent-sec)">Bots</span></h1>
+  <h2>Secure, sandboxed AI agents for code comprehension &amp; controlled file edits &mdash; built for enterprise automation pipelines</h2>
   <div class="tags">
+    <span class="tag tag-cyan">Secure Sandboxing</span>
     <span class="tag tag-blue">AI Agents</span>
-    <span class="tag tag-purple">Docker Sandboxing</span>
     <span class="tag tag-green">Least-Privilege</span>
+    <span class="tag tag-purple">Docker Isolation</span>
     <span class="tag tag-orange">CI/CD Ready</span>
-    <span class="tag tag-pink">Extensible Tools</span>
   </div>
   <div class="version">
-    <code style="color:var(--accent)">pip install microbots</code>&nbsp;&nbsp;|&nbsp;&nbsp;Python &bull; Docker &bull; Multi-LLM
+    <code style="color:var(--accent-sec)">pip install microbots</code>&nbsp;&nbsp;|&nbsp;&nbsp;Python &bull; Docker &bull; Multi-LLM &bull; Security-First
   </div>
 </div>
 
@@ -469,7 +541,7 @@
 <div class="slide">
   <div class="slide-header">
     <h1>What is <span class="hl">MicroBots</span>?</h1>
-    <p class="subtitle">The bridge between LLMs and your automation workflows</p>
+    <p class="subtitle">Secure AI agents that bridge LLMs and your automation workflows</p>
     <div class="divider"></div>
   </div>
   <div class="slide-body">
@@ -478,9 +550,9 @@
         <div class="card" style="flex:1">
           <h3 style="color:var(--accent)">The Problem</h3>
           <ul class="bullets" style="margin-top:8px">
-            <li>LLMs are powerful but lack safe execution environments</li>
-            <li>Giving AI direct filesystem access is risky</li>
-            <li>No standardized way to plug AI into CI/CD</li>
+            <li>LLMs are powerful but lack <strong>safe execution environments</strong></li>
+            <li>Giving AI direct filesystem access is a security risk</li>
+            <li>No standardized way to plug AI into CI/CD securely</li>
             <li>Manual code fixes don't scale in large codebases</li>
           </ul>
         </div>
@@ -501,13 +573,13 @@
     <div class="card" style="padding:12px 22px">
       <p style="font-size:13px; text-align:center;">
         <strong class="text-accent">One-liner:</strong>&nbsp;
-        MicroBots mounts your code into a sandbox, lets an LLM inspect or modify it via shell commands, and returns structured results &mdash; all with least-privilege access controls.
+        MicroBots securely mounts your code into an isolated sandbox, lets an LLM inspect or modify it via shell commands, and returns structured results &mdash; all with least-privilege access controls and defense-in-depth security.
       </p>
     </div>
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>2 / 16</span>
+    <span>2 / 17</span>
   </div>
 </div>
 
@@ -544,7 +616,7 @@
           <p style="font-size:12px;">The bot sends a task to the LLM. The LLM responds with a shell command. The bot executes it in the sandbox and feeds the output back. This loop continues until the LLM sets <code style="color:var(--accent)">task_done=true</code> or limits are hit.</p>
         </div>
         <div class="card-sm">
-          <h3 style="font-size:13px; color:var(--accent);">Safety Controls</h3>
+          <h3 style="font-size:13px; color:var(--accent-sec);">Safety Controls</h3>
           <p style="font-size:12px;">Dangerous commands (<code>rm -rf</code>, <code>ls -R</code>, <code>find</code> without depth limit) are automatically blocked before execution with explanatory feedback to the LLM.</p>
         </div>
         <div class="card-sm">
@@ -556,12 +628,111 @@
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>3 / 16</span>
+    <span>3 / 17</span>
   </div>
 </div>
 
 <!-- ╔══════════════════════════════════════════════════════════════╗ -->
-<!-- ║  SLIDE 4 — The MicroBot Class                              ║ -->
+<!-- ║  SLIDE 4 — Secure Sandboxing                               ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<div class="slide">
+  <div class="slide-header">
+    <h1 style="display:flex; align-items:center; gap:12px;">
+      <svg viewBox="0 0 100 120" width="36" height="40" style="flex-shrink:0;">
+        <path d="M50 4 L92 22 L92 58 Q92 90 50 114 Q8 90 8 58 L8 22 Z" fill="none" stroke="#22d3ee" stroke-width="4"/>
+        <path d="M50 16 L82 30 L82 56 Q82 82 50 102 Q18 82 18 56 L18 30 Z" fill="rgba(34,211,238,0.08)"/>
+        <path d="M35 58 L46 69 L67 48" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Secure <span class="hl" style="color:var(--accent-sec)">Sandboxing</span> &mdash; Security First</span>
+    </h1>
+    <p class="subtitle">Every AI action is isolated, permission-gated, and command-validated</p>
+    <div class="divider" style="background:linear-gradient(90deg, var(--accent-sec), var(--accent), transparent);"></div>
+  </div>
+  <div class="slide-body" style="gap:16px;">
+    <div class="grid-3" style="gap:14px;">
+      <!-- Layer 1: Docker Isolation -->
+      <div class="card" style="border-top:3px solid var(--accent-sec);">
+        <h3 style="font-size:14px; color:var(--accent-sec); display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px;">&#x1F433;</span> Container Isolation
+        </h3>
+        <p style="font-size:12px; margin-top:6px;">Every bot task spawns a <strong>fresh Docker container</strong>. The host filesystem is never directly exposed. Containers are destroyed after task completion &mdash; no persistent attack surface.</p>
+        <pre style="font-size:10px; padding:8px 12px; margin-top:8px;"><span class="cm"># Isolated container per task</span>
+image: shell_server:latest
+<span class="cm"># Communication via HTTP only</span>
+MicroBot &rarr; HTTP POST &rarr; Container
+<span class="cm"># Auto-cleanup on completion</span></pre>
+      </div>
+      <!-- Layer 2: Permission Boundaries -->
+      <div class="card" style="border-top:3px solid var(--accent3);">
+        <h3 style="font-size:14px; color:var(--accent3); display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px;">&#x1F512;</span> Permission Boundaries
+        </h3>
+        <p style="font-size:12px; margin-top:6px;">Mount permissions are <strong>explicit and enforced</strong>. ReadingBot uses overlay FS &mdash; writes go to a temp layer and are discarded. WritingBot scopes writes to the mounted directory only.</p>
+        <pre style="font-size:10px; padding:8px 12px; margin-top:8px;"><span class="cm"># ReadingBot: overlay FS</span>
+mount: /repo &rarr; /workdir  [<span class="type">ro</span>]
+overlay: upper=tmpfs
+
+<span class="cm"># WritingBot: direct mount</span>
+mount: /repo &rarr; /workdir  [<span class="type">rw</span>]
+<span class="cm"># scoped to mounted path only</span></pre>
+      </div>
+      <!-- Layer 3: Command Validation -->
+      <div class="card" style="border-top:3px solid var(--accent2);">
+        <h3 style="font-size:14px; color:var(--accent2); display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px;">&#x1F6E1;</span> Command Validation
+        </h3>
+        <p style="font-size:12px; margin-top:6px;"><strong>Every LLM-generated command</strong> is validated before execution. Destructive patterns are blocked with explanatory feedback. The LLM is guided to use safe alternatives.</p>
+        <pre style="font-size:10px; padding:8px 12px; margin-top:8px;"><span class="cm"># Blocked commands:</span>
+<span class="kw">rm -rf</span> /       <span class="cm"># recursive delete</span>
+<span class="kw">ls -R</span>          <span class="cm"># recursive listing</span>
+<span class="kw">find</span> / -name * <span class="cm"># unbounded find</span>
+
+<span class="cm"># Safe alternative returned:</span>
+<span class="type">find . -maxdepth 3 -name *.py</span></pre>
+      </div>
+    </div>
+    <!-- Security guarantees summary -->
+    <div class="grid-2" style="gap:14px; flex:1;">
+      <div class="card-sm" style="display:flex; flex-direction:column; gap:10px;">
+        <h3 style="font-size:13px; color:var(--accent-sec);">Defense-in-Depth Layers</h3>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="tag tag-cyan" style="min-width:32px; text-align:center;">L1</span>
+            <span style="font-size:12px;"><strong>Network Isolation</strong> &mdash; Container communicates only via localhost HTTP</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="tag tag-green" style="min-width:32px; text-align:center;">L2</span>
+            <span style="font-size:12px;"><strong>Filesystem Boundary</strong> &mdash; Overlay FS or scoped mounts, nothing else visible</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="tag tag-purple" style="min-width:32px; text-align:center;">L3</span>
+            <span style="font-size:12px;"><strong>Command Filtering</strong> &mdash; Pre-execution validation blocks dangerous patterns</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="tag tag-orange" style="min-width:32px; text-align:center;">L4</span>
+            <span style="font-size:12px;"><strong>Resource Limits</strong> &mdash; Iteration caps and timeouts prevent runaway agents</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-sm" style="display:flex; flex-direction:column; gap:10px;">
+        <h3 style="font-size:13px; color:var(--shield-gold);">Why This Matters for Enterprises</h3>
+        <ul class="bullets" style="font-size:12px;">
+          <li style="margin-bottom:4px;"><strong>Zero trust by design</strong> &mdash; AI never gets more access than explicitly granted</li>
+          <li style="margin-bottom:4px;"><strong>Audit-friendly</strong> &mdash; every command is logged with inputs and outputs</li>
+          <li style="margin-bottom:4px;"><strong>Ephemeral environments</strong> &mdash; containers are destroyed post-task, no data leakage</li>
+          <li style="margin-bottom:4px;"><strong>Production-safe</strong> &mdash; read-only bots cannot modify source code under any circumstance</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="logo-text">MicroBots</span>
+    <span>4 / 17</span>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SLIDE 5 — The MicroBot Class                              ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════╝ -->
 <div class="slide">
   <div class="slide-header">
@@ -618,7 +789,7 @@
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>4 / 16</span>
+    <span>5 / 17</span>
   </div>
 </div>
 
@@ -688,7 +859,7 @@
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>5 / 16</span>
+    <span>6 / 17</span>
   </div>
 </div>
 
@@ -750,7 +921,7 @@
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>7 / 16</span>
+    <span>8 / 17</span>
   </div>
 </div>
 
@@ -808,7 +979,7 @@ result = bot.<span class="fn">run</span>(
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>8 / 16</span>
+    <span>9 / 17</span>
   </div>
 </div>
 
@@ -869,7 +1040,7 @@ result = bot.<span class="fn">run</span>(
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>9 / 16</span>
+    <span>10 / 17</span>
   </div>
 </div>
 
@@ -933,7 +1104,7 @@ result = bot.<span class="fn">run</span>(
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>10 / 16</span>
+    <span>11 / 17</span>
   </div>
 </div>
 
@@ -1025,7 +1196,7 @@ bot = <span class="fn">WritingBot</span>(
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>12 / 16</span>
+    <span>13 / 17</span>
   </div>
 </div>
 
@@ -1094,7 +1265,7 @@ bot = <span class="fn">WritingBot</span>(
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>13 / 16</span>
+    <span>14 / 17</span>
   </div>
 </div>
 
@@ -1168,7 +1339,7 @@ bot = <span class="fn">WritingBot</span>(
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>14 / 16</span>
+    <span>15 / 17</span>
   </div>
 </div>
 
@@ -1250,15 +1421,15 @@ fix = writer.<span class="fn">run</span>(
             <li><strong>Custom Pipelines:</strong> Chain bots together for multi-stage autonomous workflows</li>
           </ul>
         </div>
-        <div class="card-sm" style="background:rgba(56,189,248,0.05); border-color:rgba(56,189,248,0.2);">
-          <p style="font-size:12px;"><strong class="text-accent">Key Benefit:</strong> Every bot runs in an isolated Docker container. No shared state, no side effects, no risk to your production environment.</p>
+        <div class="card-sm" style="background:rgba(34,211,238,0.05); border-color:rgba(34,211,238,0.2);">
+          <p style="font-size:12px;"><strong class="text-sec">Security Guarantee:</strong> Every bot runs in an isolated Docker container with explicit permissions. No shared state, no side effects, no risk to your production environment.</p>
         </div>
       </div>
     </div>
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>15 / 16</span>
+    <span>16 / 17</span>
   </div>
 </div>
 
@@ -1273,9 +1444,9 @@ fix = writer.<span class="fn">run</span>(
   </div>
   <div class="slide-body" style="gap:16px;">
     <div class="grid-3" style="gap:14px;">
-      <div class="card-sm" style="border-top:3px solid var(--accent); text-align:center;">
-        <h3 style="font-size:28px; color:var(--accent); margin-bottom:4px;">4</h3>
-        <p style="font-size:12px; font-weight:600;">Built-in Bot Types</p>
+      <div class="card-sm" style="border-top:3px solid var(--accent-sec); text-align:center;">
+        <h3 style="font-size:28px; color:var(--accent-sec); margin-bottom:4px;">4</h3>
+        <p style="font-size:12px; font-weight:600;">Secure Bot Types</p>
         <p style="font-size:11px; color:var(--text-dim);">ReadingBot, WritingBot, BrowsingBot, LogAnalysisBot</p>
       </div>
       <div class="card-sm" style="border-top:3px solid var(--accent3); text-align:center;">
@@ -1309,24 +1480,24 @@ python my_bot.py</pre>
         <div class="card-sm" style="flex:1">
           <h3 style="font-size:13px;">Key Takeaways</h3>
           <ul class="bullets" style="margin-top:6px; font-size:12px;">
-            <li><strong>Sandboxed by default</strong> &mdash; every task runs in Docker</li>
+            <li><strong>Security-first</strong> &mdash; isolated Docker sandbox per task</li>
             <li><strong>Least-privilege access</strong> &mdash; explicit RO/RW per mount</li>
-            <li><strong>Autonomous agentic loop</strong> &mdash; no human needed</li>
+            <li><strong>Command validation</strong> &mdash; dangerous patterns blocked</li>
             <li><strong>Plug-in tools</strong> &mdash; YAML configs, no code changes</li>
             <li><strong>Multi-LLM</strong> &mdash; swap providers with one string</li>
             <li><strong>Pipeline-ready</strong> &mdash; import and run from any script</li>
           </ul>
         </div>
-        <div class="card-sm" style="text-align:center; background:linear-gradient(135deg, rgba(56,189,248,0.08), rgba(129,140,248,0.08));">
+        <div class="card-sm" style="text-align:center; background:linear-gradient(135deg, rgba(34,211,238,0.08), rgba(129,140,248,0.08));">
           <p style="font-size:16px; font-weight:700; color:var(--text-bright);">pip install microbots</p>
-          <p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Start building AI-powered automation today</p>
+          <p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Secure AI-powered automation for your codebase</p>
         </div>
       </div>
     </div>
   </div>
   <div class="slide-footer">
     <span class="logo-text">MicroBots</span>
-    <span>16 / 16</span>
+    <span>17 / 17</span>
   </div>
 </div>
 
