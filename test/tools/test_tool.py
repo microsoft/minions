@@ -12,7 +12,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-from microbots.tools.tool import Tool, parse_tool_definition
+from microbots.tools.tool import InternalTool, parse_tool_definition
 
 
 @pytest.mark.unit
@@ -21,7 +21,7 @@ class TestToolOptionalArguments:
 
     def test_tool_without_parameters(self):
         """Test that Tool can be created without parameters field."""
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -34,7 +34,7 @@ class TestToolOptionalArguments:
     def test_tool_with_parameters(self):
         """Test that Tool can be created with parameters field."""
         params = {"type": "str", "required": True}
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -46,7 +46,7 @@ class TestToolOptionalArguments:
     def test_tool_with_env_variables(self):
         """Test that Tool can be created with env_variables field."""
         env_vars = ["VAR1", "VAR2"]
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -57,7 +57,7 @@ class TestToolOptionalArguments:
 
     def test_tool_with_verify_commands_none(self):
         """Test that Tool can be created with verify_commands set to None."""
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -68,7 +68,7 @@ class TestToolOptionalArguments:
 
     def test_tool_with_all_optional_fields_none(self):
         """Test that Tool can be created with all optional fields as None."""
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -115,7 +115,7 @@ class TestEnvVariablesIteration:
 
     def test_iterate_none_env_variables(self):
         """Test that iterating over None env_variables with 'or []' pattern works."""
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -130,7 +130,7 @@ class TestEnvVariablesIteration:
 
     def test_iterate_empty_env_variables(self):
         """Test that iterating over empty list env_variables works."""
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",
@@ -145,7 +145,7 @@ class TestEnvVariablesIteration:
     def test_iterate_with_env_variables(self):
         """Test that iterating over env_variables with values works."""
         env_vars = ["VAR1", "VAR2", "VAR3"]
-        tool = Tool(
+        tool = InternalTool(
             name="test_tool",
             description="A test tool",
             usage_instructions_to_llm="Test instructions",

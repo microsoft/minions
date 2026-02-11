@@ -478,10 +478,10 @@ class TestMicrobotUnit:
 
     def test_tool_usage_instructions_appended_to_system_prompt(self):
         """Test that tool usage instructions are appended to the system prompt when creating LLM."""
-        from microbots.tools.tool import Tool
+        from microbots.tools.tool import InternalTool
 
         # Create a mock tool with usage instructions
-        mock_tool = Tool(
+        mock_tool = InternalTool(
             name="test_tool",
             description="A test tool",
             parameters=None,
@@ -517,10 +517,10 @@ class TestMicrobotUnit:
 
     def test_multiple_tool_usage_instructions_appended(self):
         """Test that multiple tool usage instructions are all appended to the system prompt."""
-        from microbots.tools.tool import Tool
+        from microbots.tools.tool import InternalTool
 
         # Create multiple mock tools with usage instructions
-        tool1 = Tool(
+        tool1 = InternalTool(
             name="tool1",
             description="First tool",
             parameters=None,
@@ -530,7 +530,7 @@ class TestMicrobotUnit:
             files_to_copy=[],
         )
 
-        tool2 = Tool(
+        tool2 = InternalTool(
             name="tool2",
             description="Second tool",
             parameters=None,

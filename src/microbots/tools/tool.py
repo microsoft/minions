@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import os
 from typing import Optional, List
@@ -12,6 +13,19 @@ from microbots.constants import DOCKER_WORKING_DIR, TOOL_FILE_BASE_PATH
 logger = logging.getLogger(" 🔧 Tool")
 
 
+class Tool(ABC):
+    """
+    Abstract base class for all tools in the Microbots framework.
+
+    Tool hierarchy:
+        Tool (ABC)
+        ├── InternalTool (Tool)   — Docker sandbox tools (install_commands, env_variables, etc.)
+        └── ExternalTool (Tool)   — LLM-native tools (get_tool_definition, execute)
+                └── AnthropicMemoryTool
+    """
+    pass
+
+
 @dataclass
 class EnvFileCopies:
     src: Path
@@ -20,7 +34,10 @@ class EnvFileCopies:
 
 
 @dataclass
-class Tool:
+class InternalTool(Tool):
+    """
+    Tools that get installed and run inside the Docker sandbox environment.
+    """
     # TODO: Handle different instructions based on the platform (linux flavours, windows, mac)
     # TODO: Add versioning to tools
     name: str
@@ -57,7 +74,7 @@ class Tool:
     uninstall_commands: Optional[List[str]] = None
 
 
-def parse_tool_definition(yaml_path: str) -> Tool:
+def parse_tool_definition(yaml_path: str) -> InternalTool:
     """
     Parse a tool definition from a YAML file.
 
@@ -66,7 +83,7 @@ def parse_tool_definition(yaml_path: str) -> Tool:
                    If it is not an absolute path, it is relative to project_root/tool/tool_definition/
 
     Returns:
-        A Tool object parsed from the YAML file.
+        An InternalTool object parsed from the YAML file.
     """
 
     yaml_path = Path(yaml_path)
@@ -88,10 +105,10 @@ def parse_tool_definition(yaml_path: str) -> Tool:
 
     tool_dict["files_to_copy"] = [EnvFileCopies(**file_to_copy) for file_to_copy in tool_dict.get("files_to_copy", []) or []]
 
-    return Tool(**tool_dict)
+    return InternalTool(**tool_dict)
 
 
-def _install_tool(env: Environment, tool: Tool):
+def _install_tool(env: Environment, tool: InternalTool):
     logger.debug("Installing tool: %s", tool.name)
     for command in tool.install_commands:
         output = env.execute(command)
@@ -184,7 +201,7 @@ def _setup_file_permission(env: Environment, file_copy: EnvFileCopies):
             f"Failed to set permission for file in container {file_copy.dest}. Output: {output}"
         )
 
-def _verify_tool_installation(env: Environment, tool: Tool):
+def _verify_tool_installation(env: Environment, tool: InternalTool):
     if not tool.verify_commands:
         logger.debug("No verify commands provided for tool: %s", tool.name)
         return
@@ -203,7 +220,7 @@ def _verify_tool_installation(env: Environment, tool: Tool):
             )
     logger.info("✅ Successfully installed and verified tool: %s", tool.name)
 
-def install_tools(env: Environment, tools: List[Tool]):
+def install_tools(env: Environment, tools: List[InternalTool]):
     if tools:
         for tool in tools:
             _install_tool(env, tool)
@@ -217,7 +234,7 @@ def install_tools(env: Environment, tools: List[Tool]):
         for tool in tools:
             _verify_tool_installation(env, tool)
 
-def setup_tools(env: Environment, tools: List[Tool]):
+def setup_tools(env: Environment, tools: List[InternalTool]):
     if not tools:
         logger.debug("No tools provided for setup.")
         return

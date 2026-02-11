@@ -15,7 +15,8 @@ from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
-from microbots.tools.tool import Tool, install_tools, setup_tools
+from microbots.tools.tool import Tool, InternalTool, install_tools, setup_tools
+from microbots.tools.external_tool import ExternalTool
 from microbots.extras.mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
@@ -83,7 +84,9 @@ class MicroBot:
             The execution environment for the bot. If not provided, a default
             LocalDockerEnvironment will be created.
         additional_tools : Optional[list[Tool]]
-            A list of additional tools to install in the bot's environment.
+            A list of additional tools. Can contain both InternalTool
+            (Docker sandbox tools) and ExternalTool (LLM-native tools).
+            They are automatically separated and routed appropriately.
         folder_to_mount : Optional[Mount]
             A folder to mount into the bot's environment. The bot will be given
             access to this folder based on the specified permissions. This will
@@ -117,7 +120,7 @@ class MicroBot:
                 The execution environment for the bot. If not provided, a default
                 LocalDockerEnvironment will be created.
             additional_tools :Optional[list[Tool]]
-                A list of additional tools to install in the bot's environment.
+                A list of additional tools (InternalTool and/or ExternalTool).
                 Defaults to [].
             folder_to_mount :Optional[Mount]
                 A folder to mount into the bot's environment. The bot will be given
@@ -151,6 +154,10 @@ class MicroBot:
         self.environment = environment
         self.additional_tools = additional_tools
 
+        # Separate tools by type
+        self._internal_tools = [t for t in (additional_tools or []) if isinstance(t, InternalTool)]
+        self._external_tools = [t for t in (additional_tools or []) if isinstance(t, ExternalTool)]
+
         self._validate_model_and_provider(model)
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
@@ -160,7 +167,7 @@ class MicroBot:
 
         self._create_llm()
 
-        install_tools(self.environment, self.additional_tools)
+        install_tools(self.environment, self._internal_tools)
 
     def run(
         self,
@@ -173,7 +180,7 @@ class MicroBot:
         if max_iterations <= 0:
             raise ValueError("max_iterations must be greater than 0")
 
-        setup_tools(self.environment, self.additional_tools)
+        setup_tools(self.environment, self._internal_tools)
 
         for mount in additional_mounts or []:
             self._mount_additional(mount)
@@ -291,8 +298,8 @@ class MicroBot:
     def _create_llm(self):
         # Append tool usage instructions to system prompt
         system_prompt_with_tools = self.system_prompt if self.system_prompt else ""
-        if self.additional_tools:
-            for tool in self.additional_tools:
+        if self._internal_tools:
+            for tool in self._internal_tools:
                 if tool.usage_instructions_to_llm:
                     system_prompt_with_tools += f"\n\n{tool.usage_instructions_to_llm}"
 
@@ -306,7 +313,9 @@ class MicroBot:
             )
         elif self.model_provider == ModelProvider.ANTHROPIC:
             self.llm = AnthropicApi(
-                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
+                system_prompt=system_prompt_with_tools,
+                deployment_name=self.deployment_name,
+                external_tools=self._external_tools,
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 
