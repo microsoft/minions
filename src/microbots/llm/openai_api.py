@@ -16,9 +16,14 @@ api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
 class OpenAIApi(LLMInterface):
 
     def __init__(self, system_prompt, deployment_name=deployment_name, max_retries=3):
-        self.deployment_name = deployment_name
         self.ai_client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
-        super().__init__(system_prompt=system_prompt, max_retries=max_retries)
+        self.deployment_name = deployment_name
+        self.system_prompt = system_prompt
+        self.messages = [{"role": "system", "content": system_prompt}]
+
+        # Set these values here. This logic will be handled in the parent class.
+        self.max_retries = max_retries
+        self.retries = 0
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0 # reset retries for each ask. Handled in parent class.

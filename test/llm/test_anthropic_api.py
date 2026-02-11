@@ -47,9 +47,7 @@ class TestAnthropicApiInitialization:
         assert api.system_prompt == system_prompt
         assert api.max_retries == 3
         assert api.retries == 0
-        assert len(api.messages) == 1  # System prompt is included in messages
-        assert api.messages[0]["role"] == "system"
-        assert api.messages[0]["content"] == system_prompt
+        assert len(api.messages) == 0  # Anthropic doesn't include system in messages
 
     def test_init_with_custom_deployment_name(self):
         """Test initialization with custom deployment name"""
@@ -123,11 +121,10 @@ class TestAnthropicApiAsk:
         assert api.retries == 0
 
         # Verify messages were appended
-        assert len(api.messages) == 3  # system + user + assistant
-        assert api.messages[0]["role"] == "system"
-        assert api.messages[1]["role"] == "user"
-        assert api.messages[1]["content"] == message
-        assert api.messages[2]["role"] == "assistant"
+        assert len(api.messages) == 2  # user + assistant (no system in messages)
+        assert api.messages[0]["role"] == "user"
+        assert api.messages[0]["content"] == message
+        assert api.messages[1]["role"] == "assistant"
 
     def test_ask_with_task_done_true(self):
         """Test ask method when task is complete"""
@@ -336,17 +333,17 @@ class TestAnthropicApiClearHistory:
         system_prompt = "You are a helpful assistant"
         api = AnthropicApi(system_prompt=system_prompt)
 
-        # Add some messages (system message already exists)
+        # Add some messages
         api.messages.append({"role": "user", "content": "Hello"})
         api.messages.append({"role": "assistant", "content": "Hi there"})
         api.messages.append({"role": "user", "content": "How are you?"})
 
-        assert len(api.messages) == 4  # system + 3 added messages
+        assert len(api.messages) == 3
 
         # Clear history
         result = api.clear_history()
 
-        # Verify messages are empty after clear
+        # Verify messages are empty (Anthropic doesn't store system in messages)
         assert result is True
         assert len(api.messages) == 0
 
@@ -359,8 +356,8 @@ class TestAnthropicApiClearHistory:
 
         assert result is True
 
-    def test_clear_history_preserves_system_prompt_attribute(self):
-        """Test that clear_history preserves the original system_prompt attribute"""
+    def test_clear_history_preserves_system_prompt(self):
+        """Test that clear_history preserves the original system prompt"""
         system_prompt = "You are a code assistant specialized in Python"
         api = AnthropicApi(system_prompt=system_prompt)
 
@@ -369,9 +366,8 @@ class TestAnthropicApiClearHistory:
             api.messages.append({"role": "user", "content": f"Message {i}"})
             api.clear_history()
 
-        # Verify system_prompt attribute is still correct
+        # Verify system prompt is still correct
         assert api.system_prompt == system_prompt
-        # Note: clear_history empties all messages including system
         assert len(api.messages) == 0
 
 
@@ -438,7 +434,7 @@ class TestAnthropicApiEdgeCases:
 
         # Verify it still works
         assert isinstance(result, LLMAskResponse)
-        assert api.messages[1]["content"] == ""  # User message (after system)
+        assert api.messages[0]["content"] == ""  # User message
 
     def test_multiple_ask_calls_append_messages(self):
         """Test that multiple ask calls append all messages"""
@@ -462,8 +458,8 @@ class TestAnthropicApiEdgeCases:
         api.ask("Third question")
 
         # Verify all messages are preserved
-        # Should have: 1 system + 3 user + 3 assistant = 7 messages
-        assert len(api.messages) == 7
+        # Should have: 3 user + 3 assistant = 6 messages (no system in messages)
+        assert len(api.messages) == 6
 
         user_messages = [m for m in api.messages if m["role"] == "user"]
         assert len(user_messages) == 3
@@ -514,7 +510,7 @@ class TestAnthropicApiIntegration:
         result = api.clear_history()
 
         assert result is True
-        assert len(api.messages) == 0  # clear_history empties all messages
+        assert len(api.messages) == 0  # Anthropic doesn't store system in messages
 
 
 if __name__ == "__main__":
