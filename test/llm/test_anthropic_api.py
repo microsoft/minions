@@ -618,38 +618,28 @@ class TestAnthropicApiAskWithToolsPaths:
         assert result.command == "cat f.txt"
 
     def test_fallback_append_when_no_prior_assistant_message(self):
-        """When tool_runner yields no assistant content, the else branch should append."""
+        """When _build_message_content always returns [], the for/else branch should append."""
         tool = Mock(spec=[])
         api = AnthropicApi(system_prompt="test", external_tools=[tool])
 
-        # Build a final message whose _build_message_content returns empty
-        # (so no assistant message is ever appended during the loop)
-        final_msg = Mock()
-        final_msg.content = []  # empty → _build_message_content returns []
-
-        mock_runner = Mock()
-        mock_runner.__iter__ = Mock(return_value=iter([final_msg]))
-        mock_runner.generate_tool_call_response = Mock(return_value=None)
-        api.ai_client.beta.messages.tool_runner = Mock(return_value=mock_runner)
-
-        # _extract_text on empty content returns "" → validation will fail,
-        # so we inject a valid response on the second iteration
+        # Valid response message — _extract_text will find text, but we patch
+        # _build_message_content to return [] so no assistant msg is appended
+        # during the runner loop.
         valid_msg = self._make_final_message(
             json.dumps({"task_done": True, "command": "", "thoughts": "done"})
         )
-        mock_runner2 = Mock()
-        mock_runner2.__iter__ = Mock(return_value=iter([valid_msg]))
-        mock_runner2.generate_tool_call_response = Mock(return_value=None)
+        mock_runner = Mock()
+        mock_runner.__iter__ = Mock(return_value=iter([valid_msg]))
+        mock_runner.generate_tool_call_response = Mock(return_value=None)
+        api.ai_client.beta.messages.tool_runner = Mock(return_value=mock_runner)
 
-        api.ai_client.beta.messages.tool_runner = Mock(
-            side_effect=[mock_runner, mock_runner2]
-        )
+        with patch.object(AnthropicApi, '_build_message_content', return_value=[]):
+            result = api.ask("do it")
 
-        result = api.ask("do it")
         assert result.task_done is True
-        # The else branch should have fired — the last assistant message contains the response
+        # The for/else branch should have fired — no prior assistant message existed
         assistant_msgs = [m for m in api.messages if m.get("role") == "assistant"]
-        assert len(assistant_msgs) >= 1
+        assert len(assistant_msgs) == 1
         last = json.loads(assistant_msgs[-1]["content"])
         assert last["task_done"] is True
 
