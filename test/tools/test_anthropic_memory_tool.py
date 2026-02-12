@@ -68,6 +68,14 @@ class TestAnthropicMemoryTool:
         assert "a.txt" in listing
         assert "b.txt" in listing
 
+    def test_view_directory_excludes_hidden_files(self, memory_tool):
+        """Hidden files (names starting with '.') should be excluded from directory listings."""
+        memory_tool.call({"command": "create", "path": "/memories/visible.txt", "file_text": "v"})
+        memory_tool.call({"command": "create", "path": "/memories/.hidden", "file_text": "h"})
+        listing = memory_tool.call({"command": "view", "path": "/memories"})
+        assert "visible.txt" in listing
+        assert ".hidden" not in listing
+
     def test_unknown_command(self, memory_tool):
         with pytest.raises(NotImplementedError, match="Unknown command"):
             memory_tool.call({"command": "explode"})

@@ -513,6 +513,216 @@ class TestAnthropicApiIntegration:
         assert len(api.messages) == 0  # Anthropic doesn't store system in messages
 
 
+@pytest.mark.unit
+class TestAnthropicApiToolRunnerKwargs:
+    """Tests that _ask_with_tools passes the correct kwargs to tool_runner."""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        pass
+
+    @staticmethod
+    def _make_final_message(response_json: dict):
+        """Helper: build a mock final tool-runner message containing *response_json*."""
+        text_block = Mock()
+        text_block.type = "text"
+        text_block.text = json.dumps(response_json)
+        msg = Mock()
+        msg.content = [text_block]
+        return msg
+
+    def _build_api_with_runner(self, external_tools, context_management=None):
+        """Helper: create AnthropicApi with mocked tool_runner returning a single text message."""
+        api = AnthropicApi(
+            system_prompt="test",
+            external_tools=external_tools,
+            context_management=context_management,
+        )
+        final_msg = self._make_final_message(
+            {"task_done": False, "command": "pwd", "thoughts": ""}
+        )
+        mock_runner = Mock()
+        mock_runner.__iter__ = Mock(return_value=iter([final_msg]))
+        mock_runner.generate_tool_call_response = Mock(return_value=None)
+        api.ai_client.beta.messages.tool_runner = Mock(return_value=mock_runner)
+        return api
+
+    def test_betas_passed_to_tool_runner(self):
+        """Verify that beta headers collected from tools are forwarded to tool_runner."""
+        tool = Mock(spec=["beta_header"])
+        tool.beta_header = "custom-beta-2025"
+
+        api = self._build_api_with_runner(external_tools=[tool])
+        api.ask("go")
+
+        call_kwargs = api.ai_client.beta.messages.tool_runner.call_args
+        assert "betas" in call_kwargs.kwargs or "betas" in (call_kwargs[1] if len(call_kwargs) > 1 else {})
+        # Extract from either positional dict or keyword
+        passed_kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
+        assert "custom-beta-2025" in passed_kwargs["betas"]
+
+    def test_context_management_passed_to_tool_runner(self):
+        """Verify that context_management config is forwarded to tool_runner."""
+        cm = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+        tool = Mock(spec=[])  # no beta_header
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=cm)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" in passed_kwargs
+        assert passed_kwargs["context_management"] == cm
+
+    def test_context_management_omitted_when_none(self):
+        """context_management should NOT appear in kwargs when it is None."""
+        tool = Mock(spec=[])
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=None)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" not in passed_kwargs
+
+
+@pytest.mark.unit
+class TestAnthropicApiAskWithToolsPaths:
+    """Tests for code paths inside _ask_with_tools."""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        pass
+
+    @staticmethod
+    def _make_final_message(text):
+        block = Mock()
+        block.type = "text"
+        block.text = text
+        msg = Mock()
+        msg.content = [block]
+        return msg
+
+    def test_json_extracted_from_markdown_in_tools_path(self):
+        """_ask_with_tools should extract JSON wrapped in markdown code blocks."""
+        tool = Mock(spec=[])
+        api = AnthropicApi(system_prompt="test", external_tools=[tool])
+
+        markdown_response = '```json\n{"task_done": false, "command": "cat f.txt", "thoughts": ""}\n```'
+        final_msg = self._make_final_message(markdown_response)
+
+        mock_runner = Mock()
+        mock_runner.__iter__ = Mock(return_value=iter([final_msg]))
+        mock_runner.generate_tool_call_response = Mock(return_value=None)
+        api.ai_client.beta.messages.tool_runner = Mock(return_value=mock_runner)
+
+        result = api.ask("read file")
+        assert result.command == "cat f.txt"
+
+    def test_fallback_append_when_no_prior_assistant_message(self):
+        """When tool_runner yields no assistant content, the else branch should append."""
+        tool = Mock(spec=[])
+        api = AnthropicApi(system_prompt="test", external_tools=[tool])
+
+        # Build a final message whose _build_message_content returns empty
+        # (so no assistant message is ever appended during the loop)
+        final_msg = Mock()
+        final_msg.content = []  # empty → _build_message_content returns []
+
+        mock_runner = Mock()
+        mock_runner.__iter__ = Mock(return_value=iter([final_msg]))
+        mock_runner.generate_tool_call_response = Mock(return_value=None)
+        api.ai_client.beta.messages.tool_runner = Mock(return_value=mock_runner)
+
+        # _extract_text on empty content returns "" → validation will fail,
+        # so we inject a valid response on the second iteration
+        valid_msg = self._make_final_message(
+            json.dumps({"task_done": True, "command": "", "thoughts": "done"})
+        )
+        mock_runner2 = Mock()
+        mock_runner2.__iter__ = Mock(return_value=iter([valid_msg]))
+        mock_runner2.generate_tool_call_response = Mock(return_value=None)
+
+        api.ai_client.beta.messages.tool_runner = Mock(
+            side_effect=[mock_runner, mock_runner2]
+        )
+
+        result = api.ask("do it")
+        assert result.task_done is True
+        # The else branch should have fired — the last assistant message contains the response
+        assistant_msgs = [m for m in api.messages if m.get("role") == "assistant"]
+        assert len(assistant_msgs) >= 1
+        last = json.loads(assistant_msgs[-1]["content"])
+        assert last["task_done"] is True
+
+
+@pytest.mark.unit
+class TestBuildMessageContent:
+    """Tests for the static _build_message_content method."""
+
+    def test_text_block(self):
+        block = Mock(type="text", text="hello")
+        msg = Mock(content=[block])
+        result = AnthropicApi._build_message_content(msg)
+        assert result == [{"type": "text", "text": "hello"}]
+
+    def test_tool_use_block(self):
+        block = Mock(type="tool_use", id="tu_1", input={"a": 1})
+        block.name = "memory"
+        msg = Mock(content=[block])
+        result = AnthropicApi._build_message_content(msg)
+        assert result == [{"type": "tool_use", "id": "tu_1", "name": "memory", "input": {"a": 1}}]
+
+    def test_server_tool_use_block_with_model_dump(self):
+        """Blocks with unknown type that have model_dump() should be serialised via model_dump."""
+        block = Mock(type="server_tool_use")
+        block.model_dump = Mock(return_value={"type": "server_tool_use", "id": "stu_1", "name": "web"})
+        msg = Mock(content=[block])
+        result = AnthropicApi._build_message_content(msg)
+        assert result == [{"type": "server_tool_use", "id": "stu_1", "name": "web"}]
+        block.model_dump.assert_called_once()
+
+    def test_unknown_block_without_model_dump(self):
+        """Blocks with unknown type and no model_dump should be appended as-is."""
+        block = {"type": "custom", "data": 42}
+        msg = Mock(content=[block])
+        result = AnthropicApi._build_message_content(msg)
+        assert result == [{"type": "custom", "data": 42}]
+
+    def test_empty_content(self):
+        msg = Mock(content=[])
+        result = AnthropicApi._build_message_content(msg)
+        assert result == []
+
+
+@pytest.mark.unit
+class TestExtractText:
+    """Tests for the static _extract_text method."""
+
+    def test_returns_empty_string_for_none(self):
+        assert AnthropicApi._extract_text(None) == ""
+
+    def test_extracts_single_text_block(self):
+        block = Mock(type="text", text="hello")
+        resp = Mock(content=[block])
+        assert AnthropicApi._extract_text(resp) == "hello"
+
+    def test_extracts_multiple_text_blocks(self):
+        b1 = Mock(type="text", text="hello")
+        b2 = Mock(type="text", text="world")
+        resp = Mock(content=[b1, b2])
+        assert AnthropicApi._extract_text(resp) == "hello\nworld"
+
+    def test_skips_non_text_blocks(self):
+        text_block = Mock(type="text", text="result")
+        tool_block = Mock(type="tool_use")
+        resp = Mock(content=[tool_block, text_block])
+        assert AnthropicApi._extract_text(resp) == "result"
+
+    def test_returns_empty_string_when_no_text_blocks(self):
+        tool_block = Mock(type="tool_use")
+        resp = Mock(content=[tool_block])
+        assert AnthropicApi._extract_text(resp) == ""
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
