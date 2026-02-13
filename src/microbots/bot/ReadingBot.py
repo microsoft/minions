@@ -15,6 +15,7 @@ class ReadingBot(MicroBot):
         folder_to_mount: str,
         environment: Optional[any] = None,
         additional_tools: Optional[list[Tool]] = [],
+        provider_options: Optional[dict] = None,
     ):
         # validate init values before assigning
         bot_type = BotType.READING_BOT
@@ -41,4 +42,5 @@ class ReadingBot(MicroBot):
             environment=environment,
             additional_tools=additional_tools,
             folder_to_mount=folder_mount_info,
+            provider_options=provider_options,
         )

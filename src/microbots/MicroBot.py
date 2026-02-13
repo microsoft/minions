@@ -104,6 +104,7 @@ class MicroBot:
         environment: Optional[any] = None,
         additional_tools: Optional[list[Tool]] = [],
         folder_to_mount: Optional[Mount] = None,
+        provider_options: Optional[dict] = None,
     ):
         """
         Init function for MicroBot class.
@@ -131,6 +132,15 @@ class MicroBot:
                 to None.
 
                 Note: Supports only mount type MountType.MOUNT for now.
+            provider_options :Optional[dict]
+                Provider-specific options passed to the LLM backend.
+                For Anthropic, supports:
+                  - "context_management": dict — controls automatic context
+                    window management. Examples:
+                    {"edits": [{"type": "clear_tool_uses_20250919"}]}
+                    {"edits": [{"type": "compact_20260112", "trigger": {"type": "input_tokens", "value": 150000}}]}
+                Ignored for providers that don't support the given keys.
+                Defaults to None.
         """
 
         self.folder_to_mount = folder_to_mount
@@ -153,6 +163,7 @@ class MicroBot:
         self.bot_type = bot_type
         self.environment = environment
         self.additional_tools = additional_tools
+        self.provider_options = provider_options or {}
 
         # Separate tools by type
         self._internal_tools = [t for t in (additional_tools or []) if isinstance(t, InternalTool)]
@@ -302,6 +313,11 @@ class MicroBot:
             for tool in self._internal_tools:
                 if tool.usage_instructions_to_llm:
                     system_prompt_with_tools += f"\n\n{tool.usage_instructions_to_llm}"
+        if self._external_tools:
+            for tool in self._external_tools:
+                instructions = getattr(tool, "usage_instructions_to_llm", None)
+                if instructions:
+                    system_prompt_with_tools += f"\n\n{instructions}"
 
         if self.model_provider == ModelProvider.OPENAI:
             self.llm = OpenAIApi(
@@ -316,6 +332,7 @@ class MicroBot:
                 system_prompt=system_prompt_with_tools,
                 deployment_name=self.deployment_name,
                 external_tools=self._external_tools,
+                context_management=self.provider_options.get("context_management"),
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 

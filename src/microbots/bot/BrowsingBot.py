@@ -16,6 +16,7 @@ class BrowsingBot(MicroBot):
         model: str,
         environment: Optional[Environment] = None,
         additional_tools: Optional[list[Tool]] = [],
+        provider_options: Optional[dict] = None,
     ):
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT
@@ -29,6 +30,7 @@ class BrowsingBot(MicroBot):
             system_prompt=system_prompt,
             environment=environment,
             additional_tools=additional_tools + [BROWSER_USE_TOOL],
+            provider_options=provider_options,
         )
 
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:

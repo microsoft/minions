@@ -243,6 +243,38 @@ class TestAnthropicApiWithExternalTools:
         api = AnthropicApi(system_prompt="test")
         assert api._collect_betas() == []
 
+    def test_context_management_only_without_memory_tool(self, patch_anthropic):
+        """Context management can be used without the memory tool."""
+        from microbots.llm.anthropic_api import AnthropicApi
+        cm = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+        api = AnthropicApi(system_prompt="test", context_management=cm)
+        assert api.context_management == cm
+        assert api.external_tools == []
+        betas = api._collect_betas()
+        assert "context-management-2025-06-27" in betas
+
+    def test_memory_tool_only_without_context_management(self, patch_anthropic):
+        """Memory tool can be used without context management."""
+        from microbots.llm.anthropic_api import AnthropicApi
+        mem = AnthropicMemoryTool()
+        api = AnthropicApi(system_prompt="test", external_tools=[mem])
+        assert api.context_management is None
+        assert mem in api.external_tools
+        betas = api._collect_betas()
+        assert MEMORY_BETA_HEADER in betas
+
+    def test_memory_tool_with_context_management(self, patch_anthropic):
+        """Memory tool and context management work together without beta duplication."""
+        from microbots.llm.anthropic_api import AnthropicApi
+        cm = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+        mem = AnthropicMemoryTool()
+        api = AnthropicApi(system_prompt="test", external_tools=[mem], context_management=cm)
+        assert api.context_management == cm
+        assert mem in api.external_tools
+        betas = api._collect_betas()
+        # Both the tool and context_management map to the same beta — should not duplicate
+        assert betas.count("context-management-2025-06-27") == 1
+
     def test_ask_routes_to_simple_without_tools(self, patch_anthropic):
         """Without external_tools, ask() should use _ask_simple."""
         from microbots.llm.anthropic_api import AnthropicApi

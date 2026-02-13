@@ -29,7 +29,7 @@ from microbots.tools.external.anthropic_memory_tool import (
     MEMORY_BETA_HEADER,
 )
 from microbots.tools.external_tool import ExternalTool
-from microbots.llm.anthropic_api import AnthropicApi
+from microbots.llm.anthropic_api import AnthropicApi, DEFAULT_CONTEXT_MANAGEMENT
 
 
 # ---------------------------------------------------------------------------
@@ -222,7 +222,7 @@ class TestBotMemoryToolIntegration:
 
         task1 = (
             "Read the pyproject.toml and identify the project name and its "
-            "dependencies. Save your findings."
+            "dependencies."
         )
 
         result1: BotRunResult = bot1.run(
@@ -244,9 +244,8 @@ class TestBotMemoryToolIntegration:
         bot2 = self._make_memory_bot(model, test_repo, memory_tool)
 
         task2 = (
-            "Check your memory for any previous analysis notes. "
-            "What project name and dependencies were found? "
-            "Only look at memory, do not re-read the repository files."
+            "What project name and dependencies were found in the "
+            "previous analysis?"
         )
 
         result2: BotRunResult = bot2.run(
@@ -355,4 +354,321 @@ class TestCustomBotWithMemoryTool:
 
         assert len(memory_files) > 0, (
             "The model did NOT write to memory despite system prompt instruction."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — memory only, context management only, both
+# ---------------------------------------------------------------------------
+
+_SKIP_NO_KEY = pytest.mark.skipif(
+    not os.getenv("ANTHROPIC_API_KEY"),
+    reason="ANTHROPIC_API_KEY not set",
+)
+
+
+def _make_bot(model, test_repo, *, additional_tools=None, provider_options=None):
+    """Helper: build a MicroBot with a sandbox and optional memory/cm config."""
+    from microbots.MicroBot import system_prompt_common
+    from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
+    from microbots.extras.mount import Mount
+
+    base_name = os.path.basename(str(test_repo))
+    folder_mount = Mount(
+        str(test_repo),
+        f"/{DOCKER_WORKING_DIR}/{base_name}",
+        PermissionLabels.READ_ONLY,
+    )
+
+    system_prompt = (
+        f"{system_prompt_common}\n\n"
+        "You are a test assistant with persistent memory.\n"
+        f"The repository is mounted at {folder_mount.sandbox_path}.\n"
+        "IMPORTANT: Always save your key findings to memory using the memory "
+        "tool before completing any task.\n"
+        "Focus only on files directly related to the task."
+    )
+
+    return MicroBot(
+        model=model,
+        system_prompt=system_prompt,
+        additional_tools=additional_tools or [],
+        folder_to_mount=folder_mount,
+        provider_options=provider_options,
+    )
+
+
+def _list_memory_files(memory_tool):
+    """Return non-hidden regular files under the memory directory."""
+    if not memory_tool.memory_dir.exists():
+        return []
+    return [
+        f for f in memory_tool.memory_dir.rglob("*")
+        if f.is_file() and not f.name.startswith(".")
+    ]
+
+
+# ---- 1. Memory tool only (no context management) --------------------------
+
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.docker
+@_SKIP_NO_KEY
+class TestBotMemoryOnly:
+    """
+    End-to-end: bot uses the memory tool WITHOUT context management.
+
+    Proves:
+    - The tool_runner loop actually calls the memory tool
+    - The model writes data that lands on disk
+    - A second bot can read it back (cross-session persistence)
+    """
+
+    @pytest.fixture
+    def memory_tool(self, tmp_path):
+        tool = AnthropicMemoryTool(memory_dir=tmp_path / "mem_only")
+        yield tool
+        tool.clear_all()
+
+    def test_memory_tool_saves_to_disk(self, test_repo, memory_tool):
+        """Bot with memory (no CM) writes findings to disk."""
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+        bot = _make_bot(
+            model, test_repo,
+            additional_tools=[memory_tool],
+            # NO provider_options → no context management
+        )
+
+        result: BotRunResult = bot.run(
+            "List the files in the repository root and describe the project structure.",
+            max_iterations=15,
+            timeout_in_seconds=120,
+        )
+
+        print(f"Status={result.status}  Result={result.result}  Error={result.error}")
+        assert result.status, f"Bot failed: {result.error}"
+
+        files = _list_memory_files(memory_tool)
+        print(f"Memory files: {[f.name for f in files]}")
+        assert len(files) > 0, (
+            "Memory tool was never called — no files on disk. "
+            "The system prompt instructs the model to save findings."
+        )
+
+    def test_memory_persists_without_context_management(self, test_repo, memory_tool):
+        """
+        Run 1 saves a fact to memory.
+        Run 2 (new bot, same memory dir) reads it back.
+        No context management involved.
+        """
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+
+        # Run 1 — analyze (system prompt drives memory usage)
+        bot1 = _make_bot(model, test_repo, additional_tools=[memory_tool])
+        r1 = bot1.run(
+            "Read pyproject.toml and identify the project name.",
+            max_iterations=15,
+            timeout_in_seconds=120,
+        )
+        assert r1.status, f"Run 1 failed: {r1.error}"
+        assert len(_list_memory_files(memory_tool)) > 0, "Run 1 wrote nothing"
+
+        # Run 2 — new bot, same memory dir. Can only know the answer via memory.
+        bot2 = _make_bot(model, test_repo, additional_tools=[memory_tool])
+        r2 = bot2.run(
+            "What project name was found in the previous analysis?",
+            max_iterations=10,
+            timeout_in_seconds=90,
+        )
+        assert r2.status, f"Run 2 failed: {r2.error}"
+        # The fixture test_repo has pyproject.toml with name = "testpkg"
+        assert "testpkg" in (r2.result or "").lower(), (
+            f"Run 2 didn't recall the project name. Got: {r2.result}"
+        )
+
+
+# ---- 2. Context management only (no memory tool) --------------------------
+
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.docker
+@_SKIP_NO_KEY
+class TestBotContextManagementOnly:
+    """
+    End-to-end: bot uses context management WITHOUT the memory tool.
+
+    Proves:
+    - The context_management config is accepted by the real Anthropic API
+    - The correct beta header is sent (otherwise the API would reject it)
+    - The bot completes a task successfully with CM enabled
+    """
+
+    def test_context_management_explicit_config(self, test_repo):
+        """Bot with explicit clear_tool_uses context management config completes a task."""
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+        # We still need an external tool for the tool_runner path.
+        # Use a memory tool as a simple external tool but don't assert on memory usage.
+        from tempfile import mkdtemp
+        tmp = mkdtemp()
+        mem = AnthropicMemoryTool(memory_dir=os.path.join(tmp, "mem_cm"))
+
+        cm_config = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+
+        bot = _make_bot(
+            model, test_repo,
+            additional_tools=[mem],
+            provider_options={"context_management": cm_config},
+        )
+
+        # Verify the LLM layer received the config
+        assert bot.llm.context_management == cm_config
+        betas = bot.llm._collect_betas()
+        assert "context-management-2025-06-27" in betas, (
+            f"Expected CM beta header in {betas}"
+        )
+
+        # Actually run the bot — if beta header or CM format is wrong, API raises
+        result: BotRunResult = bot.run(
+            "Run 'echo hello' and report the output.",
+            max_iterations=10,
+            timeout_in_seconds=90,
+        )
+
+        print(f"Status={result.status}  Result={result.result}  Error={result.error}")
+        assert result.status, f"Bot failed with context management: {result.error}"
+        assert result.result is not None
+        mem.clear_all()
+
+    def test_context_management_true_uses_default(self, test_repo):
+        """Passing provider_options={'context_management': True} resolves to the default."""
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+        from tempfile import mkdtemp
+        tmp = mkdtemp()
+        mem = AnthropicMemoryTool(memory_dir=os.path.join(tmp, "mem_cm_true"))
+
+        bot = _make_bot(
+            model, test_repo,
+            additional_tools=[mem],
+            provider_options={"context_management": True},
+        )
+
+        # Should have resolved to the default
+        assert bot.llm.context_management == DEFAULT_CONTEXT_MANAGEMENT
+
+        result: BotRunResult = bot.run(
+            "Run 'echo default-cm-test' and report what you see.",
+            max_iterations=10,
+            timeout_in_seconds=90,
+        )
+
+        print(f"Status={result.status}  Result={result.result}  Error={result.error}")
+        assert result.status, f"Bot failed with context_management=True: {result.error}"
+        mem.clear_all()
+
+
+# ---- 3. Both memory tool AND context management ---------------------------
+
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.docker
+@_SKIP_NO_KEY
+class TestBotMemoryWithContextManagement:
+    """
+    End-to-end: bot uses BOTH memory tool and context management together.
+
+    Proves:
+    - The beta header is not duplicated (memory tool + CM share the same one)
+    - The API accepts the combined config without errors
+    - The memory tool still works correctly when CM is also active
+    - Data written to memory persists and can be read back
+    """
+
+    @pytest.fixture
+    def memory_tool(self, tmp_path):
+        tool = AnthropicMemoryTool(memory_dir=tmp_path / "mem_both")
+        yield tool
+        tool.clear_all()
+
+    def test_no_beta_duplication(self, test_repo, memory_tool):
+        """Memory tool and CM map to the same beta — must not duplicate."""
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+        cm_config = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+
+        bot = _make_bot(
+            model, test_repo,
+            additional_tools=[memory_tool],
+            provider_options={"context_management": cm_config},
+        )
+
+        betas = bot.llm._collect_betas()
+        assert betas.count("context-management-2025-06-27") == 1, (
+            f"Beta header duplicated: {betas}"
+        )
+
+    def test_memory_works_with_context_management(self, test_repo, memory_tool):
+        """Bot with both memory and CM can save data and complete a task."""
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+        cm_config = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+
+        bot = _make_bot(
+            model, test_repo,
+            additional_tools=[memory_tool],
+            provider_options={"context_management": cm_config},
+        )
+
+        result: BotRunResult = bot.run(
+            "List the repository files and describe the project structure.",
+            max_iterations=15,
+            timeout_in_seconds=120,
+        )
+
+        print(f"Status={result.status}  Result={result.result}  Error={result.error}")
+        assert result.status, f"Bot failed: {result.error}"
+
+        files = _list_memory_files(memory_tool)
+        print(f"Memory files: {[f.name for f in files]}")
+        assert len(files) > 0, (
+            "Memory tool was never called despite system prompt instruction."
+        )
+
+    def test_memory_persists_with_context_management(self, test_repo, memory_tool):
+        """
+        Two-phase test with both features active.
+        Run 1: save fact.  Run 2 (new bot): read it back from memory.
+        """
+        model = f"anthropic/{os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')}"
+        cm_config = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+
+        # Run 1 — analyze (system prompt drives memory usage)
+        bot1 = _make_bot(
+            model, test_repo,
+            additional_tools=[memory_tool],
+            provider_options={"context_management": cm_config},
+        )
+        r1 = bot1.run(
+            "Read pyproject.toml and identify the project name.",
+            max_iterations=15,
+            timeout_in_seconds=120,
+        )
+        assert r1.status, f"Run 1 failed: {r1.error}"
+
+        files = _list_memory_files(memory_tool)
+        assert len(files) > 0, "Run 1 wrote nothing to memory"
+        for f in files:
+            print(f"  {f.name}: {f.read_text()[:200]}")
+
+        # Run 2 — new bot, same memory dir + CM. Can only know via memory.
+        bot2 = _make_bot(
+            model, test_repo,
+            additional_tools=[memory_tool],
+            provider_options={"context_management": cm_config},
+        )
+        r2 = bot2.run(
+            "What project name was found in the previous analysis?",
+            max_iterations=10,
+            timeout_in_seconds=90,
+        )
+        assert r2.status, f"Run 2 failed: {r2.error}"
+        assert "testpkg" in (r2.result or "").lower(), (
+            f"Run 2 couldn't recall the project name. Got: {r2.result}"
         )

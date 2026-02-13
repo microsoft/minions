@@ -11,7 +11,7 @@ from dataclasses import asdict
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from microbots.llm.anthropic_api import AnthropicApi
+from microbots.llm.anthropic_api import AnthropicApi, DEFAULT_CONTEXT_MANAGEMENT
 from microbots.llm.llm import LLMAskResponse, LLMInterface, llm_output_format_str
 
 
@@ -582,6 +582,95 @@ class TestAnthropicApiToolRunnerKwargs:
 
         passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
         assert "context_management" not in passed_kwargs
+
+    def test_clear_tool_uses_adds_beta_header(self):
+        """clear_tool_uses edit type should auto-add its beta header."""
+        cm = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+        tool = Mock(spec=[])  # no beta_header on tool
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=cm)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context-management-2025-06-27" in passed_kwargs["betas"]
+
+    def test_compact_adds_beta_header(self):
+        """compact edit type should auto-add its beta header."""
+        cm = {"edits": [{"type": "compact_20260112", "trigger": {"type": "input_tokens", "value": 150000}}]}
+        tool = Mock(spec=[])  # no beta_header on tool
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=cm)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "compact-2026-01-12" in passed_kwargs["betas"]
+
+    def test_context_management_only_no_memory_tool(self):
+        """Context management works without any memory tool — just a plain tool."""
+        cm = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+        tool = Mock(spec=[])  # generic tool, no beta_header
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=cm)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" in passed_kwargs
+        assert passed_kwargs["context_management"] == cm
+        # Beta header auto-detected from edit type, not from any tool
+        assert "context-management-2025-06-27" in passed_kwargs["betas"]
+
+    def test_memory_tool_only_no_context_management(self):
+        """Memory tool works without context management."""
+        tool = Mock(spec=["beta_header"])
+        tool.beta_header = "context-management-2025-06-27"
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=None)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" not in passed_kwargs
+        # Memory tool's beta header is still passed for the tool itself
+        assert "context-management-2025-06-27" in passed_kwargs["betas"]
+
+    def test_memory_tool_with_context_management(self):
+        """Both memory tool and context management work together."""
+        cm = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+        tool = Mock(spec=["beta_header"])
+        tool.beta_header = "context-management-2025-06-27"
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=cm)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" in passed_kwargs
+        assert passed_kwargs["context_management"] == cm
+        assert "context-management-2025-06-27" in passed_kwargs["betas"]
+        # Beta should not be duplicated
+        assert passed_kwargs["betas"].count("context-management-2025-06-27") == 1
+
+    def test_context_management_true_uses_default(self):
+        """Passing context_management=True should use DEFAULT_CONTEXT_MANAGEMENT."""
+        from microbots.llm.anthropic_api import DEFAULT_CONTEXT_MANAGEMENT
+        tool = Mock(spec=[])
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management=True)
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" in passed_kwargs
+        assert passed_kwargs["context_management"] == DEFAULT_CONTEXT_MANAGEMENT
+
+    def test_context_management_empty_dict_uses_default(self):
+        """Passing context_management={} should use DEFAULT_CONTEXT_MANAGEMENT."""
+        from microbots.llm.anthropic_api import DEFAULT_CONTEXT_MANAGEMENT
+        tool = Mock(spec=[])
+
+        api = self._build_api_with_runner(external_tools=[tool], context_management={})
+        api.ask("go")
+
+        passed_kwargs = api.ai_client.beta.messages.tool_runner.call_args.kwargs
+        assert "context_management" in passed_kwargs
+        assert passed_kwargs["context_management"] == DEFAULT_CONTEXT_MANAGEMENT
 
 
 @pytest.mark.unit

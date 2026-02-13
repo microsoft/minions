@@ -47,6 +47,20 @@ logger = getLogger(__name__)
 MEMORY_TOOL_TYPE = "memory_20250818"
 MEMORY_BETA_HEADER = "context-management-2025-06-27"
 
+DEFAULT_MEMORY_INSTRUCTIONS = (
+    "MEMORY PROTOCOL:\n"
+    "1. ALWAYS view your memory directory BEFORE doing anything else "
+    "using the `view` command of your `memory` tool to check for earlier progress.\n"
+    "2. As you make progress on the task, record status, progress, "
+    "and key findings in your memory using the memory tool.\n"
+    "3. ASSUME INTERRUPTION: Your context window might be reset at any moment, "
+    "so you risk losing any progress that is not recorded in your memory directory.\n"
+    "4. Before completing a task, always save your final results and analysis to memory.\n"
+    "5. When editing your memory folder, always keep its content up-to-date, coherent "
+    "and organized. Rename or delete files that are no longer relevant. "
+    "Do not create new files unless necessary."
+)
+
 
 class AnthropicMemoryTool(_SDKMemoryTool, ExternalTool):
     """
@@ -59,22 +73,30 @@ class AnthropicMemoryTool(_SDKMemoryTool, ExternalTool):
     against a local ``memory_dir`` directory.
     """
 
-    def __init__(self, memory_dir: str | Path | None = None):
+    def __init__(self, memory_dir: str | Path | None = None, usage_instructions: str | None = None):
         """
         Parameters
         ----------
         memory_dir : str | Path | None
             Root directory for memory files.  Defaults to ``~/.microbots/memory``.
+        usage_instructions : str | None
+            Custom instructions appended to the system prompt for the LLM.
+            Defaults to ``DEFAULT_MEMORY_INSTRUCTIONS``.
         """
         super().__init__()
         if memory_dir is None:
             memory_dir = Path.home() / ".microbots" / "memory"
         self._memory_dir = Path(memory_dir)
         self._memory_dir.mkdir(parents=True, exist_ok=True)
+        self._usage_instructions = usage_instructions if usage_instructions is not None else DEFAULT_MEMORY_INSTRUCTIONS
 
     @property
     def description(self) -> str:
         return "Persistent memory tool — stores and retrieves information across conversations."
+
+    @property
+    def usage_instructions_to_llm(self) -> str:
+        return self._usage_instructions
 
     def get_tool_definition(self) -> dict:
         """Return the tool param dict (delegates to SDK's ``to_dict()``)."""

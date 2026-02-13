@@ -20,6 +20,18 @@ deployment_name = os.getenv("ANTHROPIC_DEPLOYMENT_NAME")
 api_key = os.getenv("ANTHROPIC_API_KEY")
 
 
+# Mapping from context_management edit types to required beta headers
+_EDIT_TYPE_TO_BETA = {
+    "clear_tool_uses_20250919": "context-management-2025-06-27",
+    "compact_20260112": "compact-2026-01-12",
+}
+
+# Default context management config — clears old tool-use blocks when context fills up
+DEFAULT_CONTEXT_MANAGEMENT = {
+    "edits": [{"type": "clear_tool_uses_20250919"}]
+}
+
+
 class AnthropicApi(LLMInterface):
 
     def __init__(
@@ -28,7 +40,7 @@ class AnthropicApi(LLMInterface):
         deployment_name=deployment_name,
         max_retries=3,
         external_tools: Optional[list[ExternalTool]] = None,
-        context_management: Optional[dict] = None,
+        context_management: Optional[dict | bool] = None,
     ):
         self.ai_client = Anthropic(
             api_key=api_key,
@@ -36,7 +48,18 @@ class AnthropicApi(LLMInterface):
         )
         self.deployment_name = deployment_name
         self.external_tools = external_tools or []
-        self.context_management = context_management
+
+        # Resolve context_management:
+        #   None / False  → disabled
+        #   True / {}     → use DEFAULT_CONTEXT_MANAGEMENT
+        #   dict with edits → use as-is
+        if context_management is True or (isinstance(context_management, dict) and not context_management):
+            self.context_management = DEFAULT_CONTEXT_MANAGEMENT
+        elif isinstance(context_management, dict):
+            self.context_management = context_management
+        else:
+            self.context_management = None
+
         self.system_prompt = system_prompt
         self.messages = []
 
@@ -153,11 +176,18 @@ class AnthropicApi(LLMInterface):
 
 
     def _collect_betas(self) -> list[str]:
-        """Collect unique beta headers from all external tools."""
+        """Collect unique beta headers from external tools and context_management config."""
         betas = set()
         for tool in self.external_tools:
             if hasattr(tool, "beta_header") and tool.beta_header:
                 betas.add(tool.beta_header)
+        # Add betas required by context_management edit types
+        if self.context_management:
+            for edit in self.context_management.get("edits", []):
+                edit_type = edit.get("type", "")
+                beta = _EDIT_TYPE_TO_BETA.get(edit_type)
+                if beta:
+                    betas.add(beta)
         return list(betas) if betas else []
 
     @staticmethod
