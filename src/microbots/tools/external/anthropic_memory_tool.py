@@ -58,7 +58,10 @@ DEFAULT_MEMORY_INSTRUCTIONS = (
     "4. Before completing a task, always save your final results and analysis to memory.\n"
     "5. When editing your memory folder, always keep its content up-to-date, coherent "
     "and organized. Rename or delete files that are no longer relevant. "
-    "Do not create new files unless necessary."
+    "Do not create new files unless necessary.\n\n"
+    "IMPORTANT: The memory tool ONLY works with paths under /memories/. "
+    "Do NOT use the memory tool to access the repository or workdir. "
+    "Use shell commands (ls, cat, etc.) for filesystem access."
 )
 
 
@@ -123,17 +126,28 @@ class AnthropicMemoryTool(_SDKMemoryTool, ExternalTool):
         return "All memory cleared"
 
     def _resolve(self, path: str) -> Path:
-        """Resolve a path relative to memory_dir, blocking traversal."""
-        # Strip leading slash and "memories/" prefix so the path resolves
-        # inside memory_dir (e.g., "/memories/foo.txt" → "foo.txt").
+        """Resolve a path relative to memory_dir, blocking traversal and non-memory paths."""
+        original_path = path
         path = path.lstrip("/")
+
+        # Validate that the path is intended for the memory tool
+        # Accept: /memories, /memories/..., memories, memories/..., or relative paths
         if path.startswith("memories/"):
-            path = path[len("memories/"):]  # handles both "memories/x" and "memories/"
+            path = path[len("memories/"):]  # handles "memories/x"
         elif path == "memories":
             path = ""
+        elif path.startswith(("workdir", "home", "tmp", "var", "etc", "usr")):
+            # Clearly not a memory path — reject with helpful error
+            raise ValueError(
+                f"Invalid memory path: {original_path}. "
+                f"The memory tool ONLY works with /memories/* paths. "
+                f"Use shell commands (ls, cat, etc.) to access {original_path}."
+            )
+        # else: treat as a relative path inside memory_dir (e.g., "notes.md")
+
         resolved = (self._memory_dir / path).resolve() if path else self._memory_dir.resolve()
         if not str(resolved).startswith(str(self._memory_dir.resolve())):
-            raise ValueError(f"Path traversal not allowed: {path}")
+            raise ValueError(f"Path traversal not allowed: {original_path}")
         return resolved
 
     # ---- BetaAbstractMemoryTool typed command handlers -----------------------

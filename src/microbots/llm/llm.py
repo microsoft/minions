@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import json
+import re
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -13,6 +14,49 @@ llm_output_format_str = """
     "command": <str>     // The command to be executed
 }
 """
+
+
+def _extract_json_from_response(response: str) -> str:
+    """
+    Extract JSON object from a response that may contain surrounding text.
+
+    Tries in order:
+    1. Parse as-is (pure JSON)
+    2. Extract from markdown code block ```json ... ``` or ``` ... ```
+    3. Find the outermost {...} in the text
+    """
+    # Try parsing as-is first
+    try:
+        json.loads(response)
+        return response
+    except json.JSONDecodeError:
+        pass
+
+    # Try extracting from markdown code block
+    code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+    if code_block_match:
+        extracted = code_block_match.group(1)
+        try:
+            json.loads(extracted)
+            return extracted
+        except json.JSONDecodeError:
+            pass
+
+    # Try finding {...} anywhere in the response (greedy to get full object)
+    # Use a more robust approach: find first { and last }
+    first_brace = response.find('{')
+    last_brace = response.rfind('}')
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        extracted = response[first_brace:last_brace + 1]
+        try:
+            json.loads(extracted)
+            return extracted
+        except json.JSONDecodeError:
+            pass
+
+    # Return original if nothing worked — let caller handle the error
+    return response
+
 
 @dataclass
 class LLMAskResponse:
@@ -35,8 +79,11 @@ class LLMInterface(ABC):
             logger.error("Maximum retries reached for LLM response validation.")
             raise Exception("LLM is not responding in expected format. Maximum retries reached.")
 
+        # Extract JSON from response (handles text before/after JSON, code blocks, etc.)
+        extracted_response = _extract_json_from_response(response)
+
         try:
-            response_dict = json.loads(response)
+            response_dict = json.loads(extracted_response)
         except json.JSONDecodeError:
             self.retries += 1
             logger.warning("LLM response is not valid JSON. Retrying... (%d/%d)", self.retries, self.max_retries)
