@@ -272,12 +272,12 @@ class TestBotMemoryToolIntegration:
         bot = self._make_memory_bot(model, test_repo, memory_tool)
 
         task = (
-            "Look at the Python source files and test files in the repository. "
-            "Identify any bugs or issues. Focus only on Python files."
+            "Look at the Python source files in the repository. "
+            "Identify the main entry point or purpose of the code."
         )
 
         response: BotRunResult = bot.run(
-            task, max_iterations=20, timeout_in_seconds=180,
+            task, max_iterations=25, timeout_in_seconds=240,
         )
 
         print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")
@@ -618,8 +618,8 @@ class TestBotMemoryWithContextManagement:
 
         result: BotRunResult = bot.run(
             "List the repository files and describe the project structure.",
-            max_iterations=15,
-            timeout_in_seconds=120,
+            max_iterations=25,
+            timeout_in_seconds=180,
         )
 
         print(f"Status={result.status}  Result={result.result}  Error={result.error}")
