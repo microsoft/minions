@@ -127,6 +127,25 @@ class TestAnthropicMemoryTool:
         with pytest.raises(ValueError, match="Path traversal not allowed"):
             memory_tool._resolve("/../../../etc/passwd")
 
+    @pytest.mark.parametrize("invalid_path", [
+        "/workdir/test-repo",
+        "workdir/test-repo/src/file.py",
+        "/home/user/code",
+        "home/user/file.txt",
+        "/tmp/test",
+        "tmp/cache",
+        "/var/log/app.log",
+        "var/run/app.pid",
+        "/etc/passwd",
+        "etc/hosts",
+        "/usr/local/bin",
+        "usr/share/doc",
+    ])
+    def test_non_memory_paths_blocked(self, memory_tool, invalid_path):
+        """Paths clearly not intended for memory (workdir, home, tmp, etc.) are rejected."""
+        with pytest.raises(ValueError, match="Invalid memory path"):
+            memory_tool._resolve(invalid_path)
+
     # ---- view with view_range ----
 
     def test_view_range(self, memory_tool):
@@ -321,3 +340,42 @@ class TestAnthropicApiWithExternalTools:
         result = api.ask("hello")
         assert result.command == "pwd"
         api.ai_client.beta.messages.tool_runner.assert_called_once()
+    def test_tool_response_appended_to_messages(self, patch_anthropic):
+        """When tool_runner returns tool results, they should be appended to messages."""
+        from microbots.llm.anthropic_api import AnthropicApi
+        from unittest.mock import Mock
+        import json
+
+        mem = AnthropicMemoryTool()
+        api = AnthropicApi(system_prompt="test", external_tools=[mem])
+
+        # Mock tool_runner to return a final message
+        final_msg = Mock()
+        final_msg.stop_reason = "end_turn"
+        text_block = Mock()
+        text_block.type = "text"
+        text_block.text = json.dumps({
+            "task_done": True, "command": "", "thoughts": "Done"
+        })
+        final_msg.content = [text_block]
+
+        # Mock tool_response with content (simulating tool execution result)
+        tool_response = {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "123", "content": "Memory saved"}]
+        }
+
+        mock_runner = Mock()
+        mock_runner.__iter__ = Mock(return_value=iter([final_msg]))
+        mock_runner.generate_tool_call_response = Mock(return_value=tool_response)
+
+        api.ai_client.beta.messages.tool_runner = Mock(return_value=mock_runner)
+
+        result = api.ask("save to memory")
+
+        # Verify tool_response was appended to messages
+        assert any(
+            msg.get("content") == tool_response["content"]
+            for msg in api.messages
+            if isinstance(msg, dict)
+        ), "Tool response should be appended to messages"
