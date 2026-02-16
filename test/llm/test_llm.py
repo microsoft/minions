@@ -9,7 +9,7 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from microbots.llm.llm import LLMInterface, LLMAskResponse, llm_output_format_str
+from microbots.llm.llm import LLMInterface, LLMAskResponse, llm_output_format_str, _extract_json_from_response
 
 
 class ConcreteLLM(LLMInterface):
@@ -743,3 +743,80 @@ class TestValidateLlmResponseAdditionalCases:
         assert llm.retries == 1
         assert len(llm.messages) == 1
         assert "When 'task_done' is true, 'command' should be an empty string." in llm.messages[0]["content"]
+
+
+@pytest.mark.unit
+class TestExtractJsonFromResponse:
+    """Tests for _extract_json_from_response function"""
+
+    def test_pure_json_passes_through(self):
+        """Test that valid JSON is returned as-is"""
+        pure_json = '{"task_done": false, "command": "ls", "thoughts": ""}'
+        result = _extract_json_from_response(pure_json)
+        assert result == pure_json
+
+    def test_json_in_markdown_code_block(self):
+        """Test extraction from ```json ... ``` code block"""
+        response = '''Here's the response:
+```json
+{"task_done": false, "command": "cat file.txt", "thoughts": ""}
+```'''
+        result = _extract_json_from_response(response)
+        expected = '{"task_done": false, "command": "cat file.txt", "thoughts": ""}'
+        assert result == expected
+        # Verify it's valid JSON
+        parsed = json.loads(result)
+        assert parsed["command"] == "cat file.txt"
+
+    def test_json_in_plain_code_block(self):
+        """Test extraction from ``` ... ``` code block (no json specifier)"""
+        response = '''Response:
+```
+{"task_done": true, "command": "", "thoughts": "Done"}
+```'''
+        result = _extract_json_from_response(response)
+        expected = '{"task_done": true, "command": "", "thoughts": "Done"}'
+        assert result == expected
+
+    def test_multiline_json_in_code_block(self):
+        """Test extraction of multiline JSON from code block"""
+        response = '''Here's the response:
+```json
+{
+    "task_done": false,
+    "command": "echo hello",
+    "thoughts": "Testing"
+}
+```'''
+        result = _extract_json_from_response(response)
+        # Verify it's valid JSON
+        parsed = json.loads(result)
+        assert parsed["task_done"] is False
+        assert parsed["command"] == "echo hello"
+
+    def test_json_with_surrounding_text_no_code_block(self):
+        """Test extraction using {...} fallback when no code block"""
+        response = 'Some text before {"task_done": false, "command": "pwd", "thoughts": ""} some text after'
+        result = _extract_json_from_response(response)
+        expected = '{"task_done": false, "command": "pwd", "thoughts": ""}'
+        assert result == expected
+
+    def test_invalid_json_returns_original(self):
+        """Test that invalid JSON returns original response"""
+        invalid = 'This is not JSON at all'
+        result = _extract_json_from_response(invalid)
+        assert result == invalid
+
+    def test_code_block_with_invalid_json_falls_through(self):
+        """Test that invalid JSON in code block causes fallback to {...} extraction"""
+        # When code block contains invalid JSON, it falls through to {...} fallback
+        # The fallback extracts from first { to last }, which may or may not be valid
+        response = '''Some text before {"task_done": false, "command": "ls", "thoughts": ""} after
+```json
+{not valid json}
+```'''
+        result = _extract_json_from_response(response)
+        # The {...} fallback finds first { and last }, but that spans invalid content
+        # So the original is returned
+        # This is expected behavior - the function returns original when extraction fails
+        assert result == response

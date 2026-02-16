@@ -587,3 +587,126 @@ class TestMicrobotUnit:
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)
             assert bot.llm.system_prompt == base_system_prompt
+    def test_json_content_output_formatting(self):
+        """Test that JSON output with 'content' key is formatted using pformat."""
+        from pprint import pformat
+        import json
+
+        base_system_prompt = "You are a helpful assistant."
+
+        # Create a mock environment
+        mock_env = Mock()
+
+        # JSON with "content" key - should be formatted with pformat
+        json_with_content = json.dumps({"content": {"file": "test.py", "lines": [1, 2, 3]}})
+
+        # Track call count to alternate LLM responses
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call: initial task
+                return LLMAskResponse(command="cat file.txt", task_done=False, thoughts="Reading file")
+            else:
+                # Second call: after command execution, check that content was formatted
+                # Verify pformat was applied (the message should contain the formatted content)
+                expected_content = pformat({"file": "test.py", "lines": [1, 2, 3]})
+                assert expected_content in message, f"Expected pformat output in message, got: {message}"
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+
+        mock_env.execute.return_value = Mock(return_code=0, stdout=json_with_content, stderr="")
+
+        with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
+             patch('microbots.llm.ollama_local.requests'):
+
+            bot = MicroBot(
+                model="ollama-local/test-model",
+                system_prompt=base_system_prompt,
+                environment=mock_env,
+            )
+
+            # Patch llm.ask to track what's passed to it
+            bot.llm.ask = mock_ask
+
+            result = bot.run("Test task", max_iterations=5, timeout_in_seconds=30)
+            assert result.status is True
+
+    def test_json_without_content_key_not_formatted(self):
+        """Test that JSON output without 'content' key is not reformatted."""
+        import json
+
+        base_system_prompt = "You are a helpful assistant."
+
+        # Create a mock environment
+        mock_env = Mock()
+
+        # JSON without "content" key - should pass through as-is
+        json_without_content = json.dumps({"result": "success", "value": 42})
+
+        # Track call count to alternate LLM responses
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="cat file.txt", task_done=False, thoughts="Reading file")
+            else:
+                # The raw JSON should be passed through
+                assert json_without_content in message, f"Expected raw JSON in message, got: {message}"
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+
+        mock_env.execute.return_value = Mock(return_code=0, stdout=json_without_content, stderr="")
+
+        with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
+             patch('microbots.llm.ollama_local.requests'):
+
+            bot = MicroBot(
+                model="ollama-local/test-model",
+                system_prompt=base_system_prompt,
+                environment=mock_env,
+            )
+
+            bot.llm.ask = mock_ask
+
+            result = bot.run("Test task", max_iterations=5, timeout_in_seconds=30)
+            assert result.status is True
+
+    def test_non_dict_json_not_formatted(self):
+        """Test that non-dict JSON (e.g., float, list) is not reformatted."""
+        base_system_prompt = "You are a helpful assistant."
+
+        # Create a mock environment
+        mock_env = Mock()
+
+        # Non-dict JSON (a float) - should pass through as-is without TypeError
+        non_dict_json = "8.2"
+
+        # Track call count to alternate LLM responses
+        call_count = [0]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="cat file.txt", task_done=False, thoughts="Reading file")
+            else:
+                # The raw value should be passed through
+                assert "8.2" in message, f"Expected raw value in message, got: {message}"
+                return LLMAskResponse(command="", task_done=True, thoughts="Done")
+
+        mock_env.execute.return_value = Mock(return_code=0, stdout=non_dict_json, stderr="")
+
+        with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
+             patch('microbots.llm.ollama_local.requests'):
+
+            bot = MicroBot(
+                model="ollama-local/test-model",
+                system_prompt=base_system_prompt,
+                environment=mock_env,
+            )
+
+            bot.llm.ask = mock_ask
+
+            # This should not raise TypeError: argument of type 'float' is not iterable
+            result = bot.run("Test task", max_iterations=5, timeout_in_seconds=30)
+            assert result.status is True
