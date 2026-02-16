@@ -105,7 +105,7 @@ class LocalDockerEnvironment(Environment):
         path_name = os.path.basename(self.folder_to_mount.sandbox_path)
         # Mount /ro/path_name to /{WORKING_DIR}/path_name using overlayfs
         mount_command = (
-            f"mkdir -p {self.folder_to_mount.sandbox_path} /{DOCKER_WORKING_DIR}/overlay/{path_name}/upper /{DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
+            f"mkdir -p {self.folder_to_mount.sandbox_path} {DOCKER_WORKING_DIR}/overlay/{path_name}/upper {DOCKER_WORKING_DIR}/overlay/{path_name}/work && sleep 5 && "
             f"mount -t overlay overlay -o lowerdir=/ro/{path_name}/,upperdir={DOCKER_WORKING_DIR}/overlay/{path_name}/upper/,workdir={DOCKER_WORKING_DIR}/overlay/{path_name}/work/ {self.folder_to_mount.sandbox_path}"
         )
         self.execute(mount_command)

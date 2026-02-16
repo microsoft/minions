@@ -25,7 +25,7 @@ class LogAnalysisBot(MicroBot):
 
         folder_mount_info = Mount(
             folder_to_mount,
-            f"/{DOCKER_WORKING_DIR}/{os.path.basename(folder_to_mount)}",
+            f"{DOCKER_WORKING_DIR}/{os.path.basename(folder_to_mount)}",
             PermissionLabels.READ_ONLY
         )
 

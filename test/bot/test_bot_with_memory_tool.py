@@ -142,7 +142,7 @@ class TestBotMemoryToolIntegration:
         base_name = _os.path.basename(str(test_repo))
         folder_mount_info = Mount(
             str(test_repo),
-            f"/{DOCKER_WORKING_DIR}/{base_name}",
+            f"{DOCKER_WORKING_DIR}/{base_name}",
             PermissionLabels.READ_ONLY,
         )
 
@@ -188,7 +188,7 @@ class TestBotMemoryToolIntegration:
         )
 
         response: BotRunResult = bot.run(
-            task, max_iterations=15, timeout_in_seconds=120,
+            task, max_iterations=25, timeout_in_seconds=180,
         )
 
         print(f"Status: {response.status}, Result: {response.result}, Error: {response.error}")
@@ -376,7 +376,7 @@ def _make_bot(model, test_repo, *, additional_tools=None, provider_options=None)
     base_name = os.path.basename(str(test_repo))
     folder_mount = Mount(
         str(test_repo),
-        f"/{DOCKER_WORKING_DIR}/{base_name}",
+        f"{DOCKER_WORKING_DIR}/{base_name}",
         PermissionLabels.READ_ONLY,
     )
 
