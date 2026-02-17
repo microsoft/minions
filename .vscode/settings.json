@@ -3,6 +3,7 @@
         "microbot",
         "microbots",
         "ollama",
-        "qwen"
+        "qwen",
+        "TOOLTYPE"
     ]
 }

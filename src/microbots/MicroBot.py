@@ -15,7 +15,7 @@ from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
-from microbots.tools.tool import Tool, install_tools, setup_tools
+from microbots.tools.tool import Tool
 from microbots.extras.mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
@@ -160,7 +160,9 @@ class MicroBot:
 
         self._create_llm()
 
-        install_tools(self.environment, self.additional_tools)
+        for tool in self.additional_tools:
+            tool.install_tool(self.environment)
+            tool.verify_tool_installation(self.environment)
 
     def run(
         self,
@@ -173,7 +175,8 @@ class MicroBot:
         if max_iterations <= 0:
             raise ValueError("max_iterations must be greater than 0")
 
-        setup_tools(self.environment, self.additional_tools)
+        for tool in self.additional_tools:
+            tool.setup_tool(self.environment)
 
         for mount in additional_mounts or []:
             self._mount_additional(mount)

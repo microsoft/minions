@@ -1,4 +1,5 @@
 name: cscope
+tool_type: internal
 description: Cscope is a developer's tool for browsing source code.
 
 # llm can use tools only in non-interactive mode. So, give instructions accordingly.
