@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional, List
 from pathlib import Path
-from dataclasses import dataclass
+from pydantic.dataclasses import dataclass, Field
 
 from microbots.tools.tool import Tool, TOOLTYPE
 from microbots.environment.Environment import Environment
@@ -34,10 +34,10 @@ class EnvFileCopies:
         except ValueError:
             raise ValueError(f"permissions must be an integer between 0 and 7 for file copy {self.src} to {self.dest}")
 
-
+@dataclass
 class InternalTool(Tool):
     # Any files to be copied to the environment before the tool is installed.
-    files_to_copy: Optional[List[EnvFileCopies]] = None
+    files_to_copy: Optional[List[EnvFileCopies]] = Field(default_factory=list)
 
 
     def _copy_env_variables(self, env: Environment):
