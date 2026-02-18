@@ -36,8 +36,11 @@ def _escape_control_chars(s: str) -> str:
             # Check if this backslash is part of a valid JSON escape
             next_char = s[i + 1]
             if next_char in valid_json_escapes:
-                # Valid escape sequence, keep as-is
+                # Valid escape sequence, keep both chars and skip ahead
                 result.append(char)
+                result.append(next_char)
+                i += 2
+                continue
             else:
                 # Invalid escape sequence - double the backslash
                 result.append('\\\\')

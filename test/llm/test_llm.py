@@ -781,11 +781,11 @@ class TestEscapeControlChars:
 
     def test_valid_escape_sequences_preserved(self):
         """Valid JSON escape sequences (\\n, \\\\, \\\") should be left intact"""
-        s = '{"thoughts": "line1\\nline2", "command": "echo \\\\path"}'
+        s = '{"thoughts": "line1\\nline2", "command": "echo\\\\done"}'
         result = _escape_control_chars(s)
         parsed = json.loads(result)
         assert parsed["thoughts"] == "line1\nline2"
-        assert parsed["command"] == "echo \\path"
+        assert parsed["command"] == "echo\\done"
 
     def test_no_control_chars_passthrough(self):
         """Strings with no control chars or bad escapes pass through unchanged"""
