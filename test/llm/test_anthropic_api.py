@@ -467,6 +467,72 @@ class TestAnthropicApiEdgeCases:
         assert user_messages[1]["content"] == "Second question"
         assert user_messages[2]["content"] == "Third question"
 
+    def test_json_with_literal_tab_characters_in_command(self):
+        """Test that responses with literal tab characters in JSON strings are handled.
+        
+        This reproduces the issue where LLM returns sed commands with literal tabs:
+        "command": "sed -i '182a\\			pm8001_ha->phy[phy_id]..."
+        
+        Those literal tabs (0x09) are invalid inside JSON strings and cause JSONDecodeError.
+        """
+        system_prompt = "You are a helpful assistant"
+        api = AnthropicApi(system_prompt=system_prompt)
+
+        # Mock the Anthropic client response with literal tab characters
+        # This simulates the actual failure scenario from the logs
+        mock_response = Mock()
+        mock_content = Mock()
+        # This string contains LITERAL tab characters (not \t escape sequences)
+        # The tabs appear after the backslash in the sed command
+        json_with_tabs = '{"task_done": false, "thoughts": "Adding line with sed", "command": "sed -i \'182a\\			pm8001_ha->phy[phy_id].enable_completion = \\&completion;\' file.c"}'
+        mock_content.text = json_with_tabs
+        mock_response.content = [mock_content]
+        api.ai_client.messages.create = Mock(return_value=mock_response)
+
+        # This should either succeed (if we sanitize) or fail with max retries exceeded
+        # Currently without a fix, it will exhaust retries
+        try:
+            result = api.ask("Add a line to the file")
+            # If we get here, JSON was parsed successfully (fix is working)
+            assert isinstance(result, LLMAskResponse)
+            assert "sed" in result.command
+        except Exception as e:
+            # Expected to fail without the fix
+            assert "Maximum retries reached" in str(e) or "not valid JSON" in str(e)
+            pytest.fail(f"JSON with literal tab characters failed to parse: {e}")
+
+    def test_json_with_various_control_characters(self):
+        """Test handling of various control characters that may appear in LLM responses."""
+        system_prompt = "You are a helpful assistant"
+        api = AnthropicApi(system_prompt=system_prompt)
+
+        # Test cases with different control characters
+        test_cases = [
+            # (description, json_string_with_control_char)
+            ("literal tab in command", 
+             '{"task_done": false, "thoughts": "test", "command": "echo\thello"}'),
+            ("literal carriage return", 
+             '{"task_done": false, "thoughts": "test", "command": "echo\rhello"}'),
+            ("multiple tabs", 
+             '{"task_done": false, "thoughts": "indented\t\t\tcode", "command": "pwd"}'),
+        ]
+
+        for desc, json_with_ctrl_char in test_cases:
+            mock_response = Mock()
+            mock_content = Mock()
+            mock_content.text = json_with_ctrl_char
+            mock_response.content = [mock_content]
+            api.ai_client.messages.create = Mock(return_value=mock_response)
+            api.retries = 0  # Reset retries
+            api.messages = []  # Clear messages
+
+            try:
+                result = api.ask("test")
+                # If parsing succeeds, verify we got a valid response
+                assert isinstance(result, LLMAskResponse), f"Failed for case: {desc}"
+            except Exception as e:
+                pytest.fail(f"Failed to parse JSON with {desc}: {e}")
+
 
 @pytest.mark.anthropic_integration
 class TestAnthropicApiIntegration:

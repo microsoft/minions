@@ -47,13 +47,24 @@ class AnthropicApi(LLMInterface):
 
             # Extract text content from response
             response_text = response.content[0].text if response.content else ""
-            logger.debug("Raw Anthropic response (first 500 chars): %s", response_text[:500])
+            logger.debug("Raw Anthropic response length: %d chars", len(response_text))
+            logger.debug("Raw Anthropic response (first 1000 chars): %s", response_text[:1000])
+            
+            # Log any control characters found in the response
+            control_chars = [f"\\x{ord(c):02x}" for c in response_text if ord(c) < 0x20 and c not in '\n']
+            if control_chars:
+                logger.debug("Control characters found in response: %s", control_chars[:20])  # Log first 20
 
             # Try to extract JSON if wrapped in markdown code blocks
             import re
             json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
             if json_match:
+                logger.debug("JSON extracted from markdown code block")
                 response_text = json_match.group(1)
+            else:
+                logger.debug("No markdown code block found, using raw response")
+            
+            logger.debug("Response text to validate (first 500 chars): %s", repr(response_text[:500]))
 
             valid, askResponse = self._validate_llm_response(response=response_text)
 

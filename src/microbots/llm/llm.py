@@ -6,6 +6,47 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 
+def _escape_control_chars(s: str) -> str:
+    """Escape control characters and fix invalid escape sequences for JSON parsing.
+    
+    JSON spec issues that LLMs commonly produce:
+    1. Unescaped control characters (0x00-0x1F) inside strings - tabs, etc.
+    2. Invalid escape sequences like \\& (backslash followed by non-escape char)
+    
+    We keep newlines as-is since they're part of JSON structure (between fields).
+    """
+    # Valid JSON escape sequences (after the backslash)
+    valid_json_escapes = set('"\\/bfnrtu')
+    
+    result = []
+    i = 0
+    while i < len(s):
+        char = s[i]
+        code = ord(char)
+        
+        if code < 0x20 and char != '\n':  # Control char but not newline
+            if char == '\t':
+                result.append('\\t')
+            elif char == '\r':
+                result.append('\\r')
+            else:
+                # Escape other control chars as Unicode
+                result.append(f'\\u{code:04x}')
+        elif char == '\\' and i + 1 < len(s):
+            # Check if this backslash is part of a valid JSON escape
+            next_char = s[i + 1]
+            if next_char in valid_json_escapes:
+                # Valid escape sequence, keep as-is
+                result.append(char)
+            else:
+                # Invalid escape sequence - double the backslash
+                result.append('\\\\')
+        else:
+            result.append(char)
+        i += 1
+    return ''.join(result)
+
+
 llm_output_format_str = """
 {
     "task_done": <bool>,  // Indicates if the task is completed
@@ -36,10 +77,17 @@ class LLMInterface(ABC):
             raise Exception("LLM is not responding in expected format. Maximum retries reached.")
 
         try:
-            response_dict = json.loads(response)
-        except json.JSONDecodeError:
+            logger.debug("Attempting to parse JSON response (length: %d)", len(response))
+            # Sanitize control characters that may appear unescaped in JSON strings
+            # JSON spec forbids unescaped control chars (0x00-0x1F) inside strings
+            # LLMs sometimes output literal tabs/etc in command strings
+            sanitized_response = _escape_control_chars(response)
+            response_dict = json.loads(sanitized_response)
+            logger.debug("JSON parsed successfully")
+        except json.JSONDecodeError as e:
             self.retries += 1
-            logger.warning("LLM response is not valid JSON. Retrying... (%d/%d)", self.retries, self.max_retries)
+            logger.warning("LLM response is not valid JSON. Error: %s. Retrying... (%d/%d)", str(e), self.retries, self.max_retries)
+            logger.debug("Failed response (repr, first 500 chars): %s", repr(response[:500]) if response else "empty")
             self.messages.append({"role": "user", "content": "LLM_RES_ERROR: Please respond in the correct JSON format.\n" + llm_output_format_str})
             return False, None
 
