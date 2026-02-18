@@ -489,17 +489,9 @@ class TestAnthropicApiEdgeCases:
         mock_response.content = [mock_content]
         api.ai_client.messages.create = Mock(return_value=mock_response)
 
-        # This should either succeed (if we sanitize) or fail with max retries exceeded
-        # Currently without a fix, it will exhaust retries
-        try:
-            result = api.ask("Add a line to the file")
-            # If we get here, JSON was parsed successfully (fix is working)
-            assert isinstance(result, LLMAskResponse)
-            assert "sed" in result.command
-        except Exception as e:
-            # Expected to fail without the fix
-            assert "Maximum retries reached" in str(e) or "not valid JSON" in str(e)
-            pytest.fail(f"JSON with literal tab characters failed to parse: {e}")
+        result = api.ask("Add a line to the file")
+        assert isinstance(result, LLMAskResponse)
+        assert "sed" in result.command
 
     def test_json_with_various_control_characters(self):
         """Test handling of various control characters that may appear in LLM responses."""
@@ -526,12 +518,8 @@ class TestAnthropicApiEdgeCases:
             api.retries = 0  # Reset retries
             api.messages = []  # Clear messages
 
-            try:
-                result = api.ask("test")
-                # If parsing succeeds, verify we got a valid response
-                assert isinstance(result, LLMAskResponse), f"Failed for case: {desc}"
-            except Exception as e:
-                pytest.fail(f"Failed to parse JSON with {desc}: {e}")
+            result = api.ask("test")
+            assert isinstance(result, LLMAskResponse), f"Failed for case: {desc}"
 
 
 @pytest.mark.anthropic_integration

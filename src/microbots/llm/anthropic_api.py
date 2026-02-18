@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from dataclasses import asdict
 from logging import getLogger
 
@@ -56,7 +57,6 @@ class AnthropicApi(LLMInterface):
                 logger.debug("Control characters found in response: %s", control_chars[:20])  # Log first 20
 
             # Try to extract JSON if wrapped in markdown code blocks
-            import re
             json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
             if json_match:
                 logger.debug("JSON extracted from markdown code block")

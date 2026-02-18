@@ -41,6 +41,9 @@ def _escape_control_chars(s: str) -> str:
             else:
                 # Invalid escape sequence - double the backslash
                 result.append('\\\\')
+        elif char == '\\':
+            # Trailing backslash with no next char - double it
+            result.append('\\\\')
         else:
             result.append(char)
         i += 1

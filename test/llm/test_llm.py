@@ -9,7 +9,7 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from microbots.llm.llm import LLMInterface, LLMAskResponse, llm_output_format_str
+from microbots.llm.llm import LLMInterface, LLMAskResponse, llm_output_format_str, _escape_control_chars
 
 
 class ConcreteLLM(LLMInterface):
@@ -743,3 +743,73 @@ class TestValidateLlmResponseAdditionalCases:
         assert llm.retries == 1
         assert len(llm.messages) == 1
         assert "When 'task_done' is true, 'command' should be an empty string." in llm.messages[0]["content"]
+
+
+@pytest.mark.unit
+class TestEscapeControlChars:
+    """Tests for _escape_control_chars helper function"""
+
+    def test_literal_tab_escaped(self):
+        """Literal tab (0x09) should be escaped to \\t"""
+        s = '{"command": "echo\thello"}'
+        result = _escape_control_chars(s)
+        parsed = json.loads(result)
+        assert parsed["command"] == "echo\thello"
+
+    def test_literal_carriage_return_escaped(self):
+        """Literal CR (0x0D) should be escaped to \\r"""
+        s = '{"command": "echo\rhello"}'
+        result = _escape_control_chars(s)
+        parsed = json.loads(result)
+        assert parsed["command"] == "echo\rhello"
+
+    def test_other_control_chars_escaped_as_unicode(self):
+        """Control chars other than tab/CR should be escaped as \\uXXXX"""
+        # Bell character (0x07)
+        s = '{"command": "echo' + chr(0x07) + 'hello"}'
+        result = _escape_control_chars(s)
+        parsed = json.loads(result)
+        assert parsed["command"] == "echo\x07hello"
+
+    def test_invalid_escape_sequence_doubled(self):
+        """Backslash followed by invalid escape char should be double-escaped"""
+        # \& is not a valid JSON escape
+        s = '{"command": "echo ' + chr(92) + '& hello"}'
+        result = _escape_control_chars(s)
+        parsed = json.loads(result)
+        assert parsed["command"] == "echo \\& hello"
+
+    def test_valid_escape_sequences_preserved(self):
+        """Valid JSON escape sequences (\\n, \\\\, \\\") should be left intact"""
+        s = '{"thoughts": "line1\\nline2", "command": "echo \\\\path"}'
+        result = _escape_control_chars(s)
+        parsed = json.loads(result)
+        assert parsed["thoughts"] == "line1\nline2"
+        assert parsed["command"] == "echo \\path"
+
+    def test_no_control_chars_passthrough(self):
+        """Strings with no control chars or bad escapes pass through unchanged"""
+        s = '{"task_done": false, "thoughts": "all good", "command": "ls -la"}'
+        result = _escape_control_chars(s)
+        assert result == s
+        parsed = json.loads(result)
+        assert parsed["command"] == "ls -la"
+
+    def test_newlines_preserved(self):
+        """Newlines should be kept as-is since they are JSON structural separators"""
+        s = '{\n"command": "pwd"\n}'
+        result = _escape_control_chars(s)
+        assert '\n' in result
+
+    def test_multiple_control_chars_in_one_string(self):
+        """Multiple different control chars should all be escaped"""
+        s = '{"thoughts": "indented\t\t\tcode", "command": "pwd"}'
+        result = _escape_control_chars(s)
+        parsed = json.loads(result)
+        assert parsed["thoughts"] == "indented\t\t\tcode"
+
+    def test_trailing_lone_backslash(self):
+        """A lone backslash at the end of the string should be double-escaped"""
+        s = 'test' + chr(92)
+        result = _escape_control_chars(s)
+        assert result.endswith('\\\\')
