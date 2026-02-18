@@ -4,7 +4,7 @@ from typing import Optional, List
 from pathlib import Path
 from pydantic.dataclasses import dataclass, Field
 
-from microbots.tools.tool import Tool, TOOLTYPE
+from microbots.tools.tool import TOOLTYPE, ToolAbstract
 from microbots.environment.Environment import Environment
 
 from microbots.constants import TOOL_FILE_BASE_PATH
@@ -35,9 +35,12 @@ class EnvFileCopies:
             raise ValueError(f"permissions must be an integer between 0 and 7 for file copy {self.src} to {self.dest}")
 
 @dataclass
-class InternalTool(Tool):
+class Tool(ToolAbstract):
     # Any files to be copied to the environment before the tool is installed.
+    # Name is kept as Tool to keep it as a default behavior.
+    # For a normal user, a Tool means an internal tool only.
     files_to_copy: Optional[List[EnvFileCopies]] = Field(default_factory=list)
+    tool_type: TOOLTYPE = Field(init=False, default=TOOLTYPE.INTERNAL)
 
 
     def _copy_env_variables(self, env: Environment):

@@ -1,13 +1,13 @@
 import yaml
 import logging
 from pathlib import Path
-from microbots.tools.tool import Tool, TOOLTYPE
-from microbots.tools.internal_tool import InternalTool
+from microbots.tools.tool import TOOLTYPE, ToolAbstract
+from microbots.tools.internal_tool import Tool
 from microbots.tools.external_tool import ExternalTool
 
 logger = logging.getLogger(" 🔧 ToolYamlParser")
 
-def parse_tool_definition(yaml_path: str) -> Tool:
+def parse_tool_definition(yaml_path: str) -> ToolAbstract:
     """
     Parse a tool definition from a YAML file.
 
@@ -16,7 +16,7 @@ def parse_tool_definition(yaml_path: str) -> Tool:
                 If it is not an absolute path, it is relative to project_root/tool/tool_definition/
 
     Returns:
-        A Tool object parsed from the YAML file.
+        A ToolAbstract object parsed from the YAML file.
     """
 
     yaml_path = Path(yaml_path)
@@ -34,7 +34,8 @@ def parse_tool_definition(yaml_path: str) -> Tool:
     if tool_type not in [type.value for type in TOOLTYPE]:
         raise ValueError(f"Invalid tool_type {tool_type} provided in tool definition {yaml_path}. Set tool_type to {[type.value for type in TOOLTYPE]}")
 
+    # tool_dict.append("tool_type", tool_type) # Append tool_type back to tool_dict at the bottom of the dict as it is a default field.
     if tool_type == TOOLTYPE.INTERNAL.value:
-        return InternalTool(**tool_dict)
+        return Tool(**tool_dict) # Internal tool is simply called as Tool to keep it as a default behavior.
     else:
         return ExternalTool(**tool_dict)

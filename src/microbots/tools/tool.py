@@ -14,21 +14,20 @@ class TOOLTYPE(str, Enum):
     EXTERNAL = "external"
 
 @dataclass
-class Tool(ABC):
+class ToolAbstract(ABC):
     """
     Abstract base class for all tools in the Microbots framework.
 
     Tool hierarchy:
-        Tool (ABC)
-        ├── InternalTool (Tool)   — Docker sandbox tools (install_commands, env_variables, etc.)
-        └── ExternalTool (Tool)   — LLM-native tools (get_tool_definition, execute)
+        ToolAbstract (ABC)
+        ├── Tool (ToolAbstract)   — Docker sandbox tools (install_commands, env_variables, etc.)
+        └── ExternalTool (ToolAbstract)   — LLM-native tools (get_tool_definition, execute)
                 └── AnthropicMemoryTool
     """
     # TODO: Handle different instructions based on the platform (linux flavours, windows, mac)
     # TODO: Add versioning to tools
     name: str
     description: str
-    tool_type: TOOLTYPE
 
     # This is the set of instructions that will be provided to the LLM on how to use this tool.
     # This string will be appended to the LLM's system prompt.
@@ -41,6 +40,8 @@ class Tool(ABC):
     # So, you should be careful about it as it is making changes to your system.
     # These commands will be executed in the order they are provided.
     install_commands: List[str]
+
+    tool_type: TOOLTYPE
 
     # Optional parameters for the tool
     parameters: Optional[dict] = Field(default_factory=dict)

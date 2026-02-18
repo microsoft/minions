@@ -1,9 +1,8 @@
 from typing import Optional
 
-from microbots.constants import PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, BotRunResult
 from microbots.environment.Environment import Environment
-from microbots.tools.tool_yaml_parser import Tool, parse_tool_definition
+from microbots.tools.tool_yaml_parser import ToolAbstract, parse_tool_definition
 
 
 BROWSER_USE_TOOL = parse_tool_definition("browser-use.yaml")
@@ -15,7 +14,7 @@ class BrowsingBot(MicroBot):
         self,
         model: str,
         environment: Optional[Environment] = None,
-        additional_tools: Optional[list[Tool]] = [],
+        additional_tools: Optional[list[ToolAbstract]] = [],
     ):
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT

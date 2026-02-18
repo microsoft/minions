@@ -25,6 +25,7 @@ from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
 from microbots.environment.Environment import CmdReturn
 from microbots.llm.llm import llm_output_format_str, LLMAskResponse
+from microbots.tools.internal_tool import Tool
 
 
 SYSTEM_PROMPT = f"""
@@ -478,7 +479,6 @@ class TestMicrobotUnit:
 
     def test_tool_usage_instructions_appended_to_system_prompt(self):
         """Test that tool usage instructions are appended to the system prompt when creating LLM."""
-        from microbots.tools.tool import Tool
 
         # Create a mock tool with usage instructions
         mock_tool = Tool(
@@ -517,7 +517,6 @@ class TestMicrobotUnit:
 
     def test_multiple_tool_usage_instructions_appended(self):
         """Test that multiple tool usage instructions are all appended to the system prompt."""
-        from microbots.tools.tool import Tool
 
         # Create multiple mock tools with usage instructions
         tool1 = Tool(

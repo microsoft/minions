@@ -1,13 +1,13 @@
 import logging
 from dataclasses import dataclass
 from microbots.environment import Environment
-from microbots.tools.tool import Tool, TOOLTYPE
+from microbots.tools.tool import ToolAbstract, TOOLTYPE
 import os
 
 logger = logging.getLogger(" 🔧 ExternalTool")
 
 @dataclass
-class ExternalTool(Tool):
+class ExternalTool(ToolAbstract):
     """
     Tools that are executed in the current environment (Host) and are directly accessible by the LLM without any installation inside the Docker sandbox.
     Examples include web search tools, retrieval tools, etc.

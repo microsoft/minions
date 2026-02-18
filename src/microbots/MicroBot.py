@@ -15,7 +15,7 @@ from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
-from microbots.tools.tool import Tool
+from microbots.tools.tool import ToolAbstract
 from microbots.extras.mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji, LogTextColor
 from microbots.utils.network import get_free_port
@@ -82,7 +82,7 @@ class MicroBot:
         environment : Optional[any]
             The execution environment for the bot. If not provided, a default
             LocalDockerEnvironment will be created.
-        additional_tools : Optional[list[Tool]]
+        additional_tools : Optional[list[ToolAbstract]]
             A list of additional tools to install in the bot's environment.
         folder_to_mount : Optional[Mount]
             A folder to mount into the bot's environment. The bot will be given
@@ -99,7 +99,7 @@ class MicroBot:
         bot_type: BotType = BotType.CUSTOM_BOT,
         system_prompt: Optional[str] = None,
         environment: Optional[any] = None,
-        additional_tools: Optional[list[Tool]] = [],
+        additional_tools: Optional[list[ToolAbstract]] = [],
         folder_to_mount: Optional[Mount] = None,
     ):
         """
@@ -116,7 +116,7 @@ class MicroBot:
             environment :Optional[any]
                 The execution environment for the bot. If not provided, a default
                 LocalDockerEnvironment will be created.
-            additional_tools :Optional[list[Tool]]
+            additional_tools :Optional[list[ToolAbstract]]
                 A list of additional tools to install in the bot's environment.
                 Defaults to [].
             folder_to_mount :Optional[Mount]
