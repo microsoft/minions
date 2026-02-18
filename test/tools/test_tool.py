@@ -12,7 +12,8 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-from microbots.tools.tool import Tool, parse_tool_definition
+from microbots.tools.tool_yaml_parser import parse_tool_definition
+from microbots.tools.internal_tool import Tool
 
 
 @pytest.mark.unit
@@ -28,8 +29,8 @@ class TestToolOptionalArguments:
             install_commands=["echo test"],
         )
         assert tool.name == "test_tool"
-        assert tool.parameters is None
-        assert tool.env_variables is None
+        assert not tool.parameters
+        assert not tool.env_variables
 
     def test_tool_with_parameters(self):
         """Test that Tool can be created with parameters field."""
@@ -80,12 +81,12 @@ class TestToolOptionalArguments:
             setup_commands=None,
             uninstall_commands=None,
         )
-        assert tool.parameters is None
-        assert tool.env_variables is None
-        assert tool.files_to_copy is None
-        assert tool.verify_commands is None
-        assert tool.setup_commands is None
-        assert tool.uninstall_commands is None
+        assert not tool.parameters
+        assert not tool.env_variables
+        assert not tool.files_to_copy
+        assert not tool.verify_commands
+        assert not tool.setup_commands
+        assert not tool.uninstall_commands
 
 
 @pytest.mark.unit
@@ -96,8 +97,8 @@ class TestParseToolDefinition:
         """Test parsing cscope.yaml which doesn't have parameters or env_variables."""
         tool = parse_tool_definition("cscope.yaml")
         assert tool.name == "cscope"
-        assert tool.parameters is None
-        assert tool.env_variables is None
+        assert not tool.parameters
+        assert not tool.env_variables
         assert tool.verify_commands is not None  # cscope.yaml has verify_commands
 
     def test_parse_browser_use_yaml_with_parameters(self):
