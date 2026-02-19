@@ -4,8 +4,10 @@ Tests handling of optional arguments.
 """
 import os
 import sys
+from unittest.mock import Mock, patch
 
 import pytest
+from pydantic import ValidationError
 
 # Add src directory to path to import from local source
 sys.path.insert(
@@ -13,7 +15,7 @@ sys.path.insert(
 )
 
 from microbots.tools.tool_yaml_parser import parse_tool_definition
-from microbots.tools.internal_tool import Tool
+from microbots.tools.internal_tool import Tool, EnvFileCopies
 
 
 @pytest.mark.unit
@@ -157,3 +159,680 @@ class TestEnvVariablesIteration:
         for var in tool.env_variables or []:
             collected.append(var)
         assert collected == env_vars
+
+
+@pytest.mark.unit
+class TestEnvFileCopiesPostInit:
+    """Unit tests for EnvFileCopies __post_init__ exception handling."""
+
+    def test_invalid_permissions_above_range(self):
+        """Test that permissions above 7 raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            EnvFileCopies(src="/tmp/src", dest="/tmp/dest", permissions=8)
+        assert "permissions must be an integer between 0 and 7" in str(exc_info.value)
+
+    def test_invalid_permissions_below_range(self):
+        """Test that permissions below 0 raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            EnvFileCopies(src="/tmp/src", dest="/tmp/dest", permissions=-1)
+        assert "permissions must be an integer between 0 and 7" in str(exc_info.value)
+
+    def test_invalid_permissions_non_integer_string(self):
+        """Test that non-integer string permissions raises ValidationError."""
+        with pytest.raises(ValidationError):
+            EnvFileCopies(src="/tmp/src", dest="/tmp/dest", permissions="invalid")
+
+    def test_invalid_src_none(self):
+        """Test that None as src raises ValidationError."""
+        with pytest.raises(ValidationError):
+            EnvFileCopies(src=None, dest="/tmp/dest", permissions=7)
+
+    def test_invalid_dest_none(self):
+        """Test that None as dest raises ValidationError."""
+        with pytest.raises(ValidationError):
+            EnvFileCopies(src="/tmp/src", dest=None, permissions=7)
+
+    def test_invalid_src_type(self):
+        """Test that invalid type as src raises ValidationError."""
+        with pytest.raises(ValidationError):
+            EnvFileCopies(src=["not", "a", "path"], dest="/tmp/dest", permissions=7)
+
+    def test_invalid_dest_type(self):
+        """Test that invalid type as dest raises ValidationError."""
+        with pytest.raises(ValidationError):
+            EnvFileCopies(src="/tmp/src", dest={"invalid": "type"}, permissions=7)
+
+
+@pytest.mark.unit
+class TestCopyEnvVariables:
+    """Unit tests for Tool._copy_env_variables method."""
+
+    def test_env_variable_not_in_os_environ(self):
+        """Test that missing env variable logs warning and doesn't raise."""
+        # Create a mock environment
+        mock_env = Mock()
+
+        # Ensure the env variable is not in os.environ
+        env_var_name = "NONEXISTENT_TEST_VAR_12345"
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            env_variables=[env_var_name],
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("microbots.tools.internal_tool.logger") as mock_logger:
+            # Should not raise an exception
+            tool._copy_env_variables(mock_env)
+
+            # Verify warning was logged
+            mock_logger.warning.assert_called()
+            warning_call_args = str(mock_logger.warning.call_args)
+            assert env_var_name in warning_call_args
+
+            # Verify execute was NOT called since env var is missing
+            mock_env.execute.assert_not_called()
+
+
+@pytest.mark.unit
+class TestCopyFiles:
+    """Unit tests for Tool._copy_files method and nested functions."""
+
+    def test_copy_file_source_not_found(self):
+        """Test that ValueError is raised when source file doesn't exist."""
+        mock_env = Mock()
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src="/nonexistent/file/path.txt", dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(ValueError) as exc_info:
+                tool._copy_files(mock_env)
+
+            assert "not found in current environment" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_copy_file_execute_fails_with_nonzero_return_code(self, tmp_path):
+        """Test that RuntimeError is raised when echo command returns non-zero."""
+        # Create a temporary source file
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("test content")
+
+        # Create a mock environment that returns non-zero return code
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                tool._copy_files(mock_env)
+
+            assert "Failed to copy file to container" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_setup_file_permission_fails_with_nonzero_return_code(self, tmp_path):
+        """Test that RuntimeError is raised when chmod command returns non-zero."""
+        # Create a temporary source file
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("test content")
+
+        # First call (echo) succeeds, second call (chmod) fails
+        success_output = Mock()
+        success_output.return_code = 0
+        fail_output = Mock()
+        fail_output.return_code = 1
+
+        mock_env = Mock()
+        mock_env.execute.side_effect = [success_output, fail_output]
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                tool._copy_files(mock_env)
+
+            assert "Failed to set permission for file in container" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_copy_multiple_files_stops_on_first_error(self, tmp_path):
+        """Test that copying stops when first file fails."""
+        # Create two source files
+        src_file1 = tmp_path / "file1.txt"
+        src_file1.write_text("content1")
+        src_file2 = tmp_path / "file2.txt"
+        src_file2.write_text("content2")
+
+        # First file copy fails
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file1), dest="/tmp/dest1", permissions=7),
+                EnvFileCopies(src=str(src_file2), dest="/tmp/dest2", permissions=7),
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            with pytest.raises(RuntimeError):
+                tool._copy_files(mock_env)
+
+            # Only one execute call should have been made (for first file)
+            assert mock_env.execute.call_count == 1
+
+    def test_copy_files_success(self, tmp_path):
+        """Test successful file copy with permissions."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("test content")
+
+        # All commands succeed
+        success_output = Mock()
+        success_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = success_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            # Should not raise
+            tool._copy_files(mock_env)
+
+            # Two calls: one for echo (copy), one for chmod (permissions)
+            assert mock_env.execute.call_count == 2
+            mock_logger.info.assert_called()
+
+    def test_copy_file_escapes_quotes_in_content(self, tmp_path):
+        """Test that quotes in file content are properly escaped."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text('content with "quotes"')
+
+        success_output = Mock()
+        success_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = success_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            tool._copy_files(mock_env)
+
+            # Verify the echo command was called with escaped quotes
+            echo_call = mock_env.execute.call_args_list[0]
+            assert '\\"' in str(echo_call)
+
+    def test_empty_files_to_copy_list(self):
+        """Test that empty files_to_copy list doesn't cause errors."""
+        mock_env = Mock()
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            # Should not raise
+            tool._copy_files(mock_env)
+
+            # No execute calls should be made
+            mock_env.execute.assert_not_called()
+            mock_logger.info.assert_called()
+
+
+@pytest.mark.unit
+class TestInstallTool:
+    """Unit tests for Tool.install_tool method."""
+
+    def test_install_tool_command_fails(self):
+        """Test that RuntimeError is raised when install command returns non-zero."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["apt-get install something"],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                tool.install_tool(mock_env)
+
+            assert "Failed to install tool" in str(exc_info.value)
+            assert "test_tool" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_install_tool_stops_on_first_failure(self):
+        """Test that install stops on first failing command."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["cmd1", "cmd2", "cmd3"],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            with pytest.raises(RuntimeError):
+                tool.install_tool(mock_env)
+
+            # Only one command should have been executed
+            assert mock_env.execute.call_count == 1
+
+    def test_install_tool_success(self):
+        """Test successful tool installation."""
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["cmd1", "cmd2"],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            tool.install_tool(mock_env)
+
+            assert mock_env.execute.call_count == 2
+            mock_logger.info.assert_called()
+
+
+@pytest.mark.unit
+class TestVerifyToolInstallation:
+    """Unit tests for Tool.verify_tool_installation method."""
+
+    def test_verify_tool_installation_command_fails(self):
+        """Test that RuntimeError is raised when verify command returns non-zero."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            verify_commands=["which sometool"],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                tool.verify_tool_installation(mock_env)
+
+            assert "Failed to verify installation" in str(exc_info.value)
+            assert "test_tool" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_verify_tool_installation_stops_on_first_failure(self):
+        """Test that verification stops on first failing command."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            verify_commands=["verify1", "verify2", "verify3"],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            with pytest.raises(RuntimeError):
+                tool.verify_tool_installation(mock_env)
+
+            assert mock_env.execute.call_count == 1
+
+    def test_verify_tool_installation_success(self):
+        """Test successful tool verification."""
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            verify_commands=["verify1", "verify2"],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            tool.verify_tool_installation(mock_env)
+
+            assert mock_env.execute.call_count == 2
+            mock_logger.info.assert_called()
+
+
+@pytest.mark.unit
+class TestSetupTool:
+    """Unit tests for Tool.setup_tool method."""
+
+    def test_setup_tool_command_fails(self):
+        """Test that RuntimeError is raised when setup command returns non-zero."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            setup_commands=["setup cmd"],
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                tool.setup_tool(mock_env)
+
+            assert "Failed to setup tool" in str(exc_info.value)
+            assert "test_tool" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_setup_tool_stops_on_first_failure(self):
+        """Test that setup stops on first failing command."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            setup_commands=["setup1", "setup2", "setup3"],
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            with pytest.raises(RuntimeError):
+                tool.setup_tool(mock_env)
+
+            assert mock_env.execute.call_count == 1
+
+    def test_setup_tool_success(self):
+        """Test successful tool setup."""
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            setup_commands=["setup1", "setup2"],
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            tool.setup_tool(mock_env)
+
+            assert mock_env.execute.call_count == 2
+            mock_logger.info.assert_called()
+
+    def test_setup_tool_calls_copy_env_and_files(self):
+        """Test that setup_tool calls _copy_env_variables and _copy_files."""
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            setup_commands=[],
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"), \
+             patch.object(tool, "_copy_env_variables") as mock_copy_env, \
+             patch.object(tool, "_copy_files") as mock_copy_files:
+            tool.setup_tool(mock_env)
+
+            mock_copy_env.assert_called_once_with(mock_env)
+            mock_copy_files.assert_called_once_with(mock_env)
+
+
+@pytest.mark.unit
+class TestUninstallTool:
+    """Unit tests for Tool.uninstall_tool method."""
+
+    def test_uninstall_tool_file_removal_fails(self, tmp_path):
+        """Test that RuntimeError is raised when file removal returns non-zero."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("test content")
+
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger, \
+             patch.object(Tool.__bases__[0], "uninstall_tool"):
+            with pytest.raises(RuntimeError) as exc_info:
+                tool.uninstall_tool(mock_env)
+
+            assert "Failed to remove copied file" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_uninstall_tool_command_fails(self):
+        """Test that RuntimeError is raised when uninstall command returns non-zero."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            uninstall_commands=["apt-get remove something"],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger, \
+             patch.object(Tool.__bases__[0], "uninstall_tool"):
+            with pytest.raises(RuntimeError) as exc_info:
+                tool.uninstall_tool(mock_env)
+
+            assert "Failed to uninstall tool" in str(exc_info.value)
+            assert "test_tool" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_uninstall_tool_stops_on_first_command_failure(self):
+        """Test that uninstall stops on first failing command."""
+        mock_output = Mock()
+        mock_output.return_code = 1
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            uninstall_commands=["uninstall1", "uninstall2", "uninstall3"],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"), \
+             patch.object(Tool.__bases__[0], "uninstall_tool"):
+            with pytest.raises(RuntimeError):
+                tool.uninstall_tool(mock_env)
+
+            assert mock_env.execute.call_count == 1
+
+    def test_uninstall_tool_success(self, tmp_path):
+        """Test successful tool uninstallation."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("test content")
+
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            uninstall_commands=["uninstall1", "uninstall2"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="/tmp/dest", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger, \
+             patch.object(Tool.__bases__[0], "uninstall_tool"):
+            tool.uninstall_tool(mock_env)
+
+            # 1 file removal + 2 uninstall commands = 3 calls
+            assert mock_env.execute.call_count == 3
+            mock_logger.info.assert_called()
+
+    def test_uninstall_tool_calls_super(self):
+        """Test that uninstall_tool calls super().uninstall_tool."""
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            uninstall_commands=[],
+            files_to_copy=[],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"), \
+             patch.object(Tool.__bases__[0], "uninstall_tool") as mock_super:
+            tool.uninstall_tool(mock_env)
+
+            mock_super.assert_called_once_with(mock_env)
+
+    def test_uninstall_tool_removes_multiple_files(self, tmp_path):
+        """Test that all files are removed during uninstallation."""
+        src_file1 = tmp_path / "file1.txt"
+        src_file1.write_text("content1")
+        src_file2 = tmp_path / "file2.txt"
+        src_file2.write_text("content2")
+
+        mock_output = Mock()
+        mock_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = mock_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            uninstall_commands=[],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file1), dest="/tmp/dest1", permissions=7),
+                EnvFileCopies(src=str(src_file2), dest="/tmp/dest2", permissions=7),
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"), \
+             patch.object(Tool.__bases__[0], "uninstall_tool"):
+            tool.uninstall_tool(mock_env)
+
+            # 2 file removals
+            assert mock_env.execute.call_count == 2
+            # Verify rm commands were called for both files
+            calls = [str(call) for call in mock_env.execute.call_args_list]
+            assert any("rm -f //tmp/dest1" in call for call in calls)
+            assert any("rm -f //tmp/dest2" in call for call in calls)

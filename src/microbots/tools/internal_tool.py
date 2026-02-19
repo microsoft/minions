@@ -19,19 +19,12 @@ class EnvFileCopies:
     permissions: int  # Use FILE_PERMISSION enum to set permissions
 
     def __post_init__(self):
-        try:
-            self.src = Path(self.src)
-            self.dest = Path(self.dest)
-            if not self.src.is_absolute():
-                self.src = (TOOL_FILE_BASE_PATH / self.src)
-        except Exception as e:
-            raise ValueError(f"src and dest must be valid paths for file copy {self.src} to {self.dest}. Error: {e}")
+        # Pydantic handles type coercion for src, dest, and permissions
+        # We only need custom logic for relative path handling and range validation
+        if not self.src.is_absolute():
+            self.src = TOOL_FILE_BASE_PATH / self.src
 
-        try:
-            self.permissions = int(self.permissions)
-            if not (0 <= self.permissions <= 7):
-                raise ValueError
-        except ValueError:
+        if not (0 <= self.permissions <= 7):
             raise ValueError(f"permissions must be an integer between 0 and 7 for file copy {self.src} to {self.dest}")
 
 @dataclass

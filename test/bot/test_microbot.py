@@ -586,3 +586,216 @@ class TestMicrobotUnit:
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)
             assert bot.llm.system_prompt == base_system_prompt
+
+
+@pytest.mark.integration
+@pytest.mark.docker
+class TestMicrobotToolInstallation:
+    """Functional tests for MicroBot's tool installation capability."""
+
+    @pytest.fixture(scope="function")
+    def cscope_tool(self):
+        """Load the cscope tool from YAML definition."""
+        from microbots.tools.tool_yaml_parser import parse_tool_definition
+        return parse_tool_definition("cscope.yaml")
+
+    @pytest.fixture(scope="function")
+    def c_code_repo(self, tmpdir):
+        """Create a temporary C code repository for testing cscope."""
+        repo_path = tmpdir.mkdir("c_project")
+
+        # Create main.c
+        main_c = repo_path.join("main.c")
+        main_c.write("""
+#include <stdio.h>
+#include "utils.h"
+
+int main() {
+    int result = add_numbers(5, 3);
+    printf("Result: %d\\n", result);
+    return 0;
+}
+""")
+
+        # Create utils.h
+        utils_h = repo_path.join("utils.h")
+        utils_h.write("""
+#ifndef UTILS_H
+#define UTILS_H
+
+int add_numbers(int a, int b);
+int multiply_numbers(int a, int b);
+
+#endif
+""")
+
+        # Create utils.c
+        utils_c = repo_path.join("utils.c")
+        utils_c.write("""
+#include "utils.h"
+
+int add_numbers(int a, int b) {
+    return a + b;
+}
+
+int multiply_numbers(int a, int b) {
+    return a * b;
+}
+""")
+
+        yield Path(str(repo_path))
+
+        # Cleanup
+        if repo_path.exists():
+            subprocess.run(["rm", "-rf", str(repo_path)])
+
+    @pytest.mark.ollama_local
+    def test_cscope_tool_install_and_verify(self, cscope_tool, c_code_repo):
+        """Test that cscope tool can be installed and verified in MicroBot environment."""
+        from microbots.tools.internal_tool import Tool
+
+        assert cscope_tool is not None
+        assert isinstance(cscope_tool, Tool)
+        assert cscope_tool.name == "cscope"
+
+        # Create mount for the C code repository
+        c_repo_mount = Mount(
+            str(c_code_repo),
+            f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
+            PermissionLabels.READ_ONLY
+        )
+
+        # Create MicroBot with cscope tool
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+        bot = MicroBot(
+            model=f"ollama-local/{local_model}",
+            system_prompt="You are a helpful assistant.",
+            folder_to_mount=c_repo_mount,
+            additional_tools=[cscope_tool],
+        )
+
+        try:
+            # Verify cscope is installed by checking version
+            result = bot.environment.execute("cscope -V")
+            assert result.return_code == 0, f"cscope -V failed: {result.stderr}"
+            # cscope -V outputs to stderr, check either stdout or stderr
+            assert "cscope" in result.stdout.lower() or "cscope" in result.stderr.lower(), \
+                f"cscope version output not found. stdout: {result.stdout}, stderr: {result.stderr}"
+
+            logger.info("cscope installation verified successfully")
+        finally:
+            del bot
+
+    @pytest.mark.ollama_local
+    def test_cscope_tool_setup_and_usage(self, cscope_tool, c_code_repo):
+        """Test that cscope tool can be set up and used for code navigation."""
+        # Create mount for the C code repository
+        c_repo_mount = Mount(
+            str(c_code_repo),
+            f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
+            PermissionLabels.READ_ONLY
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen3:latest').replace(':latest', '')
+        bot = MicroBot(
+            model=f"ollama-local/{local_model}",
+            system_prompt="You are a helpful assistant.",
+            folder_to_mount=c_repo_mount,
+            additional_tools=[cscope_tool],
+        )
+
+        try:
+            # Setup the tool (this runs setup_commands which builds cscope database)
+            cscope_tool.setup_tool(bot.environment)
+
+            # Change to the mounted directory and verify cscope database was created
+            work_dir = f"{DOCKER_WORKING_DIR}/{c_code_repo.name}"
+            result = bot.environment.execute(f"cd {work_dir} && ls -la cscope.out")
+            assert result.return_code == 0, f"cscope.out not found: {result.stderr}"
+
+            # Test cscope query: Find definition of add_numbers function (-1 flag)
+            result = bot.environment.execute(f"cd {work_dir} && cscope -L -1 add_numbers")
+            assert result.return_code == 0, f"cscope query failed: {result.stderr}"
+            assert "add_numbers" in result.stdout, f"Function not found in cscope output: {result.stdout}"
+
+            # Test cscope query: Find functions calling add_numbers (-3 flag)
+            result = bot.environment.execute(f"cd {work_dir} && cscope -L -3 add_numbers")
+            assert result.return_code == 0, f"cscope caller query failed: {result.stderr}"
+            # add_numbers is called from main.c
+            assert "main" in result.stdout.lower(), f"Caller not found: {result.stdout}"
+
+            # Test cscope query: Find text string (-4 flag)
+            result = bot.environment.execute(f"cd {work_dir} && cscope -L -4 'return a + b'")
+            assert result.return_code == 0, f"cscope text search failed: {result.stderr}"
+            assert "utils.c" in result.stdout, f"Text not found in expected file: {result.stdout}"
+
+            logger.info("cscope tool usage verified successfully")
+        finally:
+            del bot
+
+    def test_tool_install_failure_raises_error(self):
+        """Test that tool installation failure raises appropriate error."""
+        from microbots.tools.internal_tool import Tool
+
+        # Create a tool with a failing install command
+        failing_tool = Tool(
+            name="failing_tool",
+            description="A tool that fails to install",
+            usage_instructions_to_llm="This tool will fail.",
+            install_commands=["apt-get install -y nonexistent-package-xyz123"],
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+        with pytest.raises(RuntimeError, match="Failed to install tool"):
+            MicroBot(
+                model=f"ollama-local/{local_model}",
+                system_prompt="You are a helpful assistant.",
+                additional_tools=[failing_tool],
+            )
+
+    def test_tool_verify_failure_raises_error(self):
+        """Test that tool verification failure raises appropriate error."""
+        from microbots.tools.internal_tool import Tool
+
+        # Create a tool that installs but fails verification
+        bad_verify_tool = Tool(
+            name="bad_verify_tool",
+            description="A tool that fails verification",
+            usage_instructions_to_llm="This tool verification will fail.",
+            install_commands=["echo 'installed'"],  # Installs successfully
+            verify_commands=["nonexistent_command_abc123"],  # Fails verification
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+        with pytest.raises(RuntimeError, match="Failed to verify installation"):
+            MicroBot(
+                model=f"ollama-local/{local_model}",
+                system_prompt="You are a helpful assistant.",
+                additional_tools=[bad_verify_tool],
+            )
+
+    def test_tool_usage_instructions_in_system_prompt(self, cscope_tool):
+        """Test that tool usage instructions are appended to the bot's system prompt."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="cscope: version 15.9", stderr="")
+
+        base_prompt = "You are a code analysis assistant."
+
+        with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
+             patch('microbots.llm.ollama_local.requests'):
+            bot = MicroBot(
+                model="ollama-local/test-model",
+                system_prompt=base_prompt,
+                additional_tools=[cscope_tool],
+                environment=mock_env,
+            )
+
+            # Verify the cscope usage instructions are in the system prompt
+            assert base_prompt in bot.llm.system_prompt
+            assert "cscope" in bot.llm.system_prompt.lower()
+            assert "-L" in bot.llm.system_prompt  # Non-interactive flag mentioned
+            assert "batch mode" in bot.llm.system_prompt.lower() or "non-interactive" in bot.llm.system_prompt.lower()

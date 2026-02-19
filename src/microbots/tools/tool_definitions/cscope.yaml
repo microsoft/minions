@@ -59,7 +59,7 @@ install_commands:
   - apt-get install -y cscope
 
 verify_commands:
-  - cscope --version
+  - cscope -V
 
 setup_commands:
   - cscope -R
