@@ -101,7 +101,7 @@ class TestMicrobotIntegration:
     def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
         assert test_repo is not None
 
-        result: CmdReturn = ro_microBot.environment.execute(f"cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
+        result: CmdReturn = ro_microBot.environment.execute(f"ls / && ls {DOCKER_WORKER_DIR}/ && cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
         logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
         assert result.return_code == 0
         assert "tests" in result.stdout
