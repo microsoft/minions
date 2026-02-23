@@ -1,6 +1,6 @@
 name: browser-use
-tool_type: internal
 description: A command-line AI web browser
+tool_type: internal
 parameters:
   type: str
   description: The query to fetch information from the Internet.
@@ -13,13 +13,6 @@ files_to_copy:
 
 install_commands:
   # Install it system-wide using pip
-  # Add key for yarn package manager, which is a dependency for playwright
-  # - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/yarn.gpg >/dev/null
-  # - apt update && apt install -y --no-install-recommends curl gnupg
-  # - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/yarn.gpg >/dev/null
-  # - echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-  - rm /etc/apt/sources.list.d/yarn.list || true
-  - apt update
   - pip install --no-input browser-use==0.5.4 playwright
   - playwright install --with-deps
   - playwright install chromium --with-deps --no-shell

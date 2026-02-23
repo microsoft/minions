@@ -2,7 +2,8 @@ from typing import Optional
 
 from microbots.MicroBot import BotType, MicroBot, BotRunResult
 from microbots.environment.Environment import Environment
-from microbots.tools.tool_yaml_parser import ToolAbstract, parse_tool_definition
+from microbots.environment.Tool import ToolAbstract
+from microbots.tools.tool_yaml_parser import parse_tool_definition
 
 
 BROWSER_USE_TOOL = parse_tool_definition("browser-use.yaml")

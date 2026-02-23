@@ -17,7 +17,7 @@ sys.path.insert(
 )
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from microbots import MicroBot, BotRunResult
@@ -103,7 +103,7 @@ class TestMicrobotIntegration:
         assert test_repo is not None
         assert os.path.exists(test_repo)
 
-        result: CmdReturn = ro_microBot.environment.execute(f"ls / && ls {DOCKER_WORKING_DIR}/ && echo '**work_dir**' && cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
+        result: CmdReturn = ro_microBot.environment.execute(f"cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
         logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
         assert result.return_code == 0
         assert "tests" in result.stdout
