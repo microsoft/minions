@@ -17,7 +17,7 @@ sys.path.insert(
 )
 
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 from microbots import MicroBot, BotRunResult
@@ -53,6 +53,24 @@ def no_mount_microBot():
     yield bot
     del bot
 
+@pytest.fixture(scope="session")
+def ro_mount(self, test_repo: Path):
+    assert test_repo is not None
+    return Mount(
+        str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
+    )
+
+@pytest.fixture(scope="session")
+def ro_microBot(self, ro_mount: Mount):
+    local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+    bot = MicroBot(
+        model=f"ollama-local/{local_model}",
+        system_prompt=SYSTEM_PROMPT,
+        folder_to_mount=ro_mount,
+    )
+    yield bot
+    del bot
+
 
 @pytest.mark.integration
 @pytest.mark.docker
@@ -64,24 +82,6 @@ class TestMicrobotIntegration:
         yield tmpdir / "error.log"
         if tmpdir.exists():
             subprocess.run(["sudo", "rm", "-rf", str(tmpdir)])
-
-    @pytest.fixture(scope="function")
-    def ro_mount(self, test_repo: Path):
-        assert test_repo is not None
-        return Mount(
-            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
-        )
-
-    @pytest.fixture(scope="function")
-    def ro_microBot(self, ro_mount: Mount):
-        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
-        bot = MicroBot(
-            model=f"ollama-local/{local_model}",
-            system_prompt=SYSTEM_PROMPT,
-            folder_to_mount=ro_mount,
-        )
-        yield bot
-        del bot
 
     @pytest.fixture(scope="function")
     def anthropic_microBot(self):
@@ -102,7 +102,7 @@ class TestMicrobotIntegration:
         logger.debug(f"Testing MicroBot with read-only mount. Mounted repo path: {test_repo}")
         assert test_repo is not None
 
-        result: CmdReturn = ro_microBot.environment.execute(f"ls / && ls {DOCKER_WORKING_DIR}/ && cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
+        result: CmdReturn = ro_microBot.environment.execute(f"ls / && ls {DOCKER_WORKING_DIR}/ && echo '**work_dir**' && cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
         logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
         assert result.return_code == 0
         assert "tests" in result.stdout
