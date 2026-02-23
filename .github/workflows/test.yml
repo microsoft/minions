@@ -16,7 +16,7 @@ jobs:
         # Installing ollama model in GitHub Actions runner requires significant disk space.
         # It reduces the space available for browser-based tests
         # test-type: ["unit", "integration", "ollama_local", "slow-browser", "slow-other"]
-        test-type: ["ollama-local"]
+        test-type: ["custom"]
         include:
           - test-type: "unit"
             pytest-args: "-m 'unit and not ollama_local'"
@@ -28,6 +28,8 @@ jobs:
             pytest-args: "-m 'slow' test/bot/test_browsing_bot.py"
           - test-type: "slow-other"
             pytest-args: "-m 'slow' --ignore=test/bot/test_browsing_bot.py"
+          - test-type: "custom"
+            pytest-args: "test/bot/test_microbot.py::TestMicrobotIntegration::test_microbot_ro_mount"
 
 
     steps:

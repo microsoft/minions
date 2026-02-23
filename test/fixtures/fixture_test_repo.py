@@ -32,7 +32,7 @@ def test_repo(tmpdir):
             f"Exception: {str(e)}\n"
         )
 
-    repo_path = Path(tmpdir / os.listdir(tmpdir)[0])
+    repo_path = Path(tmpdir / TEST_REPO.split("/")[-1].replace(".git", ""))
     yield repo_path
 
     # Cleanup after test

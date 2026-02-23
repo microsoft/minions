@@ -99,6 +99,7 @@ class TestMicrobotIntegration:
 
     @pytest.mark.ollama_local
     def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
+        logger.debug(f"Testing MicroBot with read-only mount. Mounted repo path: {test_repo}")
         assert test_repo is not None
 
         result: CmdReturn = ro_microBot.environment.execute(f"ls / && ls {DOCKER_WORKING_DIR}/ && cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
