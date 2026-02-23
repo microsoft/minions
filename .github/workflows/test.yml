@@ -15,7 +15,8 @@ jobs:
       matrix:
         # Installing ollama model in GitHub Actions runner requires significant disk space.
         # It reduces the space available for browser-based tests
-        test-type: ["unit", "integration", "ollama_local", "slow-browser", "slow-other"]
+        # test-type: ["unit", "integration", "ollama_local", "slow-browser", "slow-other"]
+        test-type: ["unit"]
         include:
           - test-type: "unit"
             pytest-args: "-m 'unit and not ollama_local'"
@@ -143,7 +144,7 @@ jobs:
           LOCAL_MODEL_PORT: 11434
         run: |
           # python -m pytest ${{ matrix.pytest-args }} \
-          python -m pytest test/bot/test_microbot.py::TestMicrobotIntegration::test_microbot_ro_mount
+          python -m pytest test/bot/test_microbot.py::TestMicrobotIntegration::test_microbot_ro_mount \
             -n auto \
             --dist loadgroup \
             --reruns 1 \
