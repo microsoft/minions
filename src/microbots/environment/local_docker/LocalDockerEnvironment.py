@@ -32,6 +32,7 @@ class LocalDockerEnvironment(Environment):
         self.port = port  # required host port
         self.container_port = 8080
         self.deleted = False
+        self.working_dir = None
         self._create_working_dir()
         self.start()
 
@@ -40,15 +41,16 @@ class LocalDockerEnvironment(Environment):
             self.stop()
 
     def _create_working_dir(self):
-        if not os.path.exists(WORKING_DIR):
-            os.makedirs(WORKING_DIR)
-            logger.info("🗂️  Created working directory at %s", WORKING_DIR)
+        self.working_dir = WORKING_DIR + "_" + os.urandom(4).hex()
+        if not os.path.exists(self.working_dir):
+            os.makedirs(self.working_dir)
+            logger.info("🗂️  Created working directory at %s", self.working_dir)
         else:
-            logger.info("🗂️  Working directory already exists at %s", WORKING_DIR)
+            logger.info("🗂️  Working directory already exists at %s", self.working_dir)
 
     def start(self):
         mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}
-        volumes_config = {WORKING_DIR: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}}
+        volumes_config = {self.working_dir: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}}
         if self.folder_to_mount:
             if self.folder_to_mount.permission == PermissionLabels.READ_ONLY:
                 volumes_config[self.folder_to_mount.host_path_info.abs_path] = {
@@ -156,12 +158,12 @@ class LocalDockerEnvironment(Environment):
             self.container = None
 
         # Remove working directory
-        if os.path.exists(WORKING_DIR):
+        if os.path.exists(self.working_dir):
             try:
                 import shutil
 
-                shutil.rmtree(WORKING_DIR)
-                logger.info("🗑️  Removed working directory at %s", WORKING_DIR)
+                shutil.rmtree(self.working_dir)
+                logger.info("🗑️  Removed working directory at %s", self.working_dir)
             except Exception as e:
                 logger.error("❌  Failed to remove working directory: %s", e)
 
