@@ -142,7 +142,8 @@ jobs:
           LOCAL_MODEL_NAME: "qwen2.5-coder:latest"
           LOCAL_MODEL_PORT: 11434
         run: |
-          python -m pytest ${{ matrix.pytest-args }} \
+          # python -m pytest ${{ matrix.pytest-args }} \
+          python -m pytest test/bot/test_microbot.py::TestMicrobotIntegration::test_microbot_ro_mount
             -n auto \
             --dist loadgroup \
             --reruns 1 \

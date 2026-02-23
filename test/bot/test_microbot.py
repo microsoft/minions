@@ -53,25 +53,6 @@ def no_mount_microBot():
     yield bot
     del bot
 
-@pytest.fixture(scope="session")
-def ro_mount(self, test_repo: Path):
-    assert test_repo is not None
-    return Mount(
-        str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
-    )
-
-@pytest.fixture(scope="session")
-def ro_microBot(self, ro_mount: Mount):
-    local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
-    bot = MicroBot(
-        model=f"ollama-local/{local_model}",
-        system_prompt=SYSTEM_PROMPT,
-        folder_to_mount=ro_mount,
-    )
-    yield bot
-    del bot
-
-
 @pytest.mark.integration
 @pytest.mark.docker
 class TestMicrobotIntegration:
@@ -82,6 +63,25 @@ class TestMicrobotIntegration:
         yield tmpdir / "error.log"
         if tmpdir.exists():
             subprocess.run(["sudo", "rm", "-rf", str(tmpdir)])
+
+    @pytest.fixture(scope="function")
+    def ro_mount(self, test_repo: Path):
+        assert test_repo is not None
+        return Mount(
+            str(test_repo), f"{DOCKER_WORKING_DIR}/{test_repo.name}", PermissionLabels.READ_ONLY
+        )
+
+    @pytest.fixture(scope="function")
+    def ro_microBot(self, ro_mount: Mount):
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+        bot = MicroBot(
+            model=f"ollama-local/{local_model}",
+            system_prompt=SYSTEM_PROMPT,
+            folder_to_mount=ro_mount,
+        )
+        yield bot
+        del bot
+
 
     @pytest.fixture(scope="function")
     def anthropic_microBot(self):
