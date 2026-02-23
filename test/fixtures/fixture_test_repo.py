@@ -10,9 +10,13 @@ def test_repo(tmpdir):
     # Check is root exists
     assert tmpdir.exists()
 
+    sub_dir_name = "sub_dir_" + os.urandom(4).hex()
+    sub_dir_path = tmpdir / sub_dir_name
+    sub_dir_path.mkdir()
+
     try:
         result = subprocess.run(
-            ["git", "-C", str(tmpdir), "clone", "--depth", "1", TEST_REPO],
+            ["git", "-C", str(sub_dir_path), "clone", "--depth", "1", TEST_REPO],
             check=True,
             capture_output=True,
             text=True
@@ -32,7 +36,7 @@ def test_repo(tmpdir):
             f"Exception: {str(e)}\n"
         )
 
-    repo_path = Path(tmpdir / TEST_REPO.split("/")[-1].replace(".git", ""))
+    repo_path = Path(sub_dir_path / TEST_REPO.split("/")[-1].replace(".git", ""))
     yield repo_path
 
     # Cleanup after test

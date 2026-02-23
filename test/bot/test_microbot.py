@@ -97,10 +97,12 @@ class TestMicrobotIntegration:
             yield bot
             del bot
 
+    @pytest.mark.xdist_group("serial")
     @pytest.mark.ollama_local
     def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
         logger.debug(f"Testing MicroBot with read-only mount. Mounted repo path: {test_repo}")
         assert test_repo is not None
+        assert os.path.exists(test_repo)
 
         result: CmdReturn = ro_microBot.environment.execute(f"ls / && ls {DOCKER_WORKING_DIR}/ && echo '**work_dir**' && cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
         logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
@@ -112,6 +114,7 @@ class TestMicrobotIntegration:
         assert result.return_code == 0
         assert "missing_colon.py" in result.stdout
 
+    @pytest.mark.xdist_group("serial")
     @pytest.mark.ollama_local
     def test_microbot_overlay_teardown(self, ro_microBot, caplog):
         caplog.clear()
@@ -236,6 +239,7 @@ class TestMicrobotUnit:
                 folder_to_mount=invalid_mount,
             )
 
+    @pytest.mark.xdist_group("serial")
     @pytest.mark.ollama_local
     def test_incorrect_copy_mount_type(self, no_mount_microBot):
         """Test that ValueError is raised when additional_mounts uses MOUNT mount type."""
