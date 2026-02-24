@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import json
 from pprint import pformat
 import re
@@ -244,9 +245,13 @@ class MicroBot:
                     # HACK: anthropic-text-editor tool extra formats the output
                     try:
                         output_json = json.loads(llm_command_output.stdout)
-                        if "content" in output_json:
+                        if isinstance(output_json, Iterable) and "content" in output_json:
                             output_text = pformat(output_json["content"])
                     except json.JSONDecodeError:
+                        pass
+                    except Exception as e:
+                        logger.warning("Failed to parse command output as JSON, using raw stdout")
+                        logger.debug("Error details: %s", str(e))
                         pass
                 else:
                     output_text = f"Command executed successfully with no output\nreturn code: {llm_command_output.return_code}\nstdout: {llm_command_output.stdout}\nstderr: {llm_command_output.stderr}"
