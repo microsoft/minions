@@ -29,10 +29,9 @@ def parse_tool_definition(yaml_path: str) -> ToolAbstract:
     if "tool_type" not in tool_dict:
         raise ValueError(f"tool_type not provided in tool definition {yaml_path}. Set tool_type to {[type.value for type in TOOLTYPE]}")
 
-    tool_type = tool_dict.get("tool_type") # Remove tool_type from tool_dict as it is not a field in the Tool dataclass
+    tool_type = tool_dict.get("tool_type")
     if tool_type not in [type.value for type in TOOLTYPE]:
         raise ValueError(f"Invalid tool_type {tool_type} provided in tool definition {yaml_path}. Set tool_type to {[type.value for type in TOOLTYPE]}")
 
-    # tool_dict.append("tool_type", tool_type) # Append tool_type back to tool_dict at the bottom of the dict as it is a default field.
     if tool_type == TOOLTYPE.INTERNAL.value:
         return Tool(**tool_dict) # Internal tool is simply called as Tool to keep it as a default behavior.

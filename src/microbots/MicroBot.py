@@ -252,7 +252,6 @@ class MicroBot:
                     except Exception as e:
                         logger.warning("Failed to parse command output as JSON, using raw stdout")
                         logger.debug("Error details: %s", str(e))
-                        pass
                 else:
                     output_text = f"Command executed successfully with no output\nreturn code: {llm_command_output.return_code}\nstdout: {llm_command_output.stdout}\nstderr: {llm_command_output.stderr}"
             else:

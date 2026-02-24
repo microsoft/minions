@@ -431,6 +431,152 @@ class TestCopyFiles:
             mock_env.execute.assert_not_called()
             mock_logger.info.assert_called()
 
+    @pytest.mark.parametrize("permissions,expected_chmod", [
+        (0, "chmod 000"),
+        (1, "chmod 110"),
+        (4, "chmod 440"),
+        (5, "chmod 550"),
+        (6, "chmod 660"),
+        (7, "chmod 770"),
+    ])
+    def test_setup_file_permission_generates_correct_chmod_command(self, tmp_path, permissions, expected_chmod):
+        """Test that chmod command is constructed correctly for various permission values."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("test content")
+
+        success_output = Mock()
+        success_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = success_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="tmp/dest", permissions=permissions)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            tool._copy_files(mock_env)
+
+            # Second call is the chmod command
+            chmod_call = mock_env.execute.call_args_list[1][0][0]
+            assert chmod_call.startswith(expected_chmod), \
+                f"Expected chmod command to start with '{expected_chmod}', got '{chmod_call}'"
+            assert "/tmp/dest" in chmod_call
+
+    def test_setup_file_permission_dest_path_has_leading_slash(self, tmp_path):
+        """Test that dest path in chmod command is prefixed with /."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("content")
+
+        success_output = Mock()
+        success_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = success_output
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="var/data/file.txt", permissions=6)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger"):
+            tool._copy_files(mock_env)
+
+            chmod_call = mock_env.execute.call_args_list[1][0][0]
+            assert chmod_call == "chmod 660 /var/data/file.txt"
+
+    def test_setup_file_permission_invalid_permissions_raises_value_error(self, tmp_path):
+        """Test that ValueError is raised when permissions are out of range (bypassing __post_init__)."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("content")
+
+        success_output = Mock()
+        success_output.return_code = 0
+        mock_env = Mock()
+        mock_env.execute.return_value = success_output
+
+        file_copy = EnvFileCopies(src=str(src_file), dest="tmp/dest", permissions=7)
+        # Bypass __post_init__ validation by mutating after construction
+        file_copy.permissions = 8
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[file_copy],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(ValueError) as exc_info:
+                tool._copy_files(mock_env)
+
+            assert "Invalid permissions" in str(exc_info.value)
+            assert "between 0 and 7" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_setup_file_permission_negative_permissions_raises_value_error(self, tmp_path):
+        """Test that ValueError is raised for negative permissions (bypassing __post_init__)."""
+        src_file = tmp_path / "test_file.txt"
+        src_file.write_text("content")
+
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0)
+
+        file_copy = EnvFileCopies(src=str(src_file), dest="tmp/dest", permissions=5)
+        file_copy.permissions = -1
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[file_copy],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(ValueError) as exc_info:
+                tool._copy_files(mock_env)
+
+            assert "Invalid permissions" in str(exc_info.value)
+            mock_logger.error.assert_called()
+
+    def test_setup_file_permission_error_message_contains_file_paths(self, tmp_path):
+        """Test that RuntimeError on chmod failure includes src and dest in log."""
+        src_file = tmp_path / "myfile.txt"
+        src_file.write_text("content")
+
+        mock_env = Mock()
+        mock_env.execute.side_effect = [Mock(return_code=0), Mock(return_code=1)]
+
+        tool = Tool(
+            name="test_tool",
+            description="A test tool",
+            usage_instructions_to_llm="Test instructions",
+            install_commands=["echo test"],
+            files_to_copy=[
+                EnvFileCopies(src=str(src_file), dest="tmp/myfile.txt", permissions=7)
+            ],
+        )
+
+        with patch("microbots.tools.internal_tool.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                tool._copy_files(mock_env)
+
+            assert "tmp/myfile.txt" in str(exc_info.value)
+            # Verify logger.error was called with src and dest info
+            error_args = str(mock_logger.error.call_args)
+            assert "myfile.txt" in error_args
+
 
 @pytest.mark.unit
 class TestInstallTool:

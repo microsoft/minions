@@ -54,7 +54,7 @@ class Tool(ToolAbstract):
             )
             logger.info("✅ Set environment variable %s in the container", env_variable)
 
-        for env_variable in self.env_variables:
+        for env_variable in self.env_variables or []:
             _copy_env_variable(env, env_variable)
         logger.info("✅ Successfully copied all environment variables for tool: %s", self.name)
 
@@ -62,13 +62,22 @@ class Tool(ToolAbstract):
     def _copy_files(self, env: Environment):
         # TODO: Replace it using environment's helper function once it is available.
         def _setup_file_permission(env: Environment, file_copy: EnvFileCopies):
-            permission_command = ""
-            if file_copy.permissions - 4 >= 0:
-                permission_command += f"chmod +r {file_copy.dest} && "
-            if file_copy.permissions - 2 >= 0:
-                permission_command += f"chmod +w {file_copy.dest} && "
-            if file_copy.permissions - 1 >= 0:
-                permission_command += f"chmod +x {file_copy.dest}"
+            dest_path_in_container = f"/{file_copy.dest}"
+            # Raise exception if permissions is not in the range of 0-7
+            if not (0 <= file_copy.permissions <= 7):
+                logger.error(
+                    "❌ Invalid permissions %s for file copy %s to %s. Permissions must be an integer between 0 and 7.",
+                    file_copy.permissions,
+                    file_copy.src,
+                    file_copy.dest,
+                )
+                raise ValueError(
+                    f"Invalid permissions {file_copy.permissions} for file copy {file_copy.src} to {file_copy.dest}. Permissions must be an integer between 0 and 7."
+                )
+            # permissions is a single octal digit (0-7) representing rwx bits
+            # Convert to octal string for chmod (e.g., 7 -> "700" for owner rwx)
+            # Set the assigned permission for owner, group and no permission for others
+            permission_command = f"chmod {file_copy.permissions}{file_copy.permissions}0 {dest_path_in_container}"
             output = env.execute(permission_command)
             if output.return_code != 0:
                 logger.error(
@@ -114,7 +123,7 @@ class Tool(ToolAbstract):
             _setup_file_permission(env, file_copy)
             logger.info("✅ Copied file to container: %s to: %s", file_copy.src, dest_path_in_container)
 
-        for file_to_copy in self.files_to_copy:
+        for file_to_copy in self.files_to_copy or []:
             _copy_file_to_env(env, file_to_copy)
         logger.info("✅ Successfully copied all files for tool: %s", self.name)
 

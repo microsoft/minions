@@ -41,9 +41,10 @@ class LocalDockerEnvironment(Environment):
             self.stop()
 
     def _create_working_dir(self, retries=3, delay=2):
-        self.working_dir = WORKING_DIR + "_" + os.urandom(4).hex()
-        if not os.path.exists(self.working_dir):
-            os.makedirs(self.working_dir)
+        working_dir = WORKING_DIR + "_" + os.urandom(4).hex()
+        if not os.path.exists(working_dir):
+            os.makedirs(working_dir)
+            self.working_dir = working_dir
             logger.info("🗂️  Created working directory at %s", self.working_dir)
         else:
             logger.info("🗂️  Working directory already exists at %s. Retrying with a new path...", self.working_dir)
