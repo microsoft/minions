@@ -651,8 +651,7 @@ int multiply_numbers(int a, int b) {
         if repo_path.exists():
             subprocess.run(["rm", "-rf", str(repo_path)])
 
-    @pytest.mark.integration
-    @pytest.mark.docker
+    @pytest.mark.ollama_local
     def test_cscope_tool_install_and_verify(self, cscope_tool, c_code_repo):
         """Test that cscope tool can be installed and verified in MicroBot environment."""
         from microbots.tools.internal_tool import Tool
@@ -668,9 +667,11 @@ int multiply_numbers(int a, int b) {
             PermissionLabels.READ_ONLY
         )
 
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+
         # Create MicroBot with cscope tool
         bot = MicroBot(
-            model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}",
+            model=local_model,
             system_prompt="You are a helpful assistant.",
             folder_to_mount=c_repo_mount,
             additional_tools=[cscope_tool],
@@ -802,7 +803,8 @@ int multiply_numbers(int a, int b) {
             assert "-L" in bot.llm.system_prompt  # Non-interactive flag mentioned
             assert "batch mode" in bot.llm.system_prompt.lower() or "non-interactive" in bot.llm.system_prompt.lower()
 
-    @pytest.mark.ollama_local
+    @pytest.mark.integration
+    @pytest.mark.docker
     def test_llm_finds_symbols_using_cscope(self, cscope_tool, c_code_repo):
         """End-to-end test: LLM uses cscope to find symbol definitions and callers in C code."""
         c_repo_mount = Mount(
@@ -810,8 +812,6 @@ int multiply_numbers(int a, int b) {
             f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
             PermissionLabels.READ_ONLY
         )
-
-        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
 
         cscope_system_prompt = f"""
 You are a C code analyst. You have a C project mounted at {DOCKER_WORKING_DIR}/{c_code_repo.name}.
@@ -829,7 +829,7 @@ Put your final answer in the `thoughts` field. The answer MUST include:
 """
 
         bot = MicroBot(
-            model=f"ollama-local/{local_model}",
+            model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}",
             system_prompt=cscope_system_prompt,
             folder_to_mount=c_repo_mount,
             additional_tools=[cscope_tool],
