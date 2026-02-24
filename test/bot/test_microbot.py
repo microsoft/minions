@@ -671,7 +671,7 @@ int multiply_numbers(int a, int b) {
 
         # Create MicroBot with cscope tool
         bot = MicroBot(
-            model=local_model,
+            model=f"ollama-local/{local_model}",
             system_prompt="You are a helpful assistant.",
             folder_to_mount=c_repo_mount,
             additional_tools=[cscope_tool],
