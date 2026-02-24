@@ -651,7 +651,8 @@ int multiply_numbers(int a, int b) {
         if repo_path.exists():
             subprocess.run(["rm", "-rf", str(repo_path)])
 
-    @pytest.mark.ollama_local
+    @pytest.mark.integration
+    @pytest.mark.docker
     def test_cscope_tool_install_and_verify(self, cscope_tool, c_code_repo):
         """Test that cscope tool can be installed and verified in MicroBot environment."""
         from microbots.tools.internal_tool import Tool
@@ -668,9 +669,8 @@ int multiply_numbers(int a, int b) {
         )
 
         # Create MicroBot with cscope tool
-        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
         bot = MicroBot(
-            model=f"ollama-local/{local_model}",
+            model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}",
             system_prompt="You are a helpful assistant.",
             folder_to_mount=c_repo_mount,
             additional_tools=[cscope_tool],
