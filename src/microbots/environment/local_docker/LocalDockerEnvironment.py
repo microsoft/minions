@@ -40,13 +40,18 @@ class LocalDockerEnvironment(Environment):
         if hasattr(self, 'deleted') and not self.deleted:
             self.stop()
 
-    def _create_working_dir(self):
+    def _create_working_dir(self, retries=3, delay=2):
         self.working_dir = WORKING_DIR + "_" + os.urandom(4).hex()
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
             logger.info("🗂️  Created working directory at %s", self.working_dir)
         else:
-            logger.info("🗂️  Working directory already exists at %s", self.working_dir)
+            logger.info("🗂️  Working directory already exists at %s. Retrying with a new path...", self.working_dir)
+            if retries > 0:
+                time.sleep(delay)
+                self._create_working_dir(retries - 1, delay * 2)
+            else:
+                raise Exception(f"Failed to create a unique working directory after multiple attempts. Try cleaning up old working directories from {WORKING_DIR}.")
 
     def start(self):
         mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}

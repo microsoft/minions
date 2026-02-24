@@ -801,3 +801,60 @@ int multiply_numbers(int a, int b) {
             assert "cscope" in bot.llm.system_prompt.lower()
             assert "-L" in bot.llm.system_prompt  # Non-interactive flag mentioned
             assert "batch mode" in bot.llm.system_prompt.lower() or "non-interactive" in bot.llm.system_prompt.lower()
+
+    @pytest.mark.ollama_local
+    def test_llm_finds_symbols_using_cscope(self, cscope_tool, c_code_repo):
+        """End-to-end test: LLM uses cscope to find symbol definitions and callers in C code."""
+        c_repo_mount = Mount(
+            str(c_code_repo),
+            f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
+            PermissionLabels.READ_ONLY
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+
+        cscope_system_prompt = f"""
+You are a C code analyst. You have a C project mounted at {DOCKER_WORKING_DIR}/{c_code_repo.name}.
+The cscope tool is installed and its database has been built for you.
+You MUST use cscope non-interactive batch mode commands (cscope -L <flag> <symbol>) to answer questions.
+Always cd to {DOCKER_WORKING_DIR}/{c_code_repo.name} before running cscope commands.
+Do not run interactive commands. Do not rebuild the database.
+
+{llm_output_format_str}
+
+You must send `task_done` as true only when you have found all the requested information.
+Put your final answer in the `thoughts` field. The answer MUST include:
+1. The file and function where `add_numbers` is defined
+2. Which function(s) call `add_numbers`
+"""
+
+        bot = MicroBot(
+            model=f"ollama-local/{local_model}",
+            system_prompt=cscope_system_prompt,
+            folder_to_mount=c_repo_mount,
+            additional_tools=[cscope_tool],
+        )
+
+        try:
+            response: BotRunResult = bot.run(
+                f"Using cscope, find: (1) where the function `add_numbers` is defined, and (2) which functions call `add_numbers`. "
+                f"The project is at {DOCKER_WORKING_DIR}/{c_code_repo.name}. Report your findings in the thoughts field.",
+                timeout_in_seconds=120,
+                max_iterations=15,
+            )
+
+            logger.info(f"LLM cscope test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+
+            assert response.status, f"Task failed. Error: {response.error}"
+            assert response.error is None
+            assert response.result is not None
+
+            # The LLM should have found that add_numbers is defined in utils.c
+            # and called from main (in main.c)
+            result_lower = response.result.lower()
+            assert "utils.c" in result_lower or "utils" in result_lower, \
+                f"LLM should have found add_numbers defined in utils.c. Got: {response.result}"
+            assert "main" in result_lower, \
+                f"LLM should have found that main() calls add_numbers. Got: {response.result}"
+        finally:
+            del bot
