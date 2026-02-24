@@ -4,8 +4,10 @@ https://github.com/SWE-agent/test-repo/issues/1.
 This test will create multiple custom bots - a reading bot, a writing bot using the base class.
 """
 
+import json
 import os
 from pathlib import Path
+from pprint import pformat
 import subprocess
 import sys
 from unittest.mock import patch, Mock
@@ -588,6 +590,147 @@ class TestMicrobotUnit:
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)
             assert bot.llm.system_prompt == base_system_prompt
+
+    def test_run_json_output_with_content_key(self):
+        """Test anthropic-text-editor hack: JSON output with 'content' key is reformatted using pformat."""
+        json_content = {"content": ["line 1", "line 2"], "other_key": "data"}
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=json.dumps(json_content), stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # The output passed to LLM should be pformat of the "content" value
+        assert captured_output[0] == pformat(json_content["content"])
+
+    def test_run_json_output_without_content_key(self):
+        """Test anthropic-text-editor hack: JSON output without 'content' key preserves raw stdout."""
+        json_data = {"other": "data", "number": 42}
+        raw_stdout = json.dumps(json_data)
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=raw_stdout, stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # Without "content" key, raw stdout is preserved
+        assert captured_output[0] == raw_stdout
+
+    def test_run_non_json_output_json_decode_error(self):
+        """Test anthropic-text-editor hack: non-JSON stdout triggers JSONDecodeError, raw stdout kept."""
+        raw_stdout = "this is plain text, not JSON"
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=raw_stdout, stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # JSONDecodeError is caught silently, raw stdout preserved
+        assert captured_output[0] == raw_stdout
+
+    def test_run_json_parse_blanket_exception(self, caplog):
+        """Test anthropic-text-editor hack: blanket exception during JSON parsing logs warning and keeps raw stdout."""
+        raw_stdout = '{"content": "valid json"}'
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=raw_stdout, stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        caplog.set_level(logging.WARNING)
+        with patch('microbots.MicroBot.json.loads', side_effect=TypeError("test type error")):
+            result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # Blanket exception caught, raw stdout preserved
+        assert captured_output[0] == raw_stdout
+        # Warning should be logged
+        assert "Failed to parse command output as JSON, using raw stdout" in caplog.text
 
 
 @pytest.mark.integration
