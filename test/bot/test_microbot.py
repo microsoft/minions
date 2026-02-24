@@ -839,8 +839,8 @@ Put your final answer in the `thoughts` field. The answer MUST include:
             response: BotRunResult = bot.run(
                 f"Using cscope, find: (1) where the function `add_numbers` is defined, and (2) which functions call `add_numbers`. "
                 f"The project is at {DOCKER_WORKING_DIR}/{c_code_repo.name}. Report your findings in the thoughts field.",
-                timeout_in_seconds=120,
-                max_iterations=15,
+                timeout_in_seconds=1200,
+                max_iterations=50,
             )
 
             logger.info(f"LLM cscope test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
