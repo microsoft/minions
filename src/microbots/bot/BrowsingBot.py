@@ -2,7 +2,7 @@ from typing import Optional
 
 from microbots.MicroBot import BotType, MicroBot, BotRunResult
 from microbots.environment.Environment import Environment
-from microbots.environment.Tool import ToolAbstract
+from microbots.tools.tool import ToolAbstract
 from microbots.tools.tool_yaml_parser import parse_tool_definition
 
 

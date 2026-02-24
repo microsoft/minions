@@ -32,7 +32,9 @@ class TestExecuteExceptionHandling:
                 env.port = 8080
                 env.container_port = 8080
                 env.deleted = False
-                return env
+                env.working_dir = None
+                yield env
+                env.deleted = True  # Prevent __del__ from calling stop()
 
     def test_execute_connect_timeout(self, mock_env):
         """Test execute method handles ConnectTimeout exception"""
