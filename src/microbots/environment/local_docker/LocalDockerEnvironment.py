@@ -47,7 +47,7 @@ class LocalDockerEnvironment(Environment):
             self.working_dir = working_dir
             logger.info("🗂️  Created working directory at %s", self.working_dir)
         else:
-            logger.info("🗂️  Working directory already exists at %s. Retrying with a new path...", self.working_dir)
+            logger.info("🗂️  Working directory already exists at %s. Retrying with a new path...", working_dir)
             if retries > 0:
                 time.sleep(delay)
                 self._create_working_dir(retries - 1, delay * 2)
