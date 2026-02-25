@@ -1,4 +1,5 @@
 name: cscope
+tool_type: internal
 description: Cscope is a developer's tool for browsing source code.
 
 # llm can use tools only in non-interactive mode. So, give instructions accordingly.
@@ -58,10 +59,11 @@ install_commands:
   - apt-get install -y cscope
 
 verify_commands:
-  - cscope --version
+  - cscope -V
 
+# Include -b to only build the database without launching the interactive UI.
 setup_commands:
-  - cscope -R
+  - cscope -bR
 
 uninstall_commands:
   - apt-get remove -y cscope

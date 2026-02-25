@@ -7,6 +7,7 @@ import socket
 import re
 import logging
 import time
+from unittest.mock import patch, Mock, MagicMock
 
 # Add src to path for imports
 import sys
@@ -15,7 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from microbots.environment.local_docker.LocalDockerEnvironment import LocalDockerEnvironment
 from microbots.extras.mount import Mount
-from microbots.constants import DOCKER_WORKING_DIR
+from microbots.constants import DOCKER_WORKING_DIR, WORKING_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -380,3 +381,79 @@ EOF"""
             assert result.return_code == 0, f"Shell should be responsive after timeout {i+1}"
             assert f"After timeout {i+1}" in result.stdout, f"Output {i+1} should be correct"
             logger.info(f"   ✓ Recovery {i+1} successful")
+
+
+@pytest.mark.unit
+class TestCreateWorkingDir:
+    """Unit tests for LocalDockerEnvironment._create_working_dir else branch"""
+
+    def _make_env(self):
+        """Create a bare LocalDockerEnvironment without calling __init__"""
+        env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+        env.deleted = True  # Prevent __del__ from calling stop()
+        env.working_dir = None
+        return env
+
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.time.sleep")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.makedirs")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.path.exists")
+    def test_retries_when_directory_already_exists(self, mock_exists, mock_makedirs, mock_sleep):
+        """Test that _create_working_dir retries with a new path when the directory already exists"""
+        # First call: directory exists; second call: directory does not exist
+        mock_exists.side_effect = [True, False]
+
+        env = self._make_env()
+        env._create_working_dir(retries=3, delay=2)
+
+        # Should have slept once with the initial delay
+        mock_sleep.assert_called_once_with(2)
+        # makedirs called once on the successful retry
+        assert mock_makedirs.call_count == 1
+        assert env.working_dir is not None
+
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.time.sleep")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.makedirs")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.path.exists")
+    def test_raises_exception_after_all_retries_exhausted(self, mock_exists, mock_makedirs, mock_sleep):
+        """Test that _create_working_dir raises Exception when retries are exhausted"""
+        # Directory always exists
+        mock_exists.return_value = True
+
+        env = self._make_env()
+        with pytest.raises(Exception, match="Failed to create a unique working directory"):
+            env._create_working_dir(retries=0, delay=2)
+
+        # Should never create or sleep since retries=0
+        mock_makedirs.assert_not_called()
+        mock_sleep.assert_not_called()
+
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.time.sleep")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.makedirs")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.path.exists")
+    def test_exponential_backoff_on_retries(self, mock_exists, mock_makedirs, mock_sleep):
+        """Test that delay doubles on each retry (exponential backoff)"""
+        # Exists 3 times, then succeeds on 4th
+        mock_exists.side_effect = [True, True, True, False]
+
+        env = self._make_env()
+        env._create_working_dir(retries=3, delay=1)
+
+        # Sleep calls should show exponential backoff: 1, 2, 4
+        assert mock_sleep.call_count == 3
+        mock_sleep.assert_any_call(1)
+        mock_sleep.assert_any_call(2)
+        mock_sleep.assert_any_call(4)
+        assert mock_makedirs.call_count == 1
+
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.time.sleep")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.makedirs")
+    @patch("microbots.environment.local_docker.LocalDockerEnvironment.os.path.exists")
+    def test_logs_info_when_directory_already_exists(self, mock_exists, mock_makedirs, mock_sleep, caplog):
+        """Test that info is logged when directory already exists"""
+        mock_exists.side_effect = [True, False]
+
+        env = self._make_env()
+        with caplog.at_level(logging.INFO):
+            env._create_working_dir(retries=3, delay=2)
+
+        assert any("already exists" in record.message for record in caplog.records)

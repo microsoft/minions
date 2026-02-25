@@ -1,9 +1,9 @@
 from typing import Optional
 
-from microbots.constants import PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, BotRunResult
 from microbots.environment.Environment import Environment
-from microbots.tools.tool import Tool, parse_tool_definition, setup_tools
+from microbots.tools.tool import ToolAbstract
+from microbots.tools.tool_yaml_parser import parse_tool_definition
 
 
 BROWSER_USE_TOOL = parse_tool_definition("browser-use.yaml")
@@ -15,7 +15,7 @@ class BrowsingBot(MicroBot):
         self,
         model: str,
         environment: Optional[Environment] = None,
-        additional_tools: Optional[list[Tool]] = [],
+        additional_tools: Optional[list[ToolAbstract]] = [],
     ):
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT
@@ -32,7 +32,9 @@ class BrowsingBot(MicroBot):
         )
 
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:
-        setup_tools(self.environment, self.additional_tools)
+        for tool in self.additional_tools:
+            tool.setup_tool(self.environment)
+
         # browser-use will run inside the docker. So, single command to env should be sufficient
         browser_output = self.environment.execute(f"browser '{task}'", timeout=timeout_in_seconds)
         if browser_output.return_code != 0:

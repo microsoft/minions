@@ -1,5 +1,6 @@
 name: browser-use
 description: A command-line AI web browser
+tool_type: internal
 parameters:
   type: str
   description: The query to fetch information from the Internet.

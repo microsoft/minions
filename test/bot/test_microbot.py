@@ -4,8 +4,10 @@ https://github.com/SWE-agent/test-repo/issues/1.
 This test will create multiple custom bots - a reading bot, a writing bot using the base class.
 """
 
+import json
 import os
 from pathlib import Path
+from pprint import pformat
 import subprocess
 import sys
 from unittest.mock import patch, Mock
@@ -25,6 +27,7 @@ from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.extras.mount import Mount, MountType
 from microbots.environment.Environment import CmdReturn
 from microbots.llm.llm import llm_output_format_str, LLMAskResponse
+from microbots.tools.internal_tool import Tool
 
 
 SYSTEM_PROMPT = f"""
@@ -51,7 +54,6 @@ def no_mount_microBot():
     )
     yield bot
     del bot
-
 
 @pytest.mark.integration
 @pytest.mark.docker
@@ -82,6 +84,7 @@ class TestMicrobotIntegration:
         yield bot
         del bot
 
+
     @pytest.fixture(scope="function")
     def anthropic_microBot(self):
         anthropic_deployment = os.getenv('ANTHROPIC_DEPLOYMENT_NAME', 'claude-sonnet-4-5')
@@ -98,7 +101,9 @@ class TestMicrobotIntegration:
 
     @pytest.mark.ollama_local
     def test_microbot_ro_mount(self, ro_microBot, test_repo: Path):
+        logger.debug(f"Testing MicroBot with read-only mount. Mounted repo path: {test_repo}")
         assert test_repo is not None
+        assert os.path.exists(test_repo)
 
         result: CmdReturn = ro_microBot.environment.execute(f"cd {DOCKER_WORKING_DIR}/{test_repo.name} && ls -la", timeout=60)
         logger.info(f"Command Execution Result: \nstdout={result.stdout}, \nstderr={result.stderr}, \nreturn_code={result.return_code}")
@@ -478,7 +483,6 @@ class TestMicrobotUnit:
 
     def test_tool_usage_instructions_appended_to_system_prompt(self):
         """Test that tool usage instructions are appended to the system prompt when creating LLM."""
-        from microbots.tools.tool import Tool
 
         # Create a mock tool with usage instructions
         mock_tool = Tool(
@@ -517,7 +521,6 @@ class TestMicrobotUnit:
 
     def test_multiple_tool_usage_instructions_appended(self):
         """Test that multiple tool usage instructions are all appended to the system prompt."""
-        from microbots.tools.tool import Tool
 
         # Create multiple mock tools with usage instructions
         tool1 = Tool(
@@ -587,3 +590,414 @@ class TestMicrobotUnit:
             from microbots.llm.ollama_local import OllamaLocal
             assert isinstance(bot.llm, OllamaLocal)
             assert bot.llm.system_prompt == base_system_prompt
+
+    def test_run_json_output_with_content_key(self):
+        """Test anthropic-text-editor hack: JSON output with 'content' key is reformatted using pformat."""
+        json_content = {"content": ["line 1", "line 2"], "other_key": "data"}
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=json.dumps(json_content), stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # The output passed to LLM should be pformat of the "content" value
+        assert captured_output[0] == pformat(json_content["content"])
+
+    def test_run_json_output_without_content_key(self):
+        """Test anthropic-text-editor hack: JSON output without 'content' key preserves raw stdout."""
+        json_data = {"other": "data", "number": 42}
+        raw_stdout = json.dumps(json_data)
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=raw_stdout, stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # Without "content" key, raw stdout is preserved
+        assert captured_output[0] == raw_stdout
+
+    def test_run_non_json_output_json_decode_error(self):
+        """Test anthropic-text-editor hack: non-JSON stdout triggers JSONDecodeError, raw stdout kept."""
+        raw_stdout = "this is plain text, not JSON"
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=raw_stdout, stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # JSONDecodeError is caught silently, raw stdout preserved
+        assert captured_output[0] == raw_stdout
+
+    def test_run_json_parse_blanket_exception(self, caplog):
+        """Test anthropic-text-editor hack: blanket exception during JSON parsing logs warning and keeps raw stdout."""
+        raw_stdout = '{"content": "valid json"}'
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(
+            return_code=0, stdout=raw_stdout, stderr=""
+        )
+
+        with patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test prompt",
+                environment=mock_env,
+            )
+
+        call_count = [0]
+        captured_output = [None]
+
+        def mock_ask(message: str):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return LLMAskResponse(command="echo test", task_done=False, thoughts="running")
+            else:
+                captured_output[0] = message
+                return LLMAskResponse(command="", task_done=True, thoughts="done")
+
+        bot.llm.ask = mock_ask
+
+        caplog.set_level(logging.WARNING)
+        with patch('microbots.MicroBot.json.loads', side_effect=TypeError("test type error")):
+            result = bot.run("test task", max_iterations=5, timeout_in_seconds=60)
+
+        assert result.status is True
+        # Blanket exception caught, raw stdout preserved
+        assert captured_output[0] == raw_stdout
+        # Warning should be logged
+        assert "Failed to parse command output as JSON, using raw stdout" in caplog.text
+
+
+@pytest.mark.integration
+@pytest.mark.docker
+class TestMicrobotToolInstallation:
+    """Functional tests for MicroBot's tool installation capability."""
+
+    @pytest.fixture(scope="function")
+    def cscope_tool(self):
+        """Load the cscope tool from YAML definition."""
+        from microbots.tools.tool_yaml_parser import parse_tool_definition
+        return parse_tool_definition("cscope.yaml")
+
+    @pytest.fixture(scope="function")
+    def c_code_repo(self, tmpdir):
+        """Create a temporary C code repository for testing cscope."""
+        repo_path = tmpdir.mkdir("c_project")
+
+        # Create main.c
+        main_c = repo_path.join("main.c")
+        main_c.write("""
+#include <stdio.h>
+#include "utils.h"
+
+int main() {
+    int result = add_numbers(5, 3);
+    printf("Result: %d\\n", result);
+    return 0;
+}
+""")
+
+        # Create utils.h
+        utils_h = repo_path.join("utils.h")
+        utils_h.write("""
+#ifndef UTILS_H
+#define UTILS_H
+
+int add_numbers(int a, int b);
+int multiply_numbers(int a, int b);
+
+#endif
+""")
+
+        # Create utils.c
+        utils_c = repo_path.join("utils.c")
+        utils_c.write("""
+#include "utils.h"
+
+int add_numbers(int a, int b) {
+    return a + b;
+}
+
+int multiply_numbers(int a, int b) {
+    return a * b;
+}
+""")
+
+        yield Path(str(repo_path))
+
+        # Cleanup
+        if repo_path.exists():
+            subprocess.run(["rm", "-rf", str(repo_path)])
+
+    @pytest.mark.ollama_local
+    def test_cscope_tool_install_and_verify(self, cscope_tool, c_code_repo):
+        """Test that cscope tool can be installed and verified in MicroBot environment."""
+        from microbots.tools.internal_tool import Tool
+
+        assert cscope_tool is not None
+        assert isinstance(cscope_tool, Tool)
+        assert cscope_tool.name == "cscope"
+
+        # Create mount for the C code repository
+        c_repo_mount = Mount(
+            str(c_code_repo),
+            f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
+            PermissionLabels.READ_ONLY
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+
+        # Create MicroBot with cscope tool
+        bot = MicroBot(
+            model=f"ollama-local/{local_model}",
+            system_prompt="You are a helpful assistant.",
+            folder_to_mount=c_repo_mount,
+            additional_tools=[cscope_tool],
+        )
+
+        try:
+            # Verify cscope is installed by checking version
+            result = bot.environment.execute("cscope -V")
+            assert result.return_code == 0, f"cscope -V failed: {result.stderr}"
+            # cscope -V outputs to stderr, check either stdout or stderr
+            assert "cscope" in result.stdout.lower() or "cscope" in result.stderr.lower(), \
+                f"cscope version output not found. stdout: {result.stdout}, stderr: {result.stderr}"
+
+            logger.info("cscope installation verified successfully")
+        finally:
+            del bot
+
+    @pytest.mark.ollama_local
+    def test_cscope_tool_setup_and_usage(self, cscope_tool, c_code_repo):
+        """Test that cscope tool can be set up and used for code navigation."""
+        # Create mount for the C code repository
+        c_repo_mount = Mount(
+            str(c_code_repo),
+            f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
+            PermissionLabels.READ_ONLY
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen3:latest').replace(':latest', '')
+        bot = MicroBot(
+            model=f"ollama-local/{local_model}",
+            system_prompt="You are a helpful assistant.",
+            folder_to_mount=c_repo_mount,
+            additional_tools=[cscope_tool],
+        )
+
+        try:
+            # Setup the tool (this runs setup_commands which builds cscope database)
+            cscope_tool.setup_tool(bot.environment)
+
+            # Change to the mounted directory and verify cscope database was created
+            work_dir = f"{DOCKER_WORKING_DIR}/{c_code_repo.name}"
+            result = bot.environment.execute(f"cd {work_dir} && ls -la cscope.out")
+            assert result.return_code == 0, f"cscope.out not found: {result.stderr}"
+
+            # Test cscope query: Find definition of add_numbers function (-1 flag)
+            result = bot.environment.execute(f"cd {work_dir} && cscope -L -1 add_numbers")
+            assert result.return_code == 0, f"cscope query failed: {result.stderr}"
+            assert "add_numbers" in result.stdout, f"Function not found in cscope output: {result.stdout}"
+
+            # Test cscope query: Find functions calling add_numbers (-3 flag)
+            result = bot.environment.execute(f"cd {work_dir} && cscope -L -3 add_numbers")
+            assert result.return_code == 0, f"cscope caller query failed: {result.stderr}"
+            # add_numbers is called from main.c
+            assert "main" in result.stdout.lower(), f"Caller not found: {result.stdout}"
+
+            # Test cscope query: Find text string (-4 flag)
+            result = bot.environment.execute(f"cd {work_dir} && cscope -L -4 'return a + b'")
+            assert result.return_code == 0, f"cscope text search failed: {result.stderr}"
+            assert "utils.c" in result.stdout, f"Text not found in expected file: {result.stdout}"
+
+            logger.info("cscope tool usage verified successfully")
+        finally:
+            del bot
+
+    def test_tool_install_failure_raises_error(self):
+        """Test that tool installation failure raises appropriate error."""
+        from microbots.tools.internal_tool import Tool
+
+        # Create a tool with a failing install command
+        failing_tool = Tool(
+            name="failing_tool",
+            description="A tool that fails to install",
+            usage_instructions_to_llm="This tool will fail.",
+            install_commands=["apt-get install -y nonexistent-package-xyz123"],
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+        with pytest.raises(RuntimeError, match="Failed to install tool"):
+            MicroBot(
+                model=f"ollama-local/{local_model}",
+                system_prompt="You are a helpful assistant.",
+                additional_tools=[failing_tool],
+            )
+
+    def test_tool_verify_failure_raises_error(self):
+        """Test that tool verification failure raises appropriate error."""
+        from microbots.tools.internal_tool import Tool
+
+        # Create a tool that installs but fails verification
+        bad_verify_tool = Tool(
+            name="bad_verify_tool",
+            description="A tool that fails verification",
+            usage_instructions_to_llm="This tool verification will fail.",
+            install_commands=["echo 'installed'"],  # Installs successfully
+            verify_commands=["nonexistent_command_abc123"],  # Fails verification
+            env_variables=[],
+            files_to_copy=[],
+        )
+
+        local_model = os.getenv('LOCAL_MODEL_NAME', 'qwen2.5-coder:latest').replace(':latest', '')
+        with pytest.raises(RuntimeError, match="Failed to verify installation"):
+            MicroBot(
+                model=f"ollama-local/{local_model}",
+                system_prompt="You are a helpful assistant.",
+                additional_tools=[bad_verify_tool],
+            )
+
+    def test_tool_usage_instructions_in_system_prompt(self, cscope_tool):
+        """Test that tool usage instructions are appended to the bot's system prompt."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="cscope: version 15.9", stderr="")
+
+        base_prompt = "You are a code analysis assistant."
+
+        with patch.dict('os.environ', {'LOCAL_MODEL_NAME': 'test-model', 'LOCAL_MODEL_PORT': '11434'}), \
+             patch('microbots.llm.ollama_local.requests'):
+            bot = MicroBot(
+                model="ollama-local/test-model",
+                system_prompt=base_prompt,
+                additional_tools=[cscope_tool],
+                environment=mock_env,
+            )
+
+            # Verify the cscope usage instructions are in the system prompt
+            assert base_prompt in bot.llm.system_prompt
+            assert "cscope" in bot.llm.system_prompt.lower()
+            assert "-L" in bot.llm.system_prompt  # Non-interactive flag mentioned
+            assert "batch mode" in bot.llm.system_prompt.lower() or "non-interactive" in bot.llm.system_prompt.lower()
+
+    @pytest.mark.integration
+    @pytest.mark.docker
+    def test_llm_finds_symbols_using_cscope(self, cscope_tool, c_code_repo):
+        """End-to-end test: LLM uses cscope to find symbol definitions and callers in C code."""
+        c_repo_mount = Mount(
+            str(c_code_repo),
+            f"{DOCKER_WORKING_DIR}/{c_code_repo.name}",
+            PermissionLabels.READ_ONLY
+        )
+
+        cscope_system_prompt = f"""
+You are a C code analyst. You have a C project mounted at {DOCKER_WORKING_DIR}/{c_code_repo.name}.
+The cscope tool is installed and its database has been built for you.
+You MUST use cscope non-interactive batch mode commands (cscope -L <flag> <symbol>) to answer questions.
+Always cd to {DOCKER_WORKING_DIR}/{c_code_repo.name} before running cscope commands.
+Do not run interactive commands. Do not rebuild the database.
+
+{llm_output_format_str}
+
+You must send `task_done` as true only when you have found all the requested information.
+Put your final answer in the `thoughts` field. The answer MUST include:
+1. The file and function where `add_numbers` is defined
+2. Which function(s) call `add_numbers`
+"""
+
+        bot = MicroBot(
+            model = f"azure-openai/{os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'mini-swe-agent-gpt5')}",
+            system_prompt=cscope_system_prompt,
+            folder_to_mount=c_repo_mount,
+            additional_tools=[cscope_tool],
+        )
+
+        try:
+            response: BotRunResult = bot.run(
+                f"Using cscope, find: (1) where the function `add_numbers` is defined, and (2) which functions call `add_numbers`. "
+                f"The project is at {DOCKER_WORKING_DIR}/{c_code_repo.name}. Report your findings in the thoughts field.",
+                timeout_in_seconds=1200,
+                max_iterations=50,
+            )
+
+            logger.info(f"LLM cscope test - Status: {response.status}, Result: {response.result}, Error: {response.error}")
+
+            assert response.status, f"Task failed. Error: {response.error}"
+            assert response.error is None
+            assert response.result is not None
+
+            # The LLM should have found that add_numbers is defined in utils.c
+            # and called from main (in main.c)
+            result_lower = response.result.lower()
+            assert "utils.c" in result_lower or "utils" in result_lower, \
+                f"LLM should have found add_numbers defined in utils.c. Got: {response.result}"
+            assert "main" in result_lower, \
+                f"LLM should have found that main() calls add_numbers. Got: {response.result}"
+        finally:
+            del bot
