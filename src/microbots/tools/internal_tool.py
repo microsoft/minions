@@ -2,7 +2,7 @@ import logging
 import os
 from pydantic.dataclasses import dataclass, Field
 
-from microbots.tools.tool import TOOLTYPE, ToolAbstract
+from microbots.tools.tool import TOOLTYPE, ToolAbstract, EnvFileCopies
 from microbots.environment.Environment import Environment
 
 logger = logging.getLogger(" 🔧 InternalTool")
