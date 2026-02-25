@@ -53,6 +53,8 @@ class ToolAbstract(ABC):
     # This instructions should be non-interactive
     usage_instructions_to_llm: str
 
+    tool_type: TOOLTYPE
+
     # Files to be copied from the repo to the system / environment where the tool is being installed. This is useful for tools that require additional files to be installed.
     files_to_copy: Optional[List[EnvFileCopies]] = Field(default_factory=list)
 
@@ -61,9 +63,7 @@ class ToolAbstract(ABC):
     # while commands for external tools will be executed in the current environment (Host).
     # So, you should be careful about it as it is making changes to your system.
     # These commands will be executed in the order they are provided.
-    install_commands: List[str]
-
-    tool_type: TOOLTYPE
+    install_commands: Optional[List[str]] = Field(default_factory=list)
 
     # Optional parameters for the tool
     parameters: Optional[dict] = Field(default_factory=dict)

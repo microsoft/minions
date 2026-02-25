@@ -5,25 +5,22 @@ from typing import Optional
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
 from microbots.tools.tool import ToolAbstract
-from microbots.tools.tool_yaml_parser import parse_tool_definition
+from microbots.tools.tool_definitions.microbot_sub_agent import MicrobotSubAgent
 from microbots.extras.mount import Mount
 
 logger = logging.getLogger(__name__)
 
-# The sub_agent YAML ships with the package — resolve it once at import time.
-_SUB_AGENT_YAML = "sub_agent.yaml"
 
-
-class LeadBot(MicroBot):
+class AgentBoss(MicroBot):
     """A leadership bot that decomposes a complex task into subtasks
-    and delegates each one to a ``sub_agent`` running inside the sandbox.
+    and delegates each one to a ``microbot_sub`` agent running inside the sandbox.
 
     Workflow
     --------
     1. The user provides a high-level task.
-    2. LeadBot's system prompt instructs the LLM to break the task into
-       ordered subtasks and invoke ``sub_agent`` for each one.
-    3. Each ``sub_agent`` call spawns an autonomous ReadingBot or WritingBot
+    2. AgentBoss's system prompt instructs the LLM to break the task into
+       ordered subtasks and invoke ``microbot_sub`` for each one.
+    3. Each ``microbot_sub`` call spawns an autonomous MicroBot
        inside the same sandbox to solve a single subtask.
     4. After all subtasks are completed, the LLM synthesises the results
        into a final answer.
@@ -47,13 +44,13 @@ class LeadBot(MicroBot):
             Pre-created execution environment.  A ``LocalDockerEnvironment``
             is created automatically when *None*.
         additional_tools : Optional[list[ToolAbstract]]
-            Extra tools to install alongside the built-in ``sub_agent`` tool.
+            Extra tools to install alongside the built-in ``microbot_sub`` tool.
         """
         if additional_tools is None:
             additional_tools = []
 
-        # Always include the sub_agent external tool.
-        sub_agent_tool = parse_tool_definition(_SUB_AGENT_YAML)
+        # Always include the microbot_sub_agent external tool.
+        sub_agent_tool = MicrobotSubAgent()
         additional_tools = [sub_agent_tool] + additional_tools
 
         base_name = os.path.basename(folder_to_mount)
@@ -66,33 +63,34 @@ class LeadBot(MicroBot):
         system_prompt = f"""
 {system_prompt_common}
 
-You are a **Lead Bot** — a senior technical lead responsible for solving a complex task by breaking it down into smaller, focused subtasks and delegating each one to a sub-agent.
+You are an **Agent Boss** — a senior technical lead responsible for solving a complex task by breaking it down into smaller, focused subtasks and delegating each one to a sub-agent.
 
 ## Your environment
 - The repository is mounted at `{folder_mount_info.sandbox_path}`.
-- You have access to a `sub_agent` CLI tool inside this environment.
+- You have access to a `microbot_sub` tool inside this environment.
 
-## sub_agent usage
+## microbot_sub usage
 ```
-sub_agent --repo_path {folder_mount_info.sandbox_path} --permission <readonly|write> --task "<task description>"
+microbot_sub --task "<task description>" --iterations <max_iterations> --timeout <timeout_seconds>
 ```
 
-- Use `--permission readonly` for investigation / analysis tasks (e.g. finding root causes, reading code).
-- Use `--permission write` for modification tasks (e.g. fixing bugs, refactoring code).
-- Always provide a clear, self-contained `--task` description so that the sub-agent can work autonomously without extra context.
+- `--task` (required): A clear, self-contained description of the subtask so the sub-agent can work autonomously.
+- `--iterations` (optional, default 25): Maximum number of iterations for the sub-agent.
+- `--timeout` (optional, default 300): Timeout in seconds for the sub-agent.
 
 ## Your workflow
-1. **Analyse** the task carefully. Identify what information you need and what changes are required.
-2. **Decompose** the task into a numbered plan of subtasks (write them in your `thoughts`).
-3. **Execute** each subtask one at a time by invoking `sub_agent` with the appropriate permission and a detailed task description.
-4. After each sub_agent call, **review** its output before moving on. If a subtask failed, analyse the error and retry with a corrected task description.
-5. When **all subtasks are complete**, set `task_done` to true and provide a comprehensive summary of everything that was done and the final outcome in `thoughts`.
+1. **Gather** context and requirements from the task description and any relevant files in the repository.
+2. **Analyse** the task carefully. Identify what information you need and what changes are required.
+3. **Decompose** the task into a numbered plan of subtasks (write them in your `thoughts`).
+4. Linearly **Execute** each subtask one at a time by invoking `microbot_sub` with a detailed task description.
+5. After each `microbot_sub` call, **review** its output before moving on. If a subtask failed, analyse the error and retry with a corrected task description.
+6. When **all subtasks are complete**, set `task_done` to true and provide a comprehensive summary of everything that was done and the final outcome in `thoughts`.
 
 ## Important rules
-- Run only ONE `sub_agent` command at a time. Wait for the output before issuing the next one.
-- Never perform the actual work yourself (e.g. editing files directly). Always delegate to `sub_agent`.
-- Keep subtasks focused and small — each sub_agent should do one thing well.
-- Always pass the same repository path to all sub_agent calls. This ensures they are all working in the same environment and can build on each other's results.
+- Run only ONE `microbot_sub` command at a time. Wait for the output before issuing the next one.
+- Each `microbot_sub` call should be focused on a single, well-defined subtask. Avoid vague or multi-part instructions.
+- Don't use sub-agents to do menial work like reading a file content or simple git commands. Use them for substantial subtasks that require reasoning and multiple steps.
+- Keep subtasks focused and small — each sub-agent should do one thing well.
 """
 
         super().__init__(
@@ -128,7 +126,7 @@ sub_agent --repo_path {folder_mount_info.sandbox_path} --permission <readonly|wr
             The final status, result, and any error message.
         """
         lead_task_prompt = f"""
-You are the Lead Bot. Solve the following task by decomposing it into subtasks and delegating each one to a sub_agent.
+You are the Agent Boss. Solve the following task by decomposing it into subtasks and delegating each one to a microbot_sub agent.
 
 Task:
 {task}

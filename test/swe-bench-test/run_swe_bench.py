@@ -11,7 +11,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-from microbots import WritingBot
+from microbots import AgentBoss
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -83,7 +83,7 @@ def verify_fix():
 
 
 def run_agent(dataset):
-    myBot = WritingBot(
+    myBot = AgentBoss(
         model="anthropic/claude-opus-4-5",
         folder_to_mount=str(TEST_DIR / dataset['instance_id']),
     )
