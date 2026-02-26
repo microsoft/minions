@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microbots: Lightweight AI Agents for Safe and Controlled Code Automation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .slide {
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h3 {
+            color: #667eea;
+            font-size: 1.5em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .title-slide {
+            text-align: center;
+            padding: 80px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .title-slide h1 {
+            color: white;
+            border-bottom: none;
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        .subtitle {
+            font-size: 1.3em;
+            margin-top: 20px;
+            opacity: 0.9;
+        }
+        .emoji {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        ul {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+        .highlight {
+            background: #ffd700;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .feature-card h3 {
+            margin-top: 0;
+        }
+        .recommendation {
+            background: #e7f3ff;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .recommendation h3 {
+            color: #2196F3;
+            margin-top: 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            font-size: 0.9em;
+        }
+        .alternative-title {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #764ba2;
+        }
+        .target-audience {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Title Slide -->
+        <div class="slide title-slide">
+            <h1>🤖 Microbots</h1>
+            <div class="subtitle">Lightweight AI Agents for Safe and Controlled Code Automation</div>
+            <div class="subtitle" style="margin-top: 40px; font-size: 1.1em;">Conference Presentation Guide</div>
+        </div>
+
+        <!-- Slide 1: Recommended Title -->
+        <div class="slide">
+            <h1>🏆 Recommended Presentation Title</h1>
+            <div class="recommendation">
+                <h3>"Microbots: Lightweight AI Agents for Safe and Controlled Code Automation"</h3>
+                <p><strong>Why this works:</strong></p>
+                <ul>
+                    <li>Clearly identifies the technology (Microbots, AI Agents)</li>
+                    <li>Highlights key benefits (Lightweight, Safe, Controlled)</li>
+                    <li>Specifies the domain (Code Automation)</li>
+                    <li>Appeals to both technical and management audiences</li>
+                    <li>Appropriate length for conference programs (62 characters)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 2: Alternative Titles -->
+        <div class="slide">
+            <h1>📋 Alternative Title Options</h1>
+            
+            <h2>Security-Focused</h2>
+            <div class="alternative-title">
+                <strong>1.</strong> "Microbots: Containerized AI Agents with Least-Privilege Access for Code Comprehension"
+            </div>
+            <div class="alternative-title">
+                <strong>2.</strong> "Building Safe AI Code Agents: The Microbots Approach to Controlled Automation"
+            </div>
+            <div class="alternative-title">
+                <strong>3.</strong> "Taming LLMs for Code: How Microbots Provides Safe, Sandboxed AI Automation"
+            </div>
+
+            <h2>Developer-Focused</h2>
+            <div class="alternative-title">
+                <strong>4.</strong> "Microbots: Extensible AI Agents for Code Refactoring and Generation"
+            </div>
+            <div class="alternative-title">
+                <strong>5.</strong> "From Read-Only to Read-Write: Securing AI Agents with Microbots"
+            </div>
+            <div class="alternative-title">
+                <strong>6.</strong> "Automating Code Fixes and Refactoring with Microbots AI Agents"
+            </div>
+        </div>
+
+        <!-- Slide 3: More Alternative Titles -->
+        <div class="slide">
+            <h1>📋 More Alternative Titles</h1>
+            
+            <h2>Architecture-Focused</h2>
+            <div class="alternative-title">
+                <strong>7.</strong> "Designing Secure AI Agents: The Microbots Architecture"
+            </div>
+            <div class="alternative-title">
+                <strong>8.</strong> "Microbots: A Least-Privilege Framework for AI Code Automation"
+            </div>
+            <div class="alternative-title">
+                <strong>9.</strong> "Containerization Meets AI: Building Safe Code Agents with Microbots"
+            </div>
+
+            <h2>Use-Case Focused</h2>
+            <div class="alternative-title">
+                <strong>10.</strong> "Beyond Copilot: Autonomous Code Agents with Microbots"
+            </div>
+            <div class="alternative-title">
+                <strong>11.</strong> "Fixing Bugs Automatically: AI-Powered Code Agents with Microbots"
+            </div>
+            <div class="alternative-title">
+                <strong>12.</strong> "Microbots: Turning LLMs into Safe Code Automation Agents"
+            </div>
+        </div>
+
+        <!-- Slide 4: What are Microbots? -->
+        <div class="slide">
+            <h1>🤖 What are Microbots?</h1>
+            <p style="font-size: 1.2em;">Lightweight, extensible AI agents for code comprehension and controlled file edits</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🔒 Secure</h3>
+                    <p>Containerized execution with explicit permission controls</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🎯 Controlled</h3>
+                    <p>Read-only or read-write modes with least-privilege access</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔧 Extensible</h3>
+                    <p>Custom tools and LLM provider support</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🚀 Integration-Ready</h3>
+                    <p>Fits cleanly into automation pipelines</p>
+                </div>
+            </div>
+
+            <h3>Example Usage:</h3>
+            <div class="code-block">
+from microbots import WritingBot
+
+myBot = WritingBot(
+    model="azure-openai/my-gpt5",
+    folder_to_mount="myReactApp",
+)
+
+result = myBot.run("""when doing npm run build, I get an error.
+Fix the error and make sure the build is successful.""", 
+timeout_in_seconds=600)
+            </div>
+        </div>
+
+        <!-- Slide 5: Core Concepts -->
+        <div class="slide">
+            <h1>💡 Core Concepts</h1>
+            
+            <h2><span class="emoji">📖</span>ReadingBot</h2>
+            <ul>
+                <li>Safe code comprehension and analysis</li>
+                <li>Read-only access to mounted directories</li>
+                <li>Perfect for debugging and error explanation</li>
+            </ul>
+
+            <h2><span class="emoji">✍️</span>WritingBot</h2>
+            <ul>
+                <li>Controlled code modifications</li>
+                <li>Read-write access with proper permissions</li>
+                <li>Automated fixes and refactoring</li>
+            </ul>
+
+            <h2><span class="emoji">🔐</span>Permission Model</h2>
+            <ul>
+                <li>Explicit mount with READ_ONLY or READ_WRITE permissions</li>
+                <li>Containerized environment isolation</li>
+                <li>Least-privilege access by design</li>
+            </ul>
+        </div>
+
+        <!-- Slide 6: Presentation Structure -->
+        <div class="slide">
+            <h1>📊 Suggested Presentation Structure</h1>
+            
+            <h3>1. Introduction (3-5 minutes)</h3>
+            <ul>
+                <li>The rise of AI-assisted development</li>
+                <li>Challenges with unrestricted LLM access to codebases</li>
+                <li>Need for controlled, safe AI agents</li>
+            </ul>
+
+            <h3>2. What are Microbots? (5-7 minutes)</h3>
+            <ul>
+                <li>Overview of the framework</li>
+                <li>Key features and differentiators</li>
+                <li>Architecture highlights</li>
+            </ul>
+
+            <h3>3. Core Concepts (5-7 minutes)</h3>
+            <ul>
+                <li>ReadingBot vs WritingBot</li>
+                <li>Permission model deep dive</li>
+                <li>Tool extensibility framework</li>
+            </ul>
+
+            <h3>4. Use Cases & Demo (10-12 minutes)</h3>
+            <ul>
+                <li>Finding and explaining syntax errors</li>
+                <li>Automated code fixes</li>
+                <li>Build error resolution</li>
+                <li>Live demo or walkthrough</li>
+            </ul>
+        </div>
+
+        <!-- Slide 7: Presentation Structure (continued) -->
+        <div class="slide">
+            <h1>📊 Presentation Structure (cont.)</h1>
+            
+            <h3>5. Benefits & Value Proposition (3-5 minutes)</h3>
+            <ul>
+                <li>Enhanced security through isolation</li>
+                <li>Controlled AI access to sensitive codebases</li>
+                <li>Easy integration into existing workflows</li>
+                <li>Support for multiple LLM providers</li>
+            </ul>
+
+            <h3>6. Architecture Overview (5 minutes)</h3>
+            <ul>
+                <li>Containerization approach</li>
+                <li>Security boundaries</li>
+                <li>LLM integration patterns</li>
+                <li>Tool system design</li>
+            </ul>
+
+            <h3>7. Future & Community (3 minutes)</h3>
+            <ul>
+                <li>Current development status</li>
+                <li>Upcoming features</li>
+                <li>How to contribute</li>
+                <li>Q&A</li>
+            </ul>
+        </div>
+
+        <!-- Slide 8: Target Audiences -->
+        <div class="slide">
+            <h1>🎯 Target Audiences</h1>
+            
+            <h2>Primary Audiences</h2>
+            <div style="margin: 20px 0;">
+                <span class="target-audience">DevOps Engineers</span>
+                <span class="target-audience">Software Architects</span>
+                <span class="target-audience">Engineering Team Leads</span>
+                <span class="target-audience">AI/ML Engineers</span>
+            </div>
+
+            <h2>Secondary Audiences</h2>
+            <div style="margin: 20px 0;">
+                <span class="target-audience">Security Engineers</span>
+                <span class="target-audience">Platform Engineers</span>
+                <span class="target-audience">Developer Tool Builders</span>
+            </div>
+
+            <h2>Conference Track Suggestions</h2>
+            <ul>
+                <li>AI/Machine Learning</li>
+                <li>DevOps & Automation</li>
+                <li>Security & Privacy</li>
+                <li>Developer Tools & Productivity</li>
+                <li>Cloud Native Development</li>
+            </ul>
+        </div>
+
+        <!-- Slide 9: Key Takeaways -->
+        <div class="slide">
+            <h1>🎯 Key Takeaways</h1>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>1. Security First</h3>
+                    <p>Microbots provides safe AI code automation through containerization and permission controls</p>
+                </div>
+                <div class="feature-card">
+                    <h3>2. Flexibility</h3>
+                    <p>Support for multiple LLM providers and extensible tool system</p>
+                </div>
+                <div class="feature-card">
+                    <h3>3. Practical</h3>
+                    <p>Real-world use cases for debugging, refactoring, and code generation</p>
+                </div>
+                <div class="feature-card">
+                    <h3>4. Integration-Ready</h3>
+                    <p>Designed to fit into existing automation pipelines</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Title Selection Guidelines -->
+        <div class="slide">
+            <h1>📝 Title Selection Guidelines</h1>
+            
+            <p style="font-size: 1.1em; margin-bottom: 20px;">When choosing your final title, consider:</p>
+            
+            <ul style="font-size: 1.05em;">
+                <li><strong>Audience:</strong> Who will be attending? Developers, architects, security professionals, or executives?</li>
+                <li><strong>Conference theme:</strong> Does the event have specific tracks or themes to align with?</li>
+                <li><strong>Time allocation:</strong> Longer presentations can have more detailed titles</li>
+                <li><strong>Differentiation:</strong> What makes your talk unique compared to other AI/LLM talks?</li>
+            </ul>
+
+            <h2>Subtitle Options</h2>
+            <p>If your conference format allows subtitles:</p>
+            <div class="alternative-title">
+                <strong>Main:</strong> "Microbots: Lightweight AI Agents for Safe Code Automation"<br>
+                <strong>Subtitle:</strong> "Building Extensible, Containerized Agents with Least-Privilege Access"
+            </div>
+            <div class="alternative-title">
+                <strong>Main:</strong> "From LLMs to Safe Code Agents"<br>
+                <strong>Subtitle:</strong> "Introducing Microbots: A Framework for Controlled AI Automation"
+            </div>
+        </div>
+
+        <!-- Slide 11: Supporting Materials -->
+        <div class="slide">
+            <h1>📚 Supporting Materials</h1>
+            
+            <h3>Essential Resources:</h3>
+            <ul>
+                <li>GitHub repository: <span class="highlight">microsoft/minions</span></li>
+                <li>Live demos with sample repositories</li>
+                <li>Architecture diagrams</li>
+                <li>Code examples showing ReadingBot and WritingBot usage</li>
+                <li>Comparison with unrestricted LLM access</li>
+            </ul>
+
+            <h3>Demo Ideas:</h3>
+            <ul>
+                <li>Identify and fix a Python syntax error</li>
+                <li>Resolve a build error in a React application</li>
+                <li>Refactor code following best practices</li>
+                <li>Show the permission model in action</li>
+            </ul>
+
+            <h3>Visual Aids:</h3>
+            <ul>
+                <li>Architecture diagram showing containerization</li>
+                <li>Permission model flowchart</li>
+                <li>Before/after code comparisons</li>
+                <li>Security boundaries illustration</li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>🤖 Microbots: Lightweight AI Agents for Safe and Controlled Code Automation</p>
+            <p>GitHub: microsoft/minions</p>
+        </div>
+    </div>
+</body>
+</html>
