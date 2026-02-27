@@ -17,6 +17,7 @@ sys.path.insert(
 from microbots.tools.tool_yaml_parser import parse_tool_definition
 from microbots.tools.tool import TOOLTYPE
 from microbots.tools.internal_tool import Tool
+from microbots.tools.external_tool import ExternalTool
 
 
 @pytest.mark.unit
@@ -271,3 +272,19 @@ install_commands:
         # This tests that the function properly resolves relative paths
         tool = parse_tool_definition("cscope.yaml")
         assert tool is not None
+
+    def test_parse_external_tool_type(self, tmp_path):
+        """Test that tool_type 'external' returns an ExternalTool instance."""
+        yaml_content = """
+name: ext_tool
+tool_type: external
+description: An external test tool
+usage_instructions_to_llm: Use externally
+"""
+        yaml_file = tmp_path / "ext_tool.yaml"
+        yaml_file.write_text(yaml_content)
+
+        tool = parse_tool_definition(str(yaml_file))
+        assert isinstance(tool, ExternalTool)
+        assert tool.name == "ext_tool"
+        assert tool.tool_type == TOOLTYPE.EXTERNAL
