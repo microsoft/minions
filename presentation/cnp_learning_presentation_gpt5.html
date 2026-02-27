@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Microbots — Building Secure AI Automation Agents</title>
+	<style>
+		@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+		:root {
+			--slide-w: 1024px;
+			--slide-h: 768px;
+			--bg-dark: #0f172a;
+			--bg-card: #1e293b;
+			--bg-card-alt: #162032;
+			--accent: #38bdf8;
+			--accent2: #818cf8;
+			--accent3: #34d399;
+			--accent4: #fb923c;
+			--accent5: #f472b6;
+			--accent-sec: #22d3ee;
+			--shield-gold: #fbbf24;
+			--text: #e2e8f0;
+			--text-dim: #94a3b8;
+			--text-bright: #f8fafc;
+			--border: #334155;
+			--code-bg: #0d1520;
+		}
+
+		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+		body {
+			background: #090e1a;
+			font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+			color: var(--text);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding: 56px 0 40px;
+		}
+
+		/* Deck layout */
+		#deck {
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+			align-items: center;
+			width: 100%;
+		}
+
+		.slide {
+			width: var(--slide-w);
+			height: var(--slide-h);
+			background: var(--bg-dark);
+			position: relative;
+			overflow: hidden;
+			page-break-after: always;
+			page-break-inside: avoid;
+			flex-shrink: 0;
+			display: flex;
+			flex-direction: column;
+		}
+		.slide:last-child { page-break-after: auto; }
+
+		/* Slide Header */
+		.slide-header {
+			padding: 36px 56px 0;
+			flex-shrink: 0;
+		}
+		.slide-header h1 {
+			font-size: 32px;
+			font-weight: 800;
+			color: var(--text-bright);
+			letter-spacing: -0.5px;
+			line-height: 1.2;
+		}
+		.slide-header h1 .hl { color: var(--accent); }
+		.slide-header h1 .hl2 { color: var(--accent2); }
+		.slide-header h1 .hl3 { color: var(--accent3); }
+		.slide-header .subtitle {
+			font-size: 15px;
+			color: var(--text-dim);
+			margin-top: 6px;
+			font-weight: 400;
+		}
+		.slide-header .divider {
+			height: 3px;
+			background: linear-gradient(90deg, var(--accent-sec), var(--accent), var(--accent2), transparent);
+			margin-top: 16px;
+			border-radius: 2px;
+		}
+
+		/* Slide Body */
+		.slide-body {
+			flex: 1;
+			padding: 24px 56px 32px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			overflow: hidden;
+		}
+
+		/* Footer */
+		.slide-footer {
+			height: 36px;
+			padding: 0 56px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: 11px;
+			color: var(--text-dim);
+			border-top: 1px solid var(--border);
+			flex-shrink: 0;
+			background: rgba(15,23,42,0.8);
+		}
+		.slide-footer .logo-text {
+			font-weight: 700;
+			color: var(--accent-sec);
+			font-size: 12px;
+		}
+
+		/* Cards */
+		.card {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			padding: 18px 22px;
+		}
+		.card-sm {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			padding: 14px 18px;
+		}
+		.card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text-bright); }
+		.card p, .card-sm p { font-size: 13px; line-height: 1.55; color: var(--text); }
+
+		/* Grid layouts */
+		.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+		.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+		.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+		/* Code blocks */
+		pre {
+			background: var(--code-bg);
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			padding: 14px 18px;
+			font-family: 'JetBrains Mono', monospace;
+			font-size: 12px;
+			line-height: 1.55;
+			color: #c9d1d9;
+			overflow: hidden;
+			white-space: pre;
+		}
+		pre.wrap { white-space: pre-wrap; overflow: auto; }
+		pre .kw { color: #ff7b72; }
+		pre .str { color: #a5d6ff; }
+		pre .fn { color: #d2a8ff; }
+		pre .cm { color: #8b949e; }
+		pre .cls { color: #79c0ff; }
+		pre .num { color: #79c0ff; }
+		pre .op { color: #ff7b72; }
+		pre .param { color: #ffa657; }
+		pre .type { color: #7ee787; }
+		pre .dec { color: #d2a8ff; }
+
+		/* Tags / Badges */
+		.tag {
+			display: inline-block;
+			padding: 3px 10px;
+			border-radius: 20px;
+			font-size: 11px;
+			font-weight: 600;
+			letter-spacing: 0.3px;
+		}
+		.tag-blue { background: rgba(56,189,248,0.15); color: var(--accent); border: 1px solid rgba(56,189,248,0.3); }
+		.tag-purple { background: rgba(129,140,248,0.15); color: var(--accent2); border: 1px solid rgba(129,140,248,0.3); }
+		.tag-green { background: rgba(52,211,153,0.15); color: var(--accent3); border: 1px solid rgba(52,211,153,0.3); }
+		.tag-orange { background: rgba(251,146,60,0.15); color: var(--accent4); border: 1px solid rgba(251,146,60,0.3); }
+		.tag-pink { background: rgba(244,114,182,0.15); color: var(--accent5); border: 1px solid rgba(244,114,182,0.3); }
+		.tag-cyan { background: rgba(34,211,238,0.15); color: var(--accent-sec); border: 1px solid rgba(34,211,238,0.3); }
+		.tag-gold { background: rgba(251,191,36,0.15); color: var(--shield-gold); border: 1px solid rgba(251,191,36,0.3); }
+
+		/* Bullet lists */
+		ul.bullets { list-style: none; padding: 0; }
+		ul.bullets li {
+			font-size: 14px;
+			line-height: 1.6;
+			padding-left: 22px;
+			position: relative;
+			margin-bottom: 6px;
+		}
+		ul.bullets li::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 8px;
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			background: var(--accent);
+		}
+		ul.bullets.green li::before { background: var(--accent3); }
+		ul.bullets.purple li::before { background: var(--accent2); }
+		ul.bullets.orange li::before { background: var(--accent4); }
+
+		/* Title slide */
+		.title-slide {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
+			background: linear-gradient(135deg, #0a0f1e 0%, #111832 30%, #0d1a2d 60%, #0a0f1e 100%);
+		}
+		.title-slide .glow {
+			position: absolute;
+			width: 600px;
+			height: 600px;
+			border-radius: 50%;
+			background: radial-gradient(circle, rgba(34,211,238,0.07) 0%, rgba(56,189,248,0.04) 40%, transparent 70%);
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			pointer-events: none;
+		}
+		.title-slide .glow-sec {
+			position: absolute;
+			width: 300px;
+			height: 300px;
+			border-radius: 50%;
+			background: radial-gradient(circle, rgba(251,191,36,0.06) 0%, transparent 70%);
+			top: 28%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			pointer-events: none;
+		}
+		.title-slide .shield-logo { position: relative; width: 110px; height: 130px; margin-bottom: 16px; }
+		.title-slide h1 {
+			font-size: 62px;
+			font-weight: 900;
+			color: var(--text-bright);
+			letter-spacing: -1.4px;
+		}
+		.title-slide h2 {
+			font-size: 18px;
+			color: var(--text);
+			max-width: 800px;
+			margin-top: 8px;
+			line-height: 1.4;
+			font-weight: 500;
+		}
+		.title-slide .tags {
+			margin-top: 18px;
+			display: flex;
+			gap: 10px;
+			justify-content: center;
+			flex-wrap: wrap;
+		}
+		.title-slide .version {
+			margin-top: 18px;
+			font-size: 12px;
+			color: var(--text-dim);
+		}
+
+		/* Section slide */
+		.section-slide {
+			justify-content: center;
+			align-items: center;
+			text-align: center;
+			background: radial-gradient(circle at 30% 20%, rgba(34,211,238,0.07) 0%, transparent 55%),
+									radial-gradient(circle at 70% 60%, rgba(129,140,248,0.08) 0%, transparent 60%),
+									linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0a0f1e 100%);
+		}
+		.section-slide .section-num {
+			position: absolute;
+			top: 46px;
+			left: 56px;
+			font-size: 16px;
+			letter-spacing: 2px;
+			color: var(--text-dim);
+			font-weight: 800;
+			opacity: 0.7;
+		}
+		.section-slide h1 {
+			font-size: 54px;
+			font-weight: 900;
+			color: var(--text-bright);
+			letter-spacing: -1px;
+			line-height: 1.0;
+		}
+		.section-slide p {
+			margin-top: 12px;
+			font-size: 16px;
+			color: var(--text-dim);
+			max-width: 760px;
+			line-height: 1.5;
+		}
+
+		/* Mini components */
+		.kv { display:flex; justify-content:space-between; gap:14px; margin-top:8px; }
+		.kv .k { font-size:12px; font-weight:700; color: var(--accent); min-width: 140px; }
+		.kv .v { font-size:12px; color: var(--text); flex: 1; }
+
+		/* Tiny utility helpers (used in slide content) */
+		.text-accent { color: var(--accent); }
+		.text-accent2 { color: var(--accent2); }
+		.text-accent3 { color: var(--accent3); }
+		.text-accent4 { color: var(--accent4); }
+		.text-accent5 { color: var(--accent5); }
+		.text-sec { color: var(--accent-sec); }
+		.text-gold { color: var(--shield-gold); }
+
+		.mt-4 { margin-top: 4px; }
+		.mt-8 { margin-top: 8px; }
+		.mt-12 { margin-top: 12px; }
+
+		.flow { display:flex; align-items:center; gap:0; justify-content:center; }
+		.flow-box {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			padding: 14px 20px;
+			text-align: center;
+			min-width: 130px;
+		}
+		.flow-box .icon { font-size: 26px; margin-bottom: 6px; }
+		.flow-box .label { font-size: 12px; font-weight: 600; color: var(--text-bright); }
+		.flow-box .desc { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+		.flow-arrow { font-size: 22px; color: var(--accent); padding: 0 6px; flex-shrink: 0; }
+		.flow-box.highlight { border-color: var(--accent); box-shadow: 0 0 20px rgba(56,189,248,0.15); }
+
+		/* Interactive UI */
+		#toolbar {
+			position: fixed;
+			top: 10px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: min(1080px, calc(100vw - 24px));
+			padding: 10px 12px;
+			border: 1px solid rgba(51,65,85,0.8);
+			border-radius: 10px;
+			background: rgba(15,23,42,0.82);
+			backdrop-filter: blur(8px);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			z-index: 20;
+		}
+		#toolbar .left, #toolbar .right { display:flex; gap:10px; align-items:center; }
+		.btn {
+			border: 1px solid rgba(51,65,85,0.9);
+			background: rgba(30,41,59,0.7);
+			color: var(--text);
+			font-size: 12px;
+			padding: 7px 10px;
+			border-radius: 9px;
+			cursor: pointer;
+			user-select: none;
+		}
+		.btn:hover { border-color: rgba(56,189,248,0.5); }
+		.btn.primary { border-color: rgba(34,211,238,0.55); color: var(--accent-sec); }
+		.btn.good { border-color: rgba(52,211,153,0.55); color: var(--accent3); }
+		.btn.warn { border-color: rgba(251,146,60,0.55); color: var(--accent4); }
+		.kbd {
+			font-family: 'JetBrains Mono', monospace;
+			font-size: 11px;
+			color: var(--text-dim);
+		}
+		#progressWrap {
+			width: 220px;
+			height: 8px;
+			border-radius: 999px;
+			background: rgba(51,65,85,0.5);
+			border: 1px solid rgba(51,65,85,0.9);
+			overflow: hidden;
+		}
+		#progressBar {
+			height: 100%;
+			width: 0%;
+			background: linear-gradient(90deg, rgba(34,211,238,0.9), rgba(56,189,248,0.85), rgba(129,140,248,0.85));
+		}
+		.muted { color: var(--text-dim); }
+
+		details {
+			background: rgba(30,41,59,0.55);
+			border: 1px solid rgba(51,65,85,0.8);
+			border-radius: 10px;
+			padding: 10px 12px;
+		}
+		details > summary {
+			cursor: pointer;
+			font-weight: 700;
+			color: var(--text-bright);
+			font-size: 13px;
+			outline: none;
+		}
+		details .details-body { margin-top: 10px; }
+
+		.pick-grid { display:grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+		.pick {
+			border: 1px solid rgba(51,65,85,0.9);
+			background: rgba(30,41,59,0.6);
+			border-radius: 10px;
+			padding: 10px 10px;
+			cursor: pointer;
+			min-height: 74px;
+			display:flex;
+			flex-direction: column;
+			justify-content: center;
+			gap: 4px;
+		}
+		.pick .t { font-size: 12px; font-weight: 800; color: var(--text-bright); }
+		.pick .d { font-size: 10.5px; color: var(--text-dim); line-height: 1.35; }
+		.pick.active { border-color: rgba(56,189,248,0.65); box-shadow: 0 0 16px rgba(56,189,248,0.10); }
+
+		.quiz {
+			display:flex;
+			gap: 12px;
+			align-items: stretch;
+		}
+		.quiz .q {
+			flex: 1;
+			background: rgba(30,41,59,0.6);
+			border: 1px solid rgba(51,65,85,0.9);
+			border-radius: 10px;
+			padding: 12px 14px;
+		}
+		.quiz .q h4 { font-size: 13px; margin-bottom: 8px; color: var(--text-bright); }
+		.quiz .q .opt { display:flex; gap:10px; margin: 6px 0; font-size: 12px; color: var(--text); }
+		.quiz .q input { margin-top: 2px; }
+		.quiz .a {
+			width: 320px;
+			background: rgba(15,23,42,0.6);
+			border: 1px solid rgba(51,65,85,0.9);
+			border-radius: 10px;
+			padding: 12px 14px;
+		}
+		.quiz .a .result { font-size: 12px; color: var(--text); line-height: 1.5; }
+		.quiz .a .result strong { color: var(--accent3); }
+
+		/* Print mode */
+		@media print {
+			body { background: #fff; padding: 0; }
+			#toolbar { display: none !important; }
+			#deck { gap: 0; }
+			.slide { box-shadow: none; border: 0; }
+		}
+	</style>
+</head>
+<body>
+
+	<div id="toolbar" aria-hidden="false">
+		<div class="left">
+			<button class="btn primary" id="btnPrev" title="Previous slide (←)">← Prev</button>
+			<button class="btn primary" id="btnNext" title="Next slide (→)">Next →</button>
+			<button class="btn" id="btnOverview" title="Toggle overview (O)">Overview</button>
+			<button class="btn" id="btnPrint" title="Open printable view">Print</button>
+			<span class="kbd">Keys: <span class="muted">←/→</span>, <span class="muted">O</span>, <span class="muted">G</span></span>
+		</div>
+		<div class="right">
+			<div id="progressWrap" title="Slide progress"><div id="progressBar"></div></div>
+			<div class="kbd"><span id="slidePos">1</span> / <span id="slideTotal">?</span></div>
+			<button class="btn good" id="btnCopySlide" title="Copy current slide title">Copy title</button>
+		</div>
+	</div>
+
+	<div id="deck">
+
+		<!-- Slide 1: Title -->
+		<div class="slide title-slide" data-title="Microbots">
+			<div class="glow"></div>
+			<div class="glow-sec"></div>
+			<div class="shield-logo">
+				<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+					<defs>
+						<linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+							<stop offset="0%" style="stop-color:#22d3ee;stop-opacity:0.9" />
+							<stop offset="50%" style="stop-color:#38bdf8;stop-opacity:0.8" />
+							<stop offset="100%" style="stop-color:#818cf8;stop-opacity:0.9" />
+						</linearGradient>
+						<linearGradient id="shieldInner" x1="0%" y1="0%" x2="100%" y2="100%">
+							<stop offset="0%" style="stop-color:#0f172a;stop-opacity:0.95" />
+							<stop offset="100%" style="stop-color:#1e293b;stop-opacity:0.9" />
+						</linearGradient>
+					</defs>
+					<path d="M50 4 L92 22 L92 58 Q92 90 50 114 Q8 90 8 58 L8 22 Z" fill="url(#shieldGrad)" stroke="rgba(34,211,238,0.6)" stroke-width="1.5"/>
+					<path d="M50 12 L84 27 L84 56 Q84 84 50 106 Q16 84 16 56 L16 27 Z" fill="url(#shieldInner)"/>
+					<circle cx="50" cy="54" r="18" fill="none" stroke="#22d3ee" stroke-width="1.5" opacity="0.6"/>
+					<circle cx="50" cy="54" r="10" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.8"/>
+					<circle cx="50" cy="54" r="3.5" fill="#22d3ee" opacity="0.9"/>
+					<line x1="50" y1="36" x2="50" y2="44" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+					<line x1="50" y1="64" x2="50" y2="72" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+					<line x1="32" y1="54" x2="40" y2="54" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+					<line x1="60" y1="54" x2="68" y2="54" stroke="#22d3ee" stroke-width="1.2" opacity="0.7"/>
+					<path d="M42 82 L48 88 L60 76" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+				</svg>
+			</div>
+			<h1>Micro<span style="color:var(--accent-sec)">bots</span></h1>
+			<h2>Turning LLMs into <span style="color:var(--accent)">secure automation agents</span> — with sandboxing, tool plugins, and context management</h2>
+			<div class="tags">
+				<span class="tag tag-cyan">Sandboxed</span>
+				<span class="tag tag-blue">Agent Framework</span>
+				<span class="tag tag-green">Least-Privilege</span>
+				<span class="tag tag-purple">Multi-LLM</span>
+				<span class="tag tag-orange">Tool Plugins</span>
+				<span class="tag tag-gold">Context Mgmt</span>
+			</div>
+			<div class="version">
+				<span class="muted">Repo context:</span> <span style="color:var(--accent-sec)">src/microbots/</span> &nbsp;•&nbsp; <span class="muted">Date:</span> Feb 26, 2026
+			</div>
+		</div>
+
+		<!-- Slide 2: How to use this deck -->
+		<div class="slide" data-title="How to Use">
+			<div class="slide-header">
+				<h1>How to use this <span class="hl">interactive</span> deck</h1>
+				<p class="subtitle">It’s an HTML presentation: navigate, jump, expand details, and run mini demos</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-left:4px solid var(--accent-sec);">
+						<h3 style="color:var(--accent-sec)">Navigation</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li><strong>← / →</strong> move slide-by-slide</li>
+							<li><strong>O</strong> toggles overview (all slides)</li>
+							<li><strong>G</strong> opens “go to slide” prompt</li>
+							<li><strong>Print</strong> opens a printable view (all slides visible)</li>
+						</ul>
+						<p class="mt-12" style="font-size:12px; color:var(--text-dim)">Tip: many slides have <strong>expanders</strong> with extra code and examples.</p>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">What you’ll get (45 minutes)</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li>The problem: Copilot is easy, automation isn’t</li>
+							<li>Microbots architecture (agent → 5 components)</li>
+							<li>Concrete code references from this repo</li>
+							<li>Design patterns for secure tools + sandboxing</li>
+							<li>Context management: compaction, memory, decomposition</li>
+						</ul>
+					</div>
+				</div>
+				<div class="card-sm" style="background:rgba(56,189,248,0.05); border-color:rgba(56,189,248,0.2); text-align:center;">
+					<p style="font-size:12px;">This deck is written to match the Microbots code in <strong>src/microbots/</strong> — code snippets are representative, and slide footers help you keep time.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 3: Agenda -->
+		<div class="slide" data-title="Agenda">
+			<div class="slide-header">
+				<h1>Agenda</h1>
+				<p class="subtitle">From problem → architecture → components → patterns → end-to-end example</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card">
+						<h3 style="color:var(--accent)">Part I — Why Microbots?</h3>
+						<ul class="bullets" style="margin-top:8px;">
+							<li>Problem statement (Copilot vs Automation)</li>
+							<li>Where duplication comes from</li>
+							<li>Microbots framing and goals</li>
+						</ul>
+					</div>
+					<div class="card">
+						<h3 style="color:var(--accent2)">Part II — The 5 components</h3>
+						<ul class="bullets purple" style="margin-top:8px;">
+							<li>LLM (outside the agent)</li>
+							<li>Prompts (system + task)</li>
+							<li>Tools (built-in + special)</li>
+							<li>Environment (sandbox & safety)</li>
+							<li>Context management (memory, compaction, sub-tasks)</li>
+						</ul>
+					</div>
+				</div>
+				<div class="card-sm" style="display:flex; justify-content:space-between; align-items:center;">
+					<div>
+						<div style="font-size:13px; font-weight:800; color:var(--text-bright);">Interactive Table of Contents</div>
+						<div style="font-size:12px; color:var(--text-dim); margin-top:3px;">Click to jump to section slides</div>
+					</div>
+					<div style="display:flex; gap:10px;">
+						<button class="btn" data-jump="4">Jump: Problem</button>
+						<button class="btn" data-jump="8">Jump: Architecture</button>
+						<button class="btn" data-jump="12">Jump: LLM</button>
+						<button class="btn" data-jump="18">Jump: Tools</button>
+						<button class="btn" data-jump="26">Jump: Context</button>
+					</div>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 4: Problem statement -->
+		<div class="slide" data-title="Problem Statement">
+			<div class="slide-header">
+				<h1>The <span class="hl">problem</span> statement</h1>
+				<p class="subtitle">Using AI in VS Code / GitHub is intuitive — integrating AI with automation wasn’t</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">What’s easy (developer UX)</h3>
+						<ul class="bullets green" style="margin-top:8px;">
+							<li>Ask Copilot in VS Code and get help immediately</li>
+							<li>Tag AI in GitHub PRs for review or suggestions</li>
+							<li>Feedback loop is tight: you control files + commands</li>
+						</ul>
+						<div class="card-sm" style="margin-top:12px; background:rgba(52,211,153,0.05); border-color:rgba(52,211,153,0.2);">
+							<p style="font-size:12px;"><strong>Key property:</strong> the IDE/PR UI already provides guardrails (scoped files, human in the loop).</p>
+						</div>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent4);">
+						<h3 style="color:var(--accent4)">What’s hard (automation)</h3>
+						<ul class="bullets orange" style="margin-top:8px;">
+							<li>Every integration needs safe execution + permission boundaries</li>
+							<li>Tooling differs per use case (bug fix vs log analysis vs triage)</li>
+							<li>Without careful design, an LLM can explode output or run risky commands</li>
+							<li>Long tasks hit context limits and drift without memory/compaction</li>
+						</ul>
+						<div class="card-sm" style="margin-top:12px; background:rgba(251,146,60,0.05); border-color:rgba(251,146,60,0.2);">
+							<p style="font-size:12px;"><strong>Observed reality:</strong> integrating AI with automation is more “systems engineering” than prompt-writing.</p>
+						</div>
+					</div>
+				</div>
+				<div class="card-sm" style="text-align:center;">
+					<p style="font-size:13px;"><strong class="text-accent">Pattern we kept repeating:</strong> only the <strong>prompt</strong> + a few <strong>special tools</strong> change — but we kept rebuilding the rest (loop, sandbox, safety, context) for each AI integration.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 5: Duplication map -->
+		<div class="slide" data-title="Duplication">
+			<div class="slide-header">
+				<h1>Where duplication happens</h1>
+				<p class="subtitle">In automation, prompts are the easy part — orchestration is the hard part</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="card" style="padding:16px 20px;">
+					<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+						<span class="tag tag-green">Varies per workflow</span>
+						<span class="tag tag-blue">Reusable foundation</span>
+						<span class="tag tag-orange">Risk if rebuilt ad-hoc</span>
+					</div>
+					<div class="grid-2" style="margin-top:12px; gap:16px;">
+						<div class="card-sm" style="border-left:4px solid var(--accent3);">
+							<h3 style="font-size:13px; color:var(--accent3);">Mostly changes per use case</h3>
+							<ul class="bullets green" style="margin-top:8px; font-size:12.5px;">
+								<li>Task prompt (what exactly we want)</li>
+								<li>Special tools (gdb, cscope, domain CLIs)</li>
+								<li>Mount selection (repo, logs, artifacts)</li>
+							</ul>
+						</div>
+						<div class="card-sm" style="border-left:4px solid var(--accent);">
+							<h3 style="font-size:13px; color:var(--accent);">Should be shared foundation</h3>
+							<ul class="bullets" style="margin-top:8px; font-size:12.5px;">
+								<li>Agent loop (reason → act → observe)</li>
+								<li>Sandboxing + least privilege</li>
+								<li>Command validation + output control</li>
+								<li>Context management (compaction, memory)</li>
+								<li>Logging & auditability</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+
+				<div class="quiz">
+					<div class="q">
+						<h4>Quick poll (interactive): what tends to change the most?</h4>
+						<label class="opt"><input type="radio" name="poll1" value="prompt" /> Prompt text</label>
+						<label class="opt"><input type="radio" name="poll1" value="tools" /> Tooling & environment setup</label>
+						<label class="opt"><input type="radio" name="poll1" value="loop" /> Agent loop + safety</label>
+						<label class="opt"><input type="radio" name="poll1" value="all" /> All of the above</label>
+					</div>
+					<div class="a">
+						<div class="result" id="poll1Result">Pick an option to see the takeaway.</div>
+					</div>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 6: Microbots in one sentence -->
+		<div class="slide" data-title="Microbots One-liner">
+			<div class="slide-header">
+				<h1>So what is <span class="hl">Microbots</span>?</h1>
+				<p class="subtitle">A reusable foundation for building secure automation agents</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="justify-content:center; gap:18px;">
+				<div class="card" style="text-align:center; padding:22px 28px;">
+					<p style="font-size:18px; line-height:1.55;">
+						<strong class="text-sec">Microbots</strong> turns an LLM into an automation agent by providing:
+						<span class="text-accent">a strict action schema</span>,
+						<span class="text-accent3">a sandboxed environment</span>,
+						<span class="text-accent2">pluggable tools</span>,
+						and <span class="text-gold">context management</span>.
+					</p>
+					<p style="margin-top:10px; font-size:13px; color:var(--text-dim);">In this repo: the core loop lives in <span style="color:var(--accent-sec)">src/microbots/MicroBot.py</span>.</p>
+				</div>
+				<div class="flow">
+					<div class="flow-box"><div class="icon">🧠</div><div class="label">LLM</div><div class="desc">Plans actions</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box highlight"><div class="icon">🤖</div><div class="label">MicroBot</div><div class="desc">Orchestrates safely</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box"><div class="icon">🐳</div><div class="label">Sandbox</div><div class="desc">Executes commands</div></div>
+				</div>
+				<div class="card-sm" style="text-align:center; background:rgba(34,211,238,0.05); border-color:rgba(34,211,238,0.2);">
+					<p style="font-size:12px;"><strong class="text-sec">Design goal:</strong> When you build a new agent workflow, you mostly change the <strong>task prompt</strong> and maybe add a <strong>tool YAML</strong> — not the framework.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 7: Break down an agent into 5 components (section) -->
+		<div class="slide section-slide" data-title="5 Components">
+			<div class="section-num">I</div>
+			<h1>Any AI agent = <span style="color:var(--accent)">5 components</span></h1>
+			<p>Microbots makes the boundaries explicit so each component is testable, replaceable, and safe.</p>
+		</div>
+
+		<!-- Slide 8: 5 components interactive -->
+		<div class="slide" data-title="Component Breakdown">
+			<div class="slide-header">
+				<h1>Agent architecture: the <span class="hl">5</span> building blocks</h1>
+				<p class="subtitle">Click each component to see how Microbots implements it</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="pick-grid" id="componentPicker">
+					<div class="pick active" data-comp="llm">
+						<div class="t">1) LLM</div>
+						<div class="d">Outside the agent, acts as the “brain”</div>
+					</div>
+					<div class="pick" data-comp="prompts">
+						<div class="t">2) Prompts</div>
+						<div class="d">System prompt + task prompt</div>
+					</div>
+					<div class="pick" data-comp="tools">
+						<div class="t">3) Tools</div>
+						<div class="d">Shell commands + special CLIs</div>
+					</div>
+					<div class="pick" data-comp="env">
+						<div class="t">4) Environment</div>
+						<div class="d">Sandbox + permissions + execution</div>
+					</div>
+					<div class="pick" data-comp="context">
+						<div class="t">5) Context</div>
+						<div class="d">Memory, compaction, decomposition</div>
+					</div>
+				</div>
+
+				<div class="card" id="componentPanel" style="flex:1; display:flex; flex-direction:column; gap:12px;">
+					<div style="display:flex; justify-content:space-between; align-items:center;">
+						<div>
+							<div style="font-weight:900; font-size:16px; color:var(--text-bright);" id="compTitle">LLM</div>
+							<div style="font-size:12px; color:var(--text-dim); margin-top:2px;" id="compSubtitle">Microbots treats the LLM as a dependency: provider adapters implement a common interface.</div>
+						</div>
+						<div style="display:flex; gap:8px; flex-wrap:wrap;">
+							<span class="tag tag-purple" id="compTag1">Provider adapters</span>
+							<span class="tag tag-blue" id="compTag2">JSON schema</span>
+						</div>
+					</div>
+					<div class="grid-2" style="gap:14px;">
+						<div class="card-sm" style="border-left:4px solid var(--accent2);">
+							<h3 style="font-size:13px; color:var(--accent2);">Microbots location</h3>
+							<p style="font-size:12px;">LLM abstractions live in <strong>src/microbots/llm/</strong> and are wired in <strong>src/microbots/MicroBot.py</strong> (<code>_create_llm</code>).</p>
+							<div class="kv"><span class="k">LLM interface</span><span class="v"><code>LLMInterface</code> + <code>ask()</code></span></div>
+							<div class="kv"><span class="k">Providers</span><span class="v"><code>OpenAIApi</code>, <code>AnthropicApi</code>, <code>OllamaLocal</code></span></div>
+						</div>
+						<div class="card-sm" style="border-left:4px solid var(--accent);">
+							<h3 style="font-size:13px; color:var(--accent);">Why this boundary matters</h3>
+							<ul class="bullets" style="margin-top:8px; font-size:12px;">
+								<li>Swap models without changing the agent loop</li>
+								<li>Enforce strict action schema (JSON) for safety</li>
+								<li>Make retries/validation a shared concern</li>
+								<li>Keep secrets (API keys) out of prompts and logs</li>
+							</ul>
+						</div>
+					</div>
+					<details>
+						<summary>Show: Microbots “LLM action schema” (from code)</summary>
+						<div class="details-body">
+							<pre class="wrap" style="font-size:11px;"># src/microbots/llm/llm.py
+llm_output_format_str = """
+{
+		\"task_done\": &lt;bool&gt;,  // Indicates if the task is completed
+		\"thoughts\": &lt;str&gt;,     // The reasoning behind the decision
+		\"command\": &lt;str&gt;     // The command to be executed
+}
+"""</pre>
+						</div>
+					</details>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 9: Architecture overview (three layers) -->
+		<div class="slide" data-title="Architecture Overview">
+			<div class="slide-header">
+				<h1>Microbots <span class="hl">architecture</span> at a glance</h1>
+				<p class="subtitle">LLM (outside) → MicroBot (orchestrator) → Environment (sandbox)</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="justify-content:center; gap:20px;">
+				<div class="flow">
+					<div class="flow-box" style="min-width:170px; border-color:rgba(129,140,248,0.35);">
+						<div class="icon">🧠</div>
+						<div class="label">LLM Layer</div>
+						<div class="desc">Provider adapters</div>
+					</div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box highlight" style="min-width:190px;">
+						<div class="icon">🤖</div>
+						<div class="label">MicroBot Layer</div>
+						<div class="desc">Loop + safety + tools</div>
+					</div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box" style="min-width:190px; border-color:rgba(52,211,153,0.35);">
+						<div class="icon">🐳</div>
+						<div class="label">Environment Layer</div>
+						<div class="desc">Docker + mounts</div>
+					</div>
+				</div>
+				<div class="grid-2" style="gap:18px;">
+					<div class="card-sm">
+						<h3 style="font-size:13px; color:var(--accent2);">The agent loop (real code)</h3>
+						<p style="font-size:12px;">In <strong>src/microbots/MicroBot.py</strong>, <code>run()</code> executes:</p>
+						<ul class="bullets purple" style="margin-top:8px; font-size:12px;">
+							<li>LLM returns { <code>task_done</code>, <code>thoughts</code>, <code>command</code> }</li>
+							<li>MicroBot validates command safety</li>
+							<li>Environment executes command, returns output</li>
+							<li>Output is fed back to LLM as the next message</li>
+						</ul>
+					</div>
+					<div class="card-sm">
+						<h3 style="font-size:13px; color:var(--accent3);">Hard constraints (shared)</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:12px;">
+							<li>No interactive editors (vim/nano)</li>
+							<li>Avoid massive outputs (no <code>ls -R</code>, unbounded <code>find</code>)</li>
+							<li>Iteration/time limits (max iterations + timeout)</li>
+							<li>Optional context compaction via <code>summarize_context</code></li>
+						</ul>
+					</div>
+				</div>
+				<details>
+					<summary>Show: Safety checks that block dangerous commands</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.8px;"># src/microbots/MicroBot.py
+def _is_safe_command(self, command: str) -&gt; tuple[bool, Optional[str]]:
+		explanation = self._get_dangerous_command_explanation(command)
+		is_safe = explanation is None
+		return is_safe, explanation
+
+# Blocks patterns like:
+#   ls -R
+#   tree
+#   rm -rf
+#   find (without -maxdepth)</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 10: Section LLM -->
+		<div class="slide section-slide" data-title="LLM Section">
+			<div class="section-num">II</div>
+			<h1>Component 1: <span style="color:var(--accent2)">LLM</span></h1>
+			<p>The LLM sits outside the agent and acts as the “brain” — Microbots makes it swappable and schema-driven.</p>
+		</div>
+
+		<!-- Slide 11: LLM providers & model string -->
+		<div class="slide" data-title="LLM Providers">
+			<div class="slide-header">
+				<h1>LLM as a dependency (not the framework)</h1>
+				<p class="subtitle">Microbots chooses a provider from a single string: <code>&lt;provider&gt;/&lt;model&gt;</code></p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-left:4px solid var(--accent2);">
+						<h3 style="color:var(--accent2)">Model provider mapping</h3>
+						<p style="font-size:12px;">See <strong>src/microbots/constants.py</strong></p>
+						<pre class="wrap" style="font-size:11px; margin-top:10px;">class ModelProvider(StrEnum):
+		OPENAI = "azure-openai"
+		OLLAMA_LOCAL = "ollama-local"
+		ANTHROPIC = "anthropic"</pre>
+						<div class="card-sm" style="margin-top:12px; background:rgba(129,140,248,0.05); border-color:rgba(129,140,248,0.2);">
+							<p style="font-size:12px;"><strong>Nice property:</strong> your orchestration stays stable while providers evolve.</p>
+						</div>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent);">
+						<h3 style="color:var(--accent)">Wiring in MicroBot</h3>
+						<p style="font-size:12px;">See <strong>src/microbots/MicroBot.py</strong> (<code>_create_llm</code>)</p>
+						<pre class="wrap" style="font-size:10.8px; margin-top:10px;"># src/microbots/MicroBot.py
+if self.model_provider == ModelProvider.OPENAI:
+		self.llm = OpenAIApi(...)
+elif self.model_provider == ModelProvider.OLLAMA_LOCAL:
+		self.llm = OllamaLocal(...)
+elif self.model_provider == ModelProvider.ANTHROPIC:
+		self.llm = AnthropicApi(...)</pre>
+						<p class="mt-12" style="font-size:12px; color:var(--text-dim);">The LLM is “outside” — MicroBot doesn’t depend on any single LLM SDK beyond adapter classes.</p>
+					</div>
+				</div>
+				<details>
+					<summary>Show: response validation loop (why JSON-only matters)</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.5px;"># src/microbots/llm/llm.py
+def _validate_llm_response(self, response: str):
+		# ensures JSON
+		# ensures task_done is bool
+		# ensures command is non-empty if task_done=false
+		# ensures command empty if task_done=true
+		# retries up to max_retries</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 12: LLM section - strict schema & why -->
+		<div class="slide" data-title="LLM Schema">
+			<div class="slide-header">
+				<h1>Why a strict action schema?</h1>
+				<p class="subtitle">Automation needs predictability: parsing free-form text is fragile and unsafe</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card">
+						<h3 style="color:var(--accent3)">Benefits</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li>Every step yields exactly one command</li>
+							<li>Clear stop condition (<code>task_done=true</code>)</li>
+							<li>Enables command validation and audit logs</li>
+							<li>Makes tool execution deterministic</li>
+						</ul>
+					</div>
+					<div class="card">
+						<h3 style="color:var(--accent4)">Common failure modes without schema</h3>
+						<ul class="bullets orange" style="margin-top:8px; font-size:13px;">
+							<li>Multiple commands at once (hard to attribute failures)</li>
+							<li>Chatty explanations mixed with commands</li>
+							<li>“Assumed success” without verification</li>
+							<li>Large unbounded output causes context blow-ups</li>
+						</ul>
+					</div>
+				</div>
+				<div class="card-sm" style="display:flex; gap:12px; align-items:flex-start;">
+					<div style="flex:1;">
+						<h3 style="font-size:13px; color:var(--accent2);">Microbots’ schema</h3>
+						<pre class="wrap" style="font-size:11px; margin-top:10px;">{
+	"task_done": false,
+	"thoughts": "Need to inspect MicroBot.py",
+	"command": "sed -n '1,200p' src/microbots/MicroBot.py"
+}</pre>
+					</div>
+					<div style="width: 330px;">
+						<h3 style="font-size:13px; color:var(--accent-sec);">Microbots nuance</h3>
+						<p style="font-size:12px; color:var(--text);">Notice the example uses <strong>bounded reading</strong> (<code>sed -n '1,200p'</code>) rather than <code>cat</code> / recursive browsing. That guidance is enforced in the shared system prompt.</p>
+					</div>
+				</div>
+				<details>
+					<summary>Show: shared system prompt guidance (bounded exploration)</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.5px;"># src/microbots/MicroBot.py (system_prompt_common excerpt)
+NEVER use commands that produce large amounts of output...
+Use specific patterns: 'find &lt;path&gt; -name "*.c" -maxdepth 2'
+Avoid: 'ls -R', 'rm -rf', 'tree', or 'find' without depth limits
+You cannot run any interactive commands like vim, nano, etc.</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 13: Section Prompts -->
+		<div class="slide section-slide" data-title="Prompts Section">
+			<div class="section-num">III</div>
+			<h1>Component 2: <span style="color:var(--accent)">Prompts</span></h1>
+			<p>System prompt defines safe workflow; task prompt defines the specific problem in hand.</p>
+		</div>
+
+		<!-- Slide 14: Prompt layering -->
+		<div class="slide" data-title="System vs Task Prompts">
+			<div class="slide-header">
+				<h1>Prompts: <span class="hl">system</span> vs <span class="hl2">task</span></h1>
+				<p class="subtitle">Microbots uses a reusable “common” system prompt + bot-specific add-ons</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-left:4px solid var(--accent);">
+						<h3 style="color:var(--accent)">System prompt (general instructions)</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li>Define response format + command rules</li>
+							<li>Specify safe exploration patterns</li>
+							<li>Define tools like <code>summarize_context</code></li>
+							<li>State “no human in the loop” constraints</li>
+						</ul>
+						<p class="mt-12" style="font-size:12px; color:var(--text-dim);">Microbots centralizes this in <strong>system_prompt_common</strong>.</p>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent2);">
+						<h3 style="color:var(--accent2)">Task prompt (specific work)</h3>
+						<ul class="bullets purple" style="margin-top:8px; font-size:13px;">
+							<li>Describe the immediate objective and success criteria</li>
+							<li>Point at relevant files/logs with mounted paths</li>
+							<li>Limit scope (don’t explore unrelated code)</li>
+							<li>Ask for verification (tests, reproduction steps)</li>
+						</ul>
+						<div class="card-sm" style="margin-top:12px; background:rgba(129,140,248,0.05); border-color:rgba(129,140,248,0.2);">
+							<p style="font-size:12px;">Microbots encourages small steps: one command, observe output, iterate.</p>
+						</div>
+					</div>
+				</div>
+				<details>
+					<summary>Show: where system_prompt_common lives (real code)</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.5px;"># src/microbots/MicroBot.py
+system_prompt_common = f"""
+You are a helpful agent well versed in software development and debugging.
+...
+All your response must be in the following json format:
+{llm_output_format_str}
+...
+# TOOLS
+You have following special tools.
+		1. summarize_context: ...
+"""</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 15: Bot-specific prompts -->
+		<div class="slide" data-title="ReadingBot vs WritingBot Prompts">
+			<div class="slide-header">
+				<h1>Bot prompts: how Microbots changes behavior safely</h1>
+				<p class="subtitle">Same foundation; different permissions and completion criteria</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-top:3px solid var(--accent);">
+						<h3 style="color:var(--accent)">ReadingBot</h3>
+						<p style="font-size:12px; color:var(--text-dim);">src/microbots/bot/ReadingBot.py</p>
+						<pre class="wrap" style="font-size:10.8px; margin-top:10px;">system_prompt = f"""
+{system_prompt_common}
+You are a reading bot.
+You are only provided access to read files inside the mounted directory.
+...
+Once you have identified the issue ... set task_done=true
+"""</pre>
+						<div class="card-sm" style="margin-top:10px; background:rgba(56,189,248,0.05); border-color:rgba(56,189,248,0.2);">
+							<p style="font-size:12px;">Microbots can guarantee “no changes” because the environment uses an overlay mount for read-only tasks.</p>
+						</div>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">WritingBot</h3>
+						<p style="font-size:12px; color:var(--text-dim);">src/microbots/bot/WritingBot.py</p>
+						<pre class="wrap" style="font-size:10.8px; margin-top:10px;">system_prompt = f"""
+{system_prompt_common}
+You are a writing bot.
+You are only provided access to write files inside the mounted directory.
+...
+COMMAND USAGE RESTRICTIONS:
+- Use ONLY standard Linux commands...
+"""</pre>
+						<div class="card-sm" style="margin-top:10px; background:rgba(52,211,153,0.05); border-color:rgba(52,211,153,0.2);">
+							<p style="font-size:12px;">Microbots narrows editing to known shell tools (sed/awk/patch/git apply) so automation remains auditable.</p>
+						</div>
+					</div>
+				</div>
+				<details>
+					<summary>Prompt design checklist (what to include)</summary>
+					<div class="details-body">
+						<ul class="bullets" style="font-size:12.5px; margin-top:8px;">
+							<li><strong>Goal:</strong> the outcome in one sentence</li>
+							<li><strong>Scope:</strong> which directories are allowed / mounted paths</li>
+							<li><strong>Constraints:</strong> output limits, non-interactive, safe commands</li>
+							<li><strong>Verification:</strong> how to prove success (tests, reproduction, diff)</li>
+							<li><strong>Stop rule:</strong> when to set <code>task_done=true</code></li>
+						</ul>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 16: Prompt example interactive -->
+		<div class="slide" data-title="Prompt Example">
+			<div class="slide-header">
+				<h1>Example: turning a vague ask into a good task prompt</h1>
+				<p class="subtitle">Interactive: expand and compare prompts</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<details open>
+						<summary>Vague task prompt (bad for automation)</summary>
+						<div class="details-body">
+							<pre class="wrap" style="font-size:11px;">Fix the failing tests.</pre>
+							<p style="font-size:12px; color:var(--text-dim); margin-top:8px;">Problems: no scope, no verification strategy, encourages random exploration.</p>
+						</div>
+					</details>
+					<details>
+						<summary>Microbots-style task prompt (bounded + verifiable)</summary>
+						<div class="details-body">
+							<pre class="wrap" style="font-size:11px;">Goal: Fix the failing unit tests in this repo.
+
+Scope:
+- You may inspect files only under /workdir/&lt;mounted_repo&gt;.
+
+Workflow:
+1) Reproduce the failure by running pytest with a targeted subset.
+2) Identify the smallest root cause.
+3) Apply a minimal fix.
+4) Re-run the same tests to verify.
+
+Constraints:
+- Avoid unbounded output and recursive listing.
+- One command at a time.
+
+Success:
+- The previously failing tests pass.</pre>
+						</div>
+					</details>
+				</div>
+				<div class="card-sm" style="background:rgba(251,191,36,0.06); border-color:rgba(251,191,36,0.2);">
+					<p style="font-size:12px;"><strong class="text-gold">Microbots insight:</strong> Good prompts are not longer — they are more <strong>structured</strong>. Structure reduces random wandering, output explosions, and unsafe actions.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 17: Section Tools -->
+		<div class="slide section-slide" data-title="Tools Section">
+			<div class="section-num">IV</div>
+			<h1>Component 3: <span style="color:var(--accent2)">Tools</span></h1>
+			<p>From “cat entire file” to carefully bounded repo navigation — plus special tools like cscope, ctags, gdb.</p>
+		</div>
+
+		<!-- Slide 18: Tools evolution -->
+		<div class="slide" data-title="Tool Evolution">
+			<div class="slide-header">
+				<h1>Tooling evolved: <span class="hl">bounded</span> exploration</h1>
+				<p class="subtitle">Early LLMs tried to read everything — Microbots forces safe, incremental navigation</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card" style="border-top:3px solid var(--accent4);">
+						<h3 style="color:var(--accent4)">Then: “read the repo”</h3>
+						<pre class="wrap" style="font-size:11px; margin-top:10px;"># Anti-patterns
+cat src/microbots/MicroBot.py
+ls -R
+find . -name "*.py"</pre>
+						<p style="font-size:12px; color:var(--text-dim); margin-top:10px;">These cause huge output, timeouts, and context overflow.</p>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Now: “slice & navigate”</h3>
+						<pre class="wrap" style="font-size:11px; margin-top:10px;"># Safer patterns
+sed -n '1,200p' src/microbots/MicroBot.py
+grep -R "def _is_safe_command" -n src/microbots
+find src/microbots -maxdepth 3 -name "*.py"</pre>
+						<p style="font-size:12px; color:var(--text-dim); margin-top:10px;">Microbots includes both <strong>prompt guidance</strong> and <strong>runtime blocks</strong> for dangerous patterns.</p>
+					</div>
+				</div>
+				<details>
+					<summary>Show: Microbots runtime blocking logic (pattern-based)</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.6px;"># src/microbots/MicroBot.py
+dangerous_checks = [
+	{ pattern: r"\\bls ... -R", alternative: "ls &lt;specific-dir&gt;" },
+	{ pattern: r"\\btree\\b", alternative: "find ... -maxdepth 2" },
+	{ pattern: r"\\brm ... -rf", alternative: "rm &lt;specific-file&gt;" },
+	{ pattern: r"\\bfind\\b(?!.*-maxdepth)", alternative: "find ... -maxdepth 2" },
+]</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 19: Tool abstraction -->
+		<div class="slide" data-title="Tool Abstraction">
+			<div class="slide-header">
+				<h1>Microbots tool model: <span class="hl2">Tool</span> + YAML</h1>
+				<p class="subtitle">Tools are plugins: install, verify, setup, and teach the LLM how to use them</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-left:4px solid var(--accent2);">
+						<h3 style="color:var(--accent2)">Tool dataclass</h3>
+						<p style="font-size:12px; color:var(--text-dim);">src/microbots/tools/tool.py</p>
+						<pre class="wrap" style="font-size:10.6px; margin-top:10px;">@dataclass
+class Tool:
+	name: str
+	description: str
+	usage_instructions_to_llm: str
+	install_commands: List[str]
+	verify_commands: Optional[List[str]]
+	setup_commands: Optional[List[str]]
+	env_variables: Optional[List[str]]
+	files_to_copy: Optional[List[EnvFileCopies]]</pre>
+						<p class="mt-12" style="font-size:12px; color:var(--text-dim);">Most integrations only need to add a YAML file and pass it as <code>additional_tools</code>.</p>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Lifecycle</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:12.5px;">
+							<li><strong>Install:</strong> run commands in sandbox</li>
+							<li><strong>Verify:</strong> fail fast if missing</li>
+							<li><strong>Setup:</strong> build indexes (e.g., cscope DB)</li>
+							<li><strong>Teach:</strong> append usage instructions into system prompt</li>
+						</ul>
+						<details style="margin-top:12px;">
+							<summary>Show: how tool usage instructions reach the LLM</summary>
+							<div class="details-body">
+								<pre class="wrap" style="font-size:10.6px;"># src/microbots/MicroBot.py (_create_llm)
+system_prompt_with_tools = self.system_prompt
+for tool in self.additional_tools:
+	if tool.usage_instructions_to_llm:
+		system_prompt_with_tools += "\n\n" + tool.usage_instructions_to_llm</pre>
+							</div>
+						</details>
+					</div>
+				</div>
+				<div class="card-sm" style="background:rgba(129,140,248,0.05); border-color:rgba(129,140,248,0.2); text-align:center;">
+					<p style="font-size:12px;"><strong class="text-accent2">Tooling challenge solved:</strong> Microbots makes tool installation and “how to use it” part of the same artifact, so automation doesn’t rely on tribal knowledge.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 20: Built-in tools + special tools -->
+		<div class="slide" data-title="Special Tools">
+			<div class="slide-header">
+				<h1>Special tools: cscope, ctags, gdb…</h1>
+				<p class="subtitle">Shell is the baseline; special tasks need special tools — but installed safely</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-3" style="gap:14px; flex:1;">
+					<div class="card" style="border-top:3px solid var(--accent);">
+						<h3 style="color:var(--accent)">Repo navigation</h3>
+						<p style="font-size:12px;">Use cscope/ctags for large codebases instead of brute-force grep.</p>
+						<pre class="wrap" style="font-size:10.4px; margin-top:10px;"># Tool YAML examples in this repo:
+src/microbots/tools/tool_definitions/cscope.yaml
+src/microbots/tools/tool_definitions/browser-use.yaml</pre>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent2);">
+						<h3 style="color:var(--accent2)">Web + docs lookup</h3>
+						<p style="font-size:12px;">BrowsingBot bundles browser-use so you don’t open network access generally.</p>
+						<pre class="wrap" style="font-size:10.4px; margin-top:10px;"># src/microbots/bot/BrowsingBot.py
+BROWSER_USE_TOOL = parse_tool_definition("browser-use.yaml")
+...
+browser_output = self.environment.execute(
+	f"browser '{task}'"
+)</pre>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent4);">
+						<h3 style="color:var(--accent4)">Deep debugging</h3>
+						<p style="font-size:12px;">For core-dumps, a GDB tool plugin is often required. Microbots supports custom YAML definitions.</p>
+						<pre class="wrap" style="font-size:10.4px; margin-top:10px;"># Example (conceptual) gdb.yaml
+install_commands:
+	- apt-get update
+	- apt-get install -y gdb
+usage_instructions_to_llm: |
+	# gdb -q -ex 'bt' -ex quit ./bin/app core</pre>
+					</div>
+				</div>
+				<div class="card-sm" style="background:rgba(56,189,248,0.05); border-color:rgba(56,189,248,0.2);">
+					<p style="font-size:12px;"><strong class="text-accent">Microbots tool principle:</strong> Tools are introduced deliberately, with installation + usage instructions, inside the sandbox — not on the host.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 21: Section Environment -->
+		<div class="slide section-slide" data-title="Environment Section">
+			<div class="section-num">V</div>
+			<h1>Component 4: <span style="color:var(--accent3)">Environment</span></h1>
+			<p>The environment is where LLM actions happen — Microbots uses Docker sandboxing, explicit mounts, and command execution via a shell server.</p>
+		</div>
+
+		<!-- Slide 22: Why sandbox -->
+		<div class="slide" data-title="Why Sandbox">
+			<div class="slide-header">
+				<h1>Why a sandbox is non-negotiable</h1>
+				<p class="subtitle">Automation agents must be least-privilege and network-restricted by default</p>
+				<div class="divider" style="background:linear-gradient(90deg, var(--accent3), var(--accent-sec), transparent);"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-left:4px solid var(--accent4);">
+						<h3 style="color:var(--accent4)">Risks without sandboxing</h3>
+						<ul class="bullets orange" style="margin-top:8px; font-size:13px;">
+							<li>Accidental destructive commands on host filesystem</li>
+							<li>Unbounded network access (data exfiltration risk)</li>
+							<li>Secrets exposure in environment variables</li>
+							<li>Hard to audit: “what did the agent do?”</li>
+						</ul>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Microbots environment guarantees</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li>Every run creates a Docker container</li>
+							<li>Mounts are explicit: READ_ONLY vs READ_WRITE</li>
+							<li>Commands validated before execution</li>
+							<li>Logs available for audits</li>
+							<li>Environments can be torn down after completion</li>
+						</ul>
+					</div>
+				</div>
+				<details>
+					<summary>Show: LocalDockerEnvironment creates container + volumes</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.5px;"># src/microbots/environment/local_docker/LocalDockerEnvironment.py
+volumes_config = {WORKING_DIR: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}}
+...
+self.container = self.client.containers.run(
+	self.image,
+	volumes=volumes_config,
+	ports={"8080/tcp": self.port},
+	detach=True,
+	privileged=True,
+)</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 23: Mount model -->
+		<div class="slide" data-title="Mounts">
+			<div class="slide-header">
+				<h1>Mounts: explicit permissions and paths</h1>
+				<p class="subtitle">Microbots represents mounts with a first-class object: <code>Mount</code></p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="flex:1; gap:18px;">
+					<div class="card" style="border-top:3px solid var(--accent);">
+						<h3 style="color:var(--accent)">Mount object</h3>
+						<p style="font-size:12px; color:var(--text-dim);">src/microbots/extras/mount.py</p>
+						<pre class="wrap" style="font-size:10.6px; margin-top:10px;">@dataclass
+class Mount:
+	host_path: str
+	sandbox_path: str
+	permission: PermissionLabels
+	mount_type: MountType = MountType.MOUNT
+
+# MountType: MOUNT | COPY</pre>
+						<p class="mt-12" style="font-size:12px; color:var(--text-dim);">This prevents “hidden” access: you can’t accidentally hand the agent more than you intended.</p>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Example: LogAnalysisBot uses COPY mount</h3>
+						<p style="font-size:12px; color:var(--text-dim);">src/microbots/bot/LogAnalysisBot.py</p>
+						<pre class="wrap" style="font-size:10.6px; margin-top:10px;">file_mount_info = Mount(
+	file_name,
+	LOG_FILE_DIR,
+	PermissionLabels.READ_ONLY,
+	MountType.COPY,
+)
+
+return super().run(
+	task=f"Analyze the log file `{file_mount_info.sandbox_path}`",
+	additional_mounts=[file_mount_info],
+)</pre>
+						<div class="card-sm" style="margin-top:10px; background:rgba(52,211,153,0.05); border-color:rgba(52,211,153,0.2);">
+							<p style="font-size:12px;">This is a clean pattern: code is mounted (RO), logs are copied in, analysis happens safely.</p>
+						</div>
+					</div>
+				</div>
+				<details>
+					<summary>Show: overlay filesystem for read-only tasks</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.4px;"># src/microbots/environment/local_docker/LocalDockerEnvironment.py
+if folder_to_mount.permission == READ_ONLY:
+	volumes_config[host] = { "bind": "/ro/&lt;name&gt;", "mode": "ro" }
+	self._setup_overlay_mount()  # mounts overlay to /workdir/&lt;name&gt;</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 24: Command execution channel -->
+		<div class="slide" data-title="Execution Channel">
+			<div class="slide-header">
+				<h1>Execution: LLM plans, sandbox executes</h1>
+				<p class="subtitle">Microbots runs commands via an HTTP shell server inside the container</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card">
+						<h3 style="color:var(--accent-sec)">Environment.execute()</h3>
+						<p style="font-size:12px; color:var(--text-dim);">src/microbots/environment/local_docker/LocalDockerEnvironment.py</p>
+						<pre class="wrap" style="font-size:10.6px; margin-top:10px;">response = requests.post(
+	f"http://localhost:{self.port}/",
+	json={"message": command},
+	timeout=timeout,
+)
+output = response.json().get("output", "")
+return CmdReturn(
+	stdout=output.get("stdout", ""),
+	stderr=output.get("stderr", ""),
+	return_code=output.get("return_code", 0),
+)</pre>
+					</div>
+					<div class="card">
+						<h3 style="color:var(--accent)">Why this design?</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li>LLM never gets a host shell</li>
+							<li>Commands become explicit audit events</li>
+							<li>Timeouts and recovery can be centralized</li>
+							<li>One command at a time reduces state confusion</li>
+						</ul>
+						<div class="card-sm" style="margin-top:12px; background:rgba(34,211,238,0.05); border-color:rgba(34,211,238,0.2);">
+							<p style="font-size:12px;"><strong class="text-sec">Operational detail:</strong> the environment has a recovery path after read timeouts (<code>_attempt_shell_recovery()</code>).</p>
+						</div>
+					</div>
+				</div>
+				<div class="flow" style="margin-top:2px;">
+					<div class="flow-box"><div class="icon">🧠</div><div class="label">LLM</div><div class="desc">JSON action</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box"><div class="icon">🤖</div><div class="label">MicroBot</div><div class="desc">validate + route</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box"><div class="icon">🌐</div><div class="label">HTTP</div><div class="desc">localhost only</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box"><div class="icon">🐳</div><div class="label">Container</div><div class="desc">shell server</div></div>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 25: Section Context -->
+		<div class="slide section-slide" data-title="Context Section">
+			<div class="section-num">VI</div>
+			<h1>Component 5: <span style="color:var(--shield-gold)">Context</span></h1>
+			<p>Long-running automation hits token limits. Success requires compaction, memory, and decomposition into sub-tasks.</p>
+		</div>
+
+		<!-- Slide 26: Context management problems -->
+		<div class="slide" data-title="Context Problems">
+			<div class="slide-header">
+				<h1>Context is the make-or-break component</h1>
+				<p class="subtitle">Even great prompts fail if the agent can’t manage state over many steps</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card" style="border-left:4px solid var(--shield-gold);">
+						<h3 style="color:var(--shield-gold)">Common failure modes</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li>Token overflow from repeated command outputs</li>
+							<li>Drift: agent forgets original goal or constraints</li>
+							<li>Looping on the same failing command</li>
+							<li>Inability to switch from exploration → execution</li>
+						</ul>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Microbots approach</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li>Strict one-command-per-step loop</li>
+							<li>Iteration + timeout caps to avoid runaway</li>
+							<li>Built-in compaction tool: <code>summarize_context</code></li>
+							<li>Encourage decomposition using multiple bots in a pipeline</li>
+						</ul>
+					</div>
+				</div>
+				<div class="card-sm" style="background:rgba(251,191,36,0.06); border-color:rgba(251,191,36,0.2);">
+					<p style="font-size:12px;"><strong class="text-gold">Rule of thumb:</strong> treat context like a constrained resource — you spend it on high-signal outputs only.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 27: summarize_context tool -->
+		<div class="slide" data-title="Context Compaction">
+			<div class="slide-header">
+				<h1>Compaction: <code>summarize_context</code></h1>
+				<p class="subtitle">Microbots lets the LLM compress its history without changing the system prompt rules</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">How the LLM calls it</h3>
+						<pre class="wrap" style="font-size:11px; margin-top:10px;">{
+	"task_done": false,
+	"thoughts": "Context is too long; summarize and continue",
+	"command": "summarize_context 2 \"Found root cause in MicroBot.run; next patch tool validation\""
+}</pre>
+						<p style="font-size:12px; color:var(--text-dim); margin-top:10px;">The command is special-cased in the agent loop (it is not executed in the shell).</p>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent);">
+						<h3 style="color:var(--accent)">How MicroBot handles it</h3>
+						<pre class="wrap" style="font-size:10.6px; margin-top:10px;"># src/microbots/MicroBot.py
+if llm_response.command.startswith("summarize_context"):
+	parsed = self._parse_summarize_context_command(...)
+	last_msg = self.llm.summarize_context(...)
+	llm_response = self.llm.ask(last_msg["content"])</pre>
+						<details style="margin-top:12px;">
+							<summary>Show: syntax validation for summarize_context</summary>
+							<div class="details-body">
+								<pre class="wrap" style="font-size:10.3px;"># src/microbots/MicroBot.py
+def _parse_summarize_context_command(self, command: str):
+	parts = shlex.split(command)
+	# expects: summarize_context &lt;n&gt; "&lt;summary&gt;"</pre>
+							</div>
+						</details>
+					</div>
+				</div>
+				<div class="card-sm" style="text-align:center; background:rgba(34,211,238,0.05); border-color:rgba(34,211,238,0.2);">
+					<p style="font-size:12px;"><strong class="text-sec">Why this is elegant:</strong> compaction becomes a first-class tool with a deterministic syntax, rather than ad-hoc “please summarize” prompts.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 28: Decomposition into sub-tasks / multi-bot pipelines -->
+		<div class="slide" data-title="Decomposition">
+			<div class="slide-header">
+				<h1>Decomposition: break work into sub-tasks</h1>
+				<p class="subtitle">You can chain bots (read → write → verify) instead of one giant agent run</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="flow" style="margin-top:4px;">
+					<div class="flow-box"><div class="icon">📖</div><div class="label">ReadingBot</div><div class="desc">Diagnose</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box highlight"><div class="icon">✍️</div><div class="label">WritingBot</div><div class="desc">Fix</div></div>
+					<div class="flow-arrow">→</div>
+					<div class="flow-box"><div class="icon">✅</div><div class="label">Verify</div><div class="desc">Run tests</div></div>
+				</div>
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card" style="border-left:4px solid var(--accent);">
+						<h3 style="color:var(--accent)">Pipeline sketch</h3>
+						<pre class="wrap" style="font-size:10.6px; margin-top:10px;">from microbots.bot.ReadingBot import ReadingBot
+from microbots.bot.WritingBot import WritingBot
+
+reader = ReadingBot(
+	model="azure-openai/gpt-5",
+	folder_to_mount="/repo",
+)
+diagnosis = reader.run("Find why tests fail")
+
+writer = WritingBot(
+	model="azure-openai/gpt-5",
+	folder_to_mount="/repo",
+)
+fix = writer.run(f"Fix: {diagnosis.result}")</pre>
+					</div>
+					<div class="card" style="border-left:4px solid var(--shield-gold);">
+						<h3 style="color:var(--shield-gold)">Why this improves context</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li>Each bot has a focused prompt and smaller state</li>
+							<li>Different permissions per phase (RO → RW)</li>
+							<li>Tool sets can differ per phase</li>
+							<li>Results become concise hand-offs between steps</li>
+						</ul>
+						<div class="card-sm" style="margin-top:12px; background:rgba(251,191,36,0.06); border-color:rgba(251,191,36,0.2);">
+							<p style="font-size:12px;">This is “sub-agents” in practice: multiple small agents with tight contracts.</p>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 29: End-to-end example: Log analysis -->
+		<div class="slide" data-title="Example: Log Analysis">
+			<div class="slide-header">
+				<h1>Example workflow: <span class="hl">Log analysis</span></h1>
+				<p class="subtitle">Same foundation; different prompt + mounts — minimal duplication</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">What changes</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li>System prompt becomes “log investigator”</li>
+							<li>Log file is copied in (<code>MountType.COPY</code>)</li>
+							<li>Code is mounted read-only for reference</li>
+						</ul>
+						<div class="card-sm" style="margin-top:12px; background:rgba(52,211,153,0.05); border-color:rgba(52,211,153,0.2);">
+							<p style="font-size:12px;">See: <strong>src/microbots/bot/LogAnalysisBot.py</strong></p>
+						</div>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent);">
+						<h3 style="color:var(--accent)">What stays the same</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li>LLM schema + retries + validation</li>
+							<li>Sandbox creation and teardown</li>
+							<li>Command safety checks</li>
+							<li>One-command loop</li>
+							<li>Context compaction tool</li>
+						</ul>
+					</div>
+				</div>
+				<details>
+					<summary>Show: LogAnalysisBot prompt excerpt (what it tells the agent)</summary>
+					<div class="details-body">
+						<pre class="wrap" style="font-size:10.6px;"># src/microbots/bot/LogAnalysisBot.py
+You are a helpful log analysis bot.
+... You'll be given read-only access to the code ...
+The log file to analyze will be given in the user prompt.
+You can find the provided log file under /var/log/</pre>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 30: Bringing it together -->
+		<div class="slide" data-title="Putting It Together">
+			<div class="slide-header">
+				<h1>Putting it all together</h1>
+				<p class="subtitle">Microbots’ “elegant” win is clear separation + safe defaults</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-3" style="gap:14px; flex:1;">
+					<div class="card" style="border-top:3px solid var(--accent2);">
+						<h3 style="color:var(--accent2)">LLM</h3>
+						<p style="font-size:12px;">Swappable provider adapters, strict JSON actions, validation/retries.</p>
+						<div style="margin-top:10px;"><span class="tag tag-purple">src/microbots/llm/</span></div>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent);">
+						<h3 style="color:var(--accent)">Prompts</h3>
+						<p style="font-size:12px;">Reusable system rules + bot-specific instructions + task specificity.</p>
+						<div style="margin-top:10px;"><span class="tag tag-blue">system_prompt_common</span></div>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Environment</h3>
+						<p style="font-size:12px;">Docker sandbox, explicit mounts, overlay for RO, HTTP exec channel.</p>
+						<div style="margin-top:10px;"><span class="tag tag-green">LocalDockerEnvironment</span></div>
+					</div>
+				</div>
+				<div class="grid-2" style="gap:14px;">
+					<div class="card-sm" style="border-left:4px solid var(--accent2);">
+						<h3 style="font-size:13px; color:var(--accent2);">Tools</h3>
+						<p style="font-size:12px;">YAML-defined plugins make “special tasks” repeatable and portable.</p>
+					</div>
+					<div class="card-sm" style="border-left:4px solid var(--shield-gold);">
+						<h3 style="font-size:13px; color:var(--shield-gold);">Context</h3>
+						<p style="font-size:12px;">Compaction tool + decomposition patterns keep long tasks stable.</p>
+					</div>
+				</div>
+				<div class="card-sm" style="text-align:center; background:linear-gradient(135deg, rgba(34,211,238,0.08), rgba(129,140,248,0.08));">
+					<p style="font-size:14px; font-weight:800; color:var(--text-bright);">Outcome: build many agent workflows with minimal duplication</p>
+					<p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Change prompts + tools. Reuse everything else.</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 31: Getting started in this repo -->
+		<div class="slide" data-title="Getting Started">
+			<div class="slide-header">
+				<h1>Getting started (in this codebase)</h1>
+				<p class="subtitle">Where to look first when extending Microbots</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="gap:14px;">
+				<div class="grid-2" style="gap:18px; flex:1;">
+					<div class="card" style="border-left:4px solid var(--accent);">
+						<h3 style="color:var(--accent)">Core loop</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li><strong>MicroBot orchestration:</strong> src/microbots/MicroBot.py</li>
+							<li><strong>Safety:</strong> _is_safe_command + dangerous patterns</li>
+							<li><strong>Context tool:</strong> summarize_context handling</li>
+						</ul>
+					</div>
+					<div class="card" style="border-left:4px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Extending capabilities</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li><strong>New bot type:</strong> src/microbots/bot/</li>
+							<li><strong>New tool plugin:</strong> src/microbots/tools/tool_definitions/</li>
+							<li><strong>New environment:</strong> src/microbots/environment/</li>
+							<li><strong>New LLM adapter:</strong> src/microbots/llm/</li>
+						</ul>
+					</div>
+				</div>
+				<details>
+					<summary>Interactive: jump to a code-focused slide</summary>
+					<div class="details-body" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+						<button class="btn" data-jump="9">Architecture</button>
+						<button class="btn" data-jump="11">LLM Providers</button>
+						<button class="btn" data-jump="15">Bot Prompts</button>
+						<button class="btn" data-jump="19">Tool Model</button>
+						<button class="btn" data-jump="23">Mounts</button>
+						<button class="btn" data-jump="27">summarize_context</button>
+					</div>
+				</details>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+		<!-- Slide 32: Q&A -->
+		<div class="slide" data-title="Q&A">
+			<div class="slide-header">
+				<h1>Q&amp;A</h1>
+				<p class="subtitle">Discussion prompts: security, tool governance, and context strategies</p>
+				<div class="divider"></div>
+			</div>
+			<div class="slide-body" style="justify-content:center; gap:18px;">
+				<div class="grid-2" style="gap:18px;">
+					<div class="card" style="border-top:3px solid var(--accent-sec);">
+						<h3 style="color:var(--accent-sec)">Questions to explore</h3>
+						<ul class="bullets" style="margin-top:8px; font-size:13px;">
+							<li>How strict should command policies be?</li>
+							<li>How do you approve and version tool plugins?</li>
+							<li>What do you log for audits without leaking secrets?</li>
+							<li>When do you split workflows into multiple bots?</li>
+						</ul>
+					</div>
+					<div class="card" style="border-top:3px solid var(--accent3);">
+						<h3 style="color:var(--accent3)">Microbots recap</h3>
+						<ul class="bullets green" style="margin-top:8px; font-size:13px;">
+							<li>AI automation needs a secure runtime</li>
+							<li>Most workflows differ only by prompts + tools</li>
+							<li>Microbots provides the reusable foundation</li>
+							<li>Context management is a first-class concern</li>
+						</ul>
+					</div>
+				</div>
+				<div class="card-sm" style="text-align:center; background:rgba(34,211,238,0.05); border-color:rgba(34,211,238,0.2);">
+					<p style="font-size:14px; font-weight:900; color:var(--text-bright);">Thank you</p>
+					<p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Microbots: secure, tool-driven automation agents</p>
+				</div>
+			</div>
+			<div class="slide-footer"><span class="logo-text">Microbots</span><span class="js-slide-n"></span></div>
+		</div>
+
+	</div>
+
+	<script>
+		(function () {
+			const slides = Array.from(document.querySelectorAll('#deck .slide'));
+			const slideTotalEl = document.getElementById('slideTotal');
+			const slidePosEl = document.getElementById('slidePos');
+			const progressBar = document.getElementById('progressBar');
+			const btnPrev = document.getElementById('btnPrev');
+			const btnNext = document.getElementById('btnNext');
+			const btnOverview = document.getElementById('btnOverview');
+			const btnPrint = document.getElementById('btnPrint');
+			const btnCopySlide = document.getElementById('btnCopySlide');
+
+			let index = 0;
+			let overview = false;
+
+			function normalize(n) {
+				if (Number.isNaN(n)) return 0;
+				return Math.max(0, Math.min(slides.length - 1, n));
+			}
+
+			function setHash() {
+				const n = index + 1;
+				history.replaceState(null, '', `#${n}`);
+			}
+
+			function readHash() {
+				const raw = (location.hash || '').replace('#', '').trim();
+				const n = parseInt(raw, 10);
+				if (!Number.isFinite(n)) return null;
+				return normalize(n - 1);
+			}
+
+			function updateFooters() {
+				const text = `${index + 1} / ${slides.length}`;
+				document.querySelectorAll('.js-slide-n').forEach(el => el.textContent = text);
+			}
+
+			function showOnlyCurrent() {
+				slides.forEach((s, i) => {
+					s.style.display = (i === index) ? 'flex' : 'none';
+				});
+			}
+
+			function showOverview() {
+				slides.forEach(s => s.style.display = 'flex');
+			}
+
+			function render() {
+				slideTotalEl.textContent = slides.length;
+				slidePosEl.textContent = String(index + 1);
+				progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+				updateFooters();
+				if (overview) {
+					showOverview();
+				} else {
+					showOnlyCurrent();
+					slides[index].scrollIntoView({ block: 'center', behavior: 'instant' });
+				}
+			}
+
+			function goTo(n) {
+				index = normalize(n);
+				setHash();
+				render();
+			}
+
+			function next() { goTo(index + 1); }
+			function prev() { goTo(index - 1); }
+
+			function toggleOverview() {
+				overview = !overview;
+				render();
+			}
+
+			// Jump buttons (data-jump is 1-based slide index)
+			document.querySelectorAll('[data-jump]').forEach(btn => {
+				btn.addEventListener('click', () => {
+					const target = parseInt(btn.getAttribute('data-jump'), 10);
+					if (!Number.isFinite(target)) return;
+					overview = false;
+					goTo(target - 1);
+				});
+			});
+
+			// Component picker
+			const picker = document.getElementById('componentPicker');
+			if (picker) {
+				const title = document.getElementById('compTitle');
+				const subtitle = document.getElementById('compSubtitle');
+				const tag1 = document.getElementById('compTag1');
+				const tag2 = document.getElementById('compTag2');
+				const content = {
+					llm: {
+						title: 'LLM',
+						subtitle: 'Microbots treats the LLM as a dependency: provider adapters implement a common interface.',
+						tag1: 'Provider adapters',
+						tag2: 'JSON schema'
+					},
+					prompts: {
+						title: 'Prompts',
+						subtitle: 'System prompt defines safe workflow; task prompt defines the current problem precisely.',
+						tag1: 'system_prompt_common',
+						tag2: 'Task specificity'
+					},
+					tools: {
+						title: 'Tools',
+						subtitle: 'Tools are managed as plugins (install/verify/setup) and taught to the LLM via usage instructions.',
+						tag1: 'YAML plugins',
+						tag2: 'Tool lifecycle'
+					},
+					env: {
+						title: 'Environment',
+						subtitle: 'A sandbox where commands run: Docker container, explicit mounts, and a controlled execution channel.',
+						tag1: 'Docker sandbox',
+						tag2: 'Mount permissions'
+					},
+					context: {
+						title: 'Context management',
+						subtitle: 'Compaction + memory + decomposition into sub-tasks keeps long runs stable under token limits.',
+						tag1: 'summarize_context',
+						tag2: 'Decomposition'
+					}
+				};
+				picker.addEventListener('click', (e) => {
+					const target = e.target.closest('.pick');
+					if (!target) return;
+					const key = target.getAttribute('data-comp');
+					if (!content[key]) return;
+					picker.querySelectorAll('.pick').forEach(p => p.classList.remove('active'));
+					target.classList.add('active');
+					title.textContent = content[key].title;
+					subtitle.textContent = content[key].subtitle;
+					tag1.textContent = content[key].tag1;
+					tag2.textContent = content[key].tag2;
+				});
+			}
+
+			// Poll slide
+			const pollResult = document.getElementById('poll1Result');
+			document.querySelectorAll('input[name="poll1"]').forEach(inp => {
+				inp.addEventListener('change', () => {
+					const v = inp.value;
+					if (!pollResult) return;
+					if (v === 'prompt') {
+						pollResult.innerHTML = 'Prompts change, but the <strong>expensive part</strong> is making execution safe and reliable. Microbots makes the foundation reusable.';
+					} else if (v === 'tools') {
+						pollResult.innerHTML = 'Correct: special tools vary a lot. Microbots solves this with <strong>YAML tool plugins</strong> + install/verify/setup lifecycle.';
+					} else if (v === 'loop') {
+						pollResult.innerHTML = 'Loop + safety should not vary per workflow. Microbots centralizes it in <strong>MicroBot.run()</strong> and blocks dangerous commands.';
+					} else {
+						pollResult.innerHTML = 'In practice: <strong>prompt + tools</strong> vary, but teams often end up rebuilding loop/sandbox/context too. Microbots exists to stop that duplication.';
+					}
+				});
+			});
+
+			// Toolbar buttons
+			btnPrev.addEventListener('click', prev);
+			btnNext.addEventListener('click', next);
+			btnOverview.addEventListener('click', toggleOverview);
+			btnPrint.addEventListener('click', () => {
+				const url = new URL(window.location.href);
+				url.searchParams.set('print', '1');
+				window.open(url.toString(), '_blank');
+			});
+			btnCopySlide.addEventListener('click', async () => {
+				const current = slides[index];
+				const title = current.getAttribute('data-title') || current.querySelector('h1')?.textContent || `Slide ${index + 1}`;
+				try {
+					await navigator.clipboard.writeText(title.trim());
+					btnCopySlide.textContent = 'Copied!';
+					setTimeout(() => btnCopySlide.textContent = 'Copy title', 800);
+				} catch {
+					btnCopySlide.textContent = 'Copy failed';
+					setTimeout(() => btnCopySlide.textContent = 'Copy title', 900);
+				}
+			});
+
+			// Keyboard controls
+			window.addEventListener('keydown', (e) => {
+				if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+				if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); if (!overview) next(); }
+				if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); if (!overview) prev(); }
+				if (e.key === 'o' || e.key === 'O') { e.preventDefault(); toggleOverview(); }
+				if (e.key === 'g' || e.key === 'G') {
+					e.preventDefault();
+					const s = prompt(`Go to slide (1-${slides.length}):`, String(index + 1));
+					const n = parseInt((s || '').trim(), 10);
+					if (Number.isFinite(n)) { overview = false; goTo(n - 1); }
+				}
+				if (e.key === 'Escape' && overview) { e.preventDefault(); overview = false; render(); }
+			});
+
+			// Print mode: show all
+			const params = new URLSearchParams(window.location.search);
+			if (params.get('print') === '1') {
+				overview = true;
+				document.getElementById('toolbar').style.display = 'none';
+			}
+
+			// Initial slide
+			const fromHash = readHash();
+			if (fromHash !== null) index = fromHash;
+			render();
+
+			// Keep in sync if hash changes
+			window.addEventListener('hashchange', () => {
+				const h = readHash();
+				if (h !== null) { index = h; render(); }
+			});
+		})();
+	</script>
+</body>
+</html>
