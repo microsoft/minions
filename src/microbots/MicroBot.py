@@ -184,6 +184,8 @@ class MicroBot:
             raise ValueError("max_iterations must be greater than 0")
 
         self.max_iterations = max_iterations
+        self.iteration_count = 0
+        self.step_count = 0
 
         for tool in self.additional_tools:
             tool.setup_tool(self.environment)
