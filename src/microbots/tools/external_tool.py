@@ -190,6 +190,3 @@ class ExternalTool(ToolAbstract):
                     f"command '{command}'. stderr: {result.stderr}"
                 )
         logger.info("✅ Successfully uninstalled external tool: %s", self.name)
-        logger.info(
-            "✅ Successfully uninstalled external tool: %s", self.name
-        )
