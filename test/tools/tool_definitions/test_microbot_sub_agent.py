@@ -158,6 +158,26 @@ class TestInvokeParsing:
         assert "fix the bug" in called_task
         assert result.return_code == 0
 
+    def test_task_containing_flag_like_text(self):
+        """Task descriptions containing '--iterations' or '--task' text must not break parsing."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot(max_iterations=50)
+
+        cmd = 'microbot_sub --task "run with --iterations 5 and --timeout flag" --iterations 10'
+
+        with patch.object(MicroBot, "__init__", return_value=None), \
+             patch.object(MicroBot, "run", return_value=BotRunResult(
+                 status=True, result="ok", error=None
+             )) as mock_run:
+            with patch.object(MicroBot, "iteration_count", 0, create=True):
+                result = tool.invoke(cmd, parent)
+
+        assert result.return_code == 0
+        called_task = mock_run.call_args[1]["task"]
+        assert "run with --iterations 5 and --timeout flag" in called_task
+        _, kwargs = mock_run.call_args
+        assert kwargs["max_iterations"] == 10
+
 
 # ---------------------------------------------------------------------------
 # invoke — error paths
