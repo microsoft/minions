@@ -231,6 +231,46 @@ class TestInvokeErrors:
         assert result.return_code == 1
         assert "remain in the parent bot's budget" in result.stderr
 
+    def test_non_integer_iterations_raises_value_error(self):
+        """argparse raises ValueError (via _NoExitArgumentParser.error) for non-integer --iterations."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "x" --iterations abc', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
+    def test_non_integer_timeout_raises_value_error(self):
+        """argparse raises ValueError (via _NoExitArgumentParser.error) for non-integer --timeout."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "x" --timeout xyz', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
+    def test_unrecognized_argument_raises_value_error(self):
+        """argparse raises ValueError (via _NoExitArgumentParser.error) for unknown flags."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "x" --unknown flag', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
+    def test_unclosed_quote_raises_value_error(self):
+        """shlex.split raises ValueError for an unclosed quoted string."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "unclosed quote', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
 
 # ---------------------------------------------------------------------------
 # invoke — success path
