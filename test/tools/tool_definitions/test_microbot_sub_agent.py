@@ -158,6 +158,37 @@ class TestInvokeParsing:
         assert "fix the bug" in called_task
         assert result.return_code == 0
 
+    def test_task_containing_flag_like_text(self):
+        """Task description containing '--task' or '--iterations' must not confuse the parser."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot(max_iterations=50)
+
+        cmd = 'microbot_sub --task "run with --task foo and --iterations 99 embedded"'
+
+        with patch.object(MicroBot, "__init__", return_value=None), \
+             patch.object(MicroBot, "run", return_value=BotRunResult(
+                 status=True, result="ok", error=None
+             )) as mock_run:
+            with patch.object(MicroBot, "iteration_count", 0, create=True):
+                result = tool.invoke(cmd, parent)
+
+        assert result.return_code == 0
+        called_task = mock_run.call_args[1]["task"]
+        assert "run with --task foo and --iterations 99 embedded" == called_task
+
+    def test_unmatched_quote_returns_error(self):
+        """A command with an unmatched quote triggers a parse-error response."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot(max_iterations=50)
+
+        cmd = "microbot_sub --task \"unmatched quote"
+
+        result = tool.invoke(cmd, parent)
+
+        assert result.return_code == 1
+        assert "Failed to parse command" in result.stderr
+        assert "Expected format" in result.stderr
+
 
 # ---------------------------------------------------------------------------
 # invoke — error paths

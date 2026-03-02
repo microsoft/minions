@@ -1,4 +1,6 @@
+import argparse
 import logging
+import shlex
 
 from pydantic.dataclasses import dataclass, Field
 
@@ -55,20 +57,31 @@ class MicrobotSubAgent(ExternalTool):
         (with ``.return_code``, ``.stdout``, ``.stderr``) — the same type
         returned by ``Environment.execute``.
         """
-        # Extract task, iterations, and timeout from the command
-        parts = command.split("--")
-        task = None
-        iterations = 25  # default value
-        timeout = 300  # default value
+        # Parse arguments with shlex + argparse for correct handling of
+        # quoted strings and task descriptions that contain flag-like text.
+        parser = argparse.ArgumentParser(prog="microbot_sub", exit_on_error=False)
+        parser.add_argument("--task", type=str, default=None)
+        parser.add_argument("--iterations", type=int, default=25)
+        parser.add_argument("--timeout", type=int, default=300)
 
-        for part in parts:
-            part = part.strip()
-            if part.startswith("task"):
-                task = part.replace("task", "", 1).strip().strip('"').strip("'")
-            elif part.startswith("iterations"):
-                iterations = int(part.replace("iterations", "", 1).strip())
-            elif part.startswith("timeout"):
-                timeout = int(part.replace("timeout", "", 1).strip())
+        try:
+            tokens = shlex.split(command)[1:]  # strip the leading "microbot_sub"
+            args = parser.parse_args(tokens)
+        except (argparse.ArgumentError, ValueError) as exc:
+            logger.error("Failed to parse microbot_sub command: %s", exc)
+            return CmdReturn(
+                stdout="",
+                stderr=(
+                    f"Error: Failed to parse command: {exc}. "
+                    'Expected format: microbot_sub --task "description" '
+                    "[--iterations N] [--timeout N]"
+                ),
+                return_code=1,
+            )
+
+        task = args.task
+        iterations = args.iterations
+        timeout = args.timeout
 
         if not task:
             logger.error("No task specified for microbot_sub invocation.")
