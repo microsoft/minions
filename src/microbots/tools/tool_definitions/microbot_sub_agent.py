@@ -1,4 +1,6 @@
+import argparse
 import logging
+import shlex
 
 from pydantic.dataclasses import dataclass, Field
 
@@ -7,6 +9,14 @@ from microbots.MicroBot import system_prompt_common, MicroBot, BotRunResult
 from microbots.environment.Environment import CmdReturn
 
 logger = logging.getLogger(" 🤖 MicroBot-Sub")
+
+
+class _NoExitArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser that raises ``ValueError`` instead of calling ``sys.exit``."""
+
+    def error(self, message: str) -> None:  # type: ignore[override]  # base returns NoReturn (sys.exit); we raise instead
+        raise ValueError(message)
+
 
 INSTRUCTIONS_TO_LLM = """
 Invoke this tool to create a sub-agent that can perform specific tasks as directed by the parent MicroBot. The sub-agent will run in the same sandbox environment and can communicate with the parent MicroBot via standard input/output. Use this tool when you want to delegate a specific task to a sub-agent while maintaining control and oversight over its actions.
@@ -55,20 +65,23 @@ class MicrobotSubAgent(ExternalTool):
         (with ``.return_code``, ``.stdout``, ``.stderr``) — the same type
         returned by ``Environment.execute``.
         """
-        # Extract task, iterations, and timeout from the command
-        parts = command.split("--")
-        task = None
-        iterations = 25  # default value
-        timeout = 300  # default value
+        # Parse arguments with argparse so flag-like text inside --task values
+        # is handled correctly (e.g. --task "run --iterations check").
+        parser = _NoExitArgumentParser(prog="microbot_sub", add_help=False)
+        parser.add_argument("--task", type=str, default=None)
+        parser.add_argument("--iterations", type=int, default=25)
+        parser.add_argument("--timeout", type=int, default=300)
 
-        for part in parts:
-            part = part.strip()
-            if part.startswith("task"):
-                task = part.replace("task", "", 1).strip().strip('"').strip("'")
-            elif part.startswith("iterations"):
-                iterations = int(part.replace("iterations", "", 1).strip())
-            elif part.startswith("timeout"):
-                timeout = int(part.replace("timeout", "", 1).strip())
+        try:
+            tokens = shlex.split(command)[1:]  # skip the "microbot_sub" program name
+            args = parser.parse_args(tokens)
+        except ValueError as exc:
+            logger.error("Failed to parse microbot_sub command: %s", exc)
+            return CmdReturn(stdout="", stderr=f"Error: {exc}", return_code=1)
+
+        task = args.task
+        iterations = args.iterations
+        timeout = args.timeout
 
         if not task:
             logger.error("No task specified for microbot_sub invocation.")

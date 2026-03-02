@@ -158,6 +158,26 @@ class TestInvokeParsing:
         assert "fix the bug" in called_task
         assert result.return_code == 0
 
+    def test_task_containing_flag_like_text(self):
+        """Task descriptions containing '--iterations' or '--task' text must not break parsing."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot(max_iterations=50)
+
+        cmd = 'microbot_sub --task "run with --iterations 5 and --timeout flag" --iterations 10'
+
+        with patch.object(MicroBot, "__init__", return_value=None), \
+             patch.object(MicroBot, "run", return_value=BotRunResult(
+                 status=True, result="ok", error=None
+             )) as mock_run:
+            with patch.object(MicroBot, "iteration_count", 0, create=True):
+                result = tool.invoke(cmd, parent)
+
+        assert result.return_code == 0
+        called_task = mock_run.call_args[1]["task"]
+        assert "run with --iterations 5 and --timeout flag" in called_task
+        _, kwargs = mock_run.call_args
+        assert kwargs["max_iterations"] == 10
+
 
 # ---------------------------------------------------------------------------
 # invoke — error paths
@@ -210,6 +230,46 @@ class TestInvokeErrors:
 
         assert result.return_code == 1
         assert "remain in the parent bot's budget" in result.stderr
+
+    def test_non_integer_iterations_raises_value_error(self):
+        """argparse raises ValueError (via _NoExitArgumentParser.error) for non-integer --iterations."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "x" --iterations abc', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
+    def test_non_integer_timeout_raises_value_error(self):
+        """argparse raises ValueError (via _NoExitArgumentParser.error) for non-integer --timeout."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "x" --timeout xyz', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
+    def test_unrecognized_argument_raises_value_error(self):
+        """argparse raises ValueError (via _NoExitArgumentParser.error) for unknown flags."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "x" --unknown flag', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
+
+    def test_unclosed_quote_raises_value_error(self):
+        """shlex.split raises ValueError for an unclosed quoted string."""
+        tool = MicrobotSubAgent()
+        parent = _make_parent_bot()
+
+        result = tool.invoke('microbot_sub --task "unclosed quote', parent)
+
+        assert result.return_code == 1
+        assert result.stderr.startswith("Error:")
 
 
 # ---------------------------------------------------------------------------
