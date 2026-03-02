@@ -33,6 +33,10 @@ class ExternalTool(ToolAbstract):
     def _run_host_command(command: str) -> subprocess.CompletedProcess:
         """Run a shell command on the host and return the CompletedProcess."""
         logger.debug("Running host command for external tool: %s", command)
+        # NOTE: using shell=True since commands may include shell features like
+        # environment variable references, pipes, etc. We ensure that all
+        # commands come from trusted YAML definitions, so this should be safe.
+        # Verify commands in tool definitions are well-formed to avoid injection risks.
         output = subprocess.run(
             command,
             shell=True,
