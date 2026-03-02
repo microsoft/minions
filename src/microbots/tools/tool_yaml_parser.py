@@ -37,5 +37,8 @@ def parse_tool_definition(yaml_path: str) -> ToolAbstract:
     if tool_type == TOOLTYPE.INTERNAL.value:
         return Tool(**tool_dict) # Internal tool is simply called as Tool to keep it as a default behavior.
 
-    if tool_type == TOOLTYPE.EXTERNAL.value:
+    elif tool_type == TOOLTYPE.EXTERNAL.value:
         return ExternalTool(**tool_dict)
+
+    else:
+        raise ValueError(f"Unsupported tool_type: {tool_type}")
