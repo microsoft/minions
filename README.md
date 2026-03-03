@@ -18,10 +18,6 @@ Fix the error and make sure the build is successful.""", timeout_in_seconds=600)
 print(data.results)
 ```
 
-## ⚠️ Project Status: Under Fast Development
-
-This project is currently **under active development**. Features, APIs, and internal structures are subject to change across versions without notice, and unexpected behavior may occur. Please **use with caution** in production environments.
-
 ## 🚀 How to install
 
 ### Pre-requisites
@@ -94,3 +90,7 @@ The `WritingBot` will read and write the files inside `code` folder based on spe
 ![Overall Architecture Image](./docs/images/overall_architecture.png)
 
 The MicroBots create a containerized environment and mount the specified directory with restricting the permissions to read-only or read/write based on Bot used. It ensures that the AI agents operate within defined boundaries which enhances security and control over code modifications as well as protecting the local environment.
+
+#Legal Notice
+
+Trademarks This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow Microsoft’s Trademark & Brand Guidelines. Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
