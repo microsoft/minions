@@ -1,6 +1,7 @@
 name: Build and Push to Docker Hub
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'src/microbots/environment/local_docker/image_builder/Dockerfile'
