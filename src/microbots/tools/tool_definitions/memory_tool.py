@@ -188,7 +188,7 @@ class MemoryTool(ExternalTool):
 
         resolved = self._resolve(path)
         if not resolved.exists():
-            raise RuntimeError(f"Path not found: {path!r}")
+            return CmdReturn(stdout="", stderr=f"Path not found: {path!r}", return_code=1)
 
         if resolved.is_dir():
             items = [
@@ -237,13 +237,13 @@ class MemoryTool(ExternalTool):
             return CmdReturn(stdout="", stderr="--old and --new are required", return_code=1)
         resolved = self._resolve(path)
         if not resolved.is_file():
-            raise FileNotFoundError(f"File not found: {path!r}")
+            return CmdReturn(stdout="", stderr=f"File not found: {path!r}", return_code=1)
         content = resolved.read_text(encoding="utf-8")
         count = content.count(old_text)
         if count == 0:
-            raise ValueError(f"Text not found in {path!r}")
+            return CmdReturn(stdout="", stderr=f"Text not found in {path!r}", return_code=1)
         if count > 1:
-            raise ValueError(f"Text appears {count} times in {path!r} — must be unique")
+            return CmdReturn(stdout="", stderr=f"Text appears {count} times in {path!r} — must be unique", return_code=1)
         resolved.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
         return CmdReturn(stdout=f"File {path} edited.", stderr="", return_code=0)
 
@@ -264,10 +264,10 @@ class MemoryTool(ExternalTool):
             return CmdReturn(stdout="", stderr="--line and --text are required", return_code=1)
         resolved = self._resolve(path)
         if not resolved.is_file():
-            raise FileNotFoundError(f"File not found: {path!r}")
+            return CmdReturn(stdout="", stderr=f"File not found: {path!r}", return_code=1)
         lines = resolved.read_text(encoding="utf-8").splitlines()
         if line_num < 0 or line_num > len(lines):
-            raise ValueError(f"Invalid line number {line_num}. Must be 0–{len(lines)}.")
+            return CmdReturn(stdout="", stderr=f"Invalid line number {line_num}. Must be 0–{len(lines)}.", return_code=1)
         lines.insert(line_num, text.rstrip("\n"))
         resolved.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return CmdReturn(stdout=f"Text inserted at line {line_num} in {path}.", stderr="", return_code=0)
@@ -277,7 +277,7 @@ class MemoryTool(ExternalTool):
             return CmdReturn(stdout="", stderr="Usage: memory delete <path>", return_code=1)
         path = args[0]
         if path.rstrip("/") in ("/memories", "memories", ""):
-            raise ValueError("Cannot delete the /memories root directory")
+            return CmdReturn(stdout="", stderr="Cannot delete the /memories root directory", return_code=1)
         resolved = self._resolve(path)
         if resolved.is_file():
             resolved.unlink()
@@ -287,7 +287,7 @@ class MemoryTool(ExternalTool):
             shutil.rmtree(resolved)
             logger.info("🧠 Memory directory deleted: %s", path)
             return CmdReturn(stdout=f"Deleted directory: {path}", stderr="", return_code=0)
-        raise FileNotFoundError(f"Path not found: {path!r}")
+        return CmdReturn(stdout="", stderr=f"Path not found: {path!r}", return_code=1)
 
     def _rename(self, args: list) -> CmdReturn:
         if len(args) < 2:
@@ -296,9 +296,9 @@ class MemoryTool(ExternalTool):
         old_resolved = self._resolve(old_path)
         new_resolved = self._resolve(new_path)
         if not old_resolved.exists():
-            raise FileNotFoundError(f"Source not found: {old_path!r}")
+            return CmdReturn(stdout="", stderr=f"Source not found: {old_path!r}", return_code=1)
         if new_resolved.exists():
-            raise ValueError(f"Destination already exists: {new_path!r}")
+            return CmdReturn(stdout="", stderr=f"Destination already exists: {new_path!r}", return_code=1)
         new_resolved.parent.mkdir(parents=True, exist_ok=True)
         old_resolved.rename(new_resolved)
         logger.info("🧠 Memory renamed: %s → %s", old_path, new_path)
