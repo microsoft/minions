@@ -16,9 +16,9 @@ from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
-from microbots.tools.tool import ToolAbstract
+from microbots.tools.tool import ToolAbstract, get_tool_from_call
 from microbots.extras.mount import Mount, MountType
-from microbots.utils.logger import LogLevelEmoji, LogTextColor
+from microbots.utils.logger import LogLevelEmoji
 from microbots.utils.network import get_free_port
 
 logger = getLogger(" MicroBot ")
@@ -152,6 +152,13 @@ class MicroBot:
         self.environment = environment
         self.additional_tools = additional_tools
 
+        # TODO: Replace iteration_count and max_iterations with cost management.
+        # Iteration count represents overall LLM interactions including interactions
+        # done by sub agents.
+        self.iteration_count = 0
+        self.max_iterations = 0
+        self.step_count = 0
+
         self._validate_model_and_provider(model)
         self.model_provider = model.split("/")[0]
         self.deployment_name = model.split("/")[1]
@@ -176,13 +183,16 @@ class MicroBot:
         if max_iterations <= 0:
             raise ValueError("max_iterations must be greater than 0")
 
+        self.max_iterations = max_iterations
+        self.iteration_count = 0
+        self.step_count = 0
+
         for tool in self.additional_tools:
             tool.setup_tool(self.environment)
 
         for mount in additional_mounts or []:
             self._mount_additional(mount)
 
-        iteration_count = 1
         # start timer
         start_time = time.time()
         timeout = timeout_in_seconds
@@ -192,20 +202,18 @@ class MicroBot:
             result=None,
             error="Did not complete",
         )
-        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task[0:60])
+        logger.info("%s TASK STARTED : %s...", LogLevelEmoji.INFO, task)
 
         while llm_response.task_done is False:
-            logger.info("%s Step-%d %s", "-" * 20, iteration_count, "-" * 20)
-            if llm_response.thoughts:
-                logger.info(
-                    f" 💭  LLM thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
-                )
-            logger.info(
-                f" ➡️  LLM tool call : {LogTextColor.OKBLUE}{json.dumps(llm_response.command)}{LogTextColor.ENDC}",
-            )
             # increment iteration count
-            iteration_count += 1
-            if iteration_count >= max_iterations:
+            self.iteration_count += 1
+            self.step_count += 1
+            if self.iteration_count >= max_iterations:
+                logger.error(
+                    "Max iterations %d reached. Exiting without completing the task. Last response: %s",
+                    max_iterations,
+                    llm_response,
+                )
                 return_value.error = f"Max iterations {max_iterations} reached"
                 return return_value
 
@@ -216,11 +224,21 @@ class MicroBot:
             if elapsed_time > timeout:
                 logger.error(
                     "Iteration %d with response %s - Exiting without running command as timeout reached",
-                    iteration_count,
+                    self.iteration_count,
                     llm_response,
                 )
                 return_value.error = f"Timeout of {timeout} seconds reached"
                 return return_value
+
+
+            logger.info("%s Step-%d %s", "-" * 20, self.step_count, "-" * 20)
+            if llm_response.thoughts:
+                logger.info(
+                    f" 💭  LLM thoughts: {llm_response.thoughts}",
+                )
+            logger.info(
+                f" ➡️  LLM tool call : {json.dumps(llm_response.command)}",
+            )
 
             # Validate command for dangerous operations
             is_safe, explanation = self._is_safe_command(llm_response.command)
@@ -230,7 +248,11 @@ class MicroBot:
                 llm_response = self.llm.ask(f"COMMAND_ERROR: {error_msg}\nPlease provide a safer alternative command.")
                 continue
 
-            llm_command_output = self.environment.execute(llm_response.command)
+            tool = get_tool_from_call(llm_response.command, self.additional_tools)
+            if tool:
+                llm_command_output = tool.invoke(llm_response.command, self)
+            else:
+                llm_command_output = self.environment.execute(llm_response.command)
 
             logger.debug(
                     " 🔧  Command executed.\nReturn Code: %d\nStdout:\n%s\nStderr:\n%s",
@@ -262,7 +284,7 @@ class MicroBot:
 
         if llm_response.thoughts:
             logger.info(
-                f" 💭  LLM final thoughts: {LogTextColor.OKCYAN}{llm_response.thoughts}{LogTextColor.ENDC}",
+                f" 💭  LLM final thoughts: {llm_response.thoughts}",
             )
         logger.info("🔚 TASK COMPLETED : %s...", task[0:15])
         return BotRunResult(status=True, result=llm_response.thoughts, error=None)

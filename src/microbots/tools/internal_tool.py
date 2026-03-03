@@ -1,38 +1,17 @@
 import logging
 import os
-from typing import Optional, List
-from pathlib import Path
 from pydantic.dataclasses import dataclass, Field
 
-from microbots.tools.tool import TOOLTYPE, ToolAbstract
+from microbots.tools.tool import TOOLTYPE, ToolAbstract, EnvFileCopies
 from microbots.environment.Environment import Environment
-
-from microbots.constants import TOOL_FILE_BASE_PATH
 
 logger = logging.getLogger(" 🔧 InternalTool")
 
 
 @dataclass
-class EnvFileCopies:
-    src: Path
-    dest: Path
-    permissions: int  # Use FILE_PERMISSION enum to set permissions
-
-    def __post_init__(self):
-        # Pydantic handles type coercion for src, dest, and permissions
-        # We only need custom logic for relative path handling and range validation
-        if not self.src.is_absolute():
-            self.src = TOOL_FILE_BASE_PATH / self.src
-
-        if not (0 <= self.permissions <= 7):
-            raise ValueError(f"permissions must be an integer between 0 and 7 for file copy {self.src} to {self.dest}")
-
-@dataclass
 class Tool(ToolAbstract):
-    # Any files to be copied to the environment before the tool is installed.
     # Name is kept as Tool to keep it as a default behavior.
     # For a normal user, a Tool means an internal tool only.
-    files_to_copy: Optional[List[EnvFileCopies]] = Field(default_factory=list)
     tool_type: TOOLTYPE = Field(init=False, default=TOOLTYPE.INTERNAL)
 
 

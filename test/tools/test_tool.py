@@ -15,7 +15,8 @@ sys.path.insert(
 )
 
 from microbots.tools.tool_yaml_parser import parse_tool_definition
-from microbots.tools.internal_tool import Tool, EnvFileCopies
+from microbots.tools.internal_tool import Tool
+from microbots.tools.tool import EnvFileCopies
 
 
 @pytest.mark.unit

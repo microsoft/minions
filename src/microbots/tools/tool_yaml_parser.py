@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from microbots.tools.tool import TOOLTYPE, ToolAbstract
 from microbots.tools.internal_tool import Tool
+from microbots.tools.external_tool import ExternalTool
 
 logger = logging.getLogger(" 🔧 ToolYamlParser")
 
@@ -35,3 +36,9 @@ def parse_tool_definition(yaml_path: str) -> ToolAbstract:
 
     if tool_type == TOOLTYPE.INTERNAL.value:
         return Tool(**tool_dict) # Internal tool is simply called as Tool to keep it as a default behavior.
+
+    elif tool_type == TOOLTYPE.EXTERNAL.value:
+        return ExternalTool(**tool_dict)
+
+    else:
+        raise ValueError(f"Unsupported tool_type: {tool_type}")
