@@ -98,6 +98,20 @@ class TestMemoryToolResolve:
             with pytest.raises(ValueError):
                 tool._resolve(bad)
 
+    def test_resolve_bare_relative_path_treated_as_relative_to_memory_dir(self, tmp_path):
+        """The else branch: a path without a /memories/ prefix is resolved
+        relative to memory_dir."""
+        tool = make_tool(tmp_path)
+        resolved = tool._resolve("notes.md")
+        assert resolved == (tool._memory_dir / "notes.md").resolve()
+
+    def test_resolve_bare_relative_subdir_path(self, tmp_path):
+        """A bare relative path with subdirectory components is also resolved
+        relative to memory_dir (else branch)."""
+        tool = make_tool(tmp_path)
+        resolved = tool._resolve("sub/dir/file.md")
+        assert resolved == (tool._memory_dir / "sub" / "dir" / "file.md").resolve()
+
 
 # ---------------------------------------------------------------------------
 # _view
@@ -231,6 +245,13 @@ class TestMemoryToolStrReplace:
         result = tool._str_replace(["/memories/f.md"])
         assert result.return_code != 0
 
+    def test_str_replace_empty_args_returns_usage_error(self, tmp_path):
+        """if not args branch: calling _str_replace([]) returns the usage message."""
+        tool = make_tool(tmp_path)
+        result = tool._str_replace([])
+        assert result.return_code == 1
+        assert "Usage: memory str_replace" in result.stderr
+
     def test_str_replace_nonexistent_file_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
         result = tool._str_replace(["/memories/missing.md", "--old", "a", "--new", "b"])
@@ -283,6 +304,13 @@ class TestMemoryToolInsert:
         (tool._memory_dir / "f.md").write_text("line1\n")
         result = tool._insert(["/memories/f.md"])
         assert result.return_code != 0
+
+    def test_insert_empty_args_returns_usage_error(self, tmp_path):
+        """if not args branch: calling _insert([]) returns the usage message."""
+        tool = make_tool(tmp_path)
+        result = tool._insert([])
+        assert result.return_code == 1
+        assert "Usage: memory insert" in result.stderr
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +423,19 @@ class TestMemoryToolClear:
 
 
 # ---------------------------------------------------------------------------
+# is_model_supported
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestMemoryToolIsModelSupported:
+
+    def test_returns_true_for_any_model(self, tmp_path):
+        tool = make_tool(tmp_path)
+        for model in ("gpt-4", "claude-3-sonnet", "ollama/llama3", ""):
+            assert tool.is_model_supported(model) is True
+
+
+# ---------------------------------------------------------------------------
 # invoke — full command dispatch
 # ---------------------------------------------------------------------------
 
@@ -443,6 +484,69 @@ class TestMemoryToolInvoke:
         result = tool.invoke('memory create /memories/f.md "unclosed', parent_bot=Mock())
         assert result.return_code != 0
         assert "Parse error" in result.stderr
+
+    def test_invoke_str_replace_subcommand(self, tmp_path):
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "f.md").write_text("hello world")
+
+        result = tool.invoke(
+            'memory str_replace /memories/f.md --old "hello" --new "goodbye"',
+            parent_bot=Mock(),
+        )
+
+        assert result.return_code == 0
+        assert (tool._memory_dir / "f.md").read_text() == "goodbye world"
+
+    def test_invoke_insert_subcommand(self, tmp_path):
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "f.md").write_text("line1\nline2\n")
+
+        result = tool.invoke(
+            'memory insert /memories/f.md --line 0 --text "prepended"',
+            parent_bot=Mock(),
+        )
+
+        assert result.return_code == 0
+        lines = (tool._memory_dir / "f.md").read_text().splitlines()
+        assert lines[0] == "prepended"
+
+    def test_invoke_delete_subcommand(self, tmp_path):
+        tool = make_tool(tmp_path)
+        f = tool._memory_dir / "f.md"
+        f.write_text("data")
+
+        result = tool.invoke("memory delete /memories/f.md", parent_bot=Mock())
+
+        assert result.return_code == 0
+        assert not f.exists()
+
+    def test_invoke_rename_subcommand(self, tmp_path):
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "old.md").write_text("content")
+
+        result = tool.invoke(
+            "memory rename /memories/old.md /memories/new.md",
+            parent_bot=Mock(),
+        )
+
+        assert result.return_code == 0
+        assert (tool._memory_dir / "new.md").read_text() == "content"
+        assert not (tool._memory_dir / "old.md").exists()
+
+    def test_invoke_exception_returned_as_error_cmdreturn(self, tmp_path):
+        """ValueError/FileNotFoundError/RuntimeError raised inside a subcommand
+        are caught and returned as a CmdReturn with return_code=1."""
+        tool = make_tool(tmp_path)
+
+        # str_replace on a non-existent file raises FileNotFoundError
+        result = tool.invoke(
+            'memory str_replace /memories/missing.md --old "x" --new "y"',
+            parent_bot=Mock(),
+        )
+
+        assert result.return_code == 1
+        assert result.stdout == ""
+        assert result.stderr != ""
 
 
 if __name__ == "__main__":
