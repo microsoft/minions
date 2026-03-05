@@ -98,7 +98,9 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo 'hello'",
@@ -133,7 +135,9 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": True,
             "command": "",
@@ -157,12 +161,16 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client to return invalid then valid response
         mock_invalid_response = Mock()
+        mock_invalid_response.stop_reason = "end_turn"
         mock_invalid_content = Mock()
+        mock_invalid_content.type = "text"
         mock_invalid_content.text = "invalid json"
         mock_invalid_response.content = [mock_invalid_content]
 
         mock_valid_response = Mock()
+        mock_valid_response.stop_reason = "end_turn"
         mock_valid_content = Mock()
+        mock_valid_content.type = "text"
         mock_valid_content.text = json.dumps({
             "task_done": False,
             "command": "ls -la",
@@ -193,7 +201,9 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "pwd",
@@ -218,7 +228,9 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo test",
@@ -247,7 +259,9 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         response_dict = {
             "task_done": True,
             "command": "",
@@ -277,7 +291,9 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "ls",
@@ -299,7 +315,9 @@ class TestAnthropicApiAsk:
 
         # Mock response with markdown-wrapped JSON
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = """Here's the response:
 ```json
 {
@@ -420,7 +438,9 @@ class TestAnthropicApiEdgeCases:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo ''",
@@ -443,7 +463,9 @@ class TestAnthropicApiEdgeCases:
 
         # Mock the Anthropic client response
         mock_response = Mock()
+        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
+        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "pwd",
@@ -511,6 +533,351 @@ class TestAnthropicApiIntegration:
 
         assert result is True
         assert len(api.messages) == 0  # Anthropic doesn't store system in messages
+
+
+# ============================================================================
+# Tests for native_tools support (new changes)
+# ============================================================================
+
+@pytest.mark.unit
+class TestAnthropicApiNativeToolsInit:
+    """Tests for __init__ native_tools caching."""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        pass
+
+    def test_init_without_native_tools_has_empty_caches(self):
+        api = AnthropicApi(system_prompt="test")
+
+        assert api.native_tools == []
+        assert api._native_tool_dicts == []
+        assert api._native_tools_by_name == {}
+
+    def test_init_with_none_native_tools_has_empty_caches(self):
+        api = AnthropicApi(system_prompt="test", native_tools=None)
+
+        assert api._native_tool_dicts == []
+        assert api._native_tools_by_name == {}
+
+    def test_init_with_single_native_tool_caches_dict(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory", "type": "memory_20250818"}
+
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        assert api._native_tool_dicts == [{"name": "memory", "type": "memory_20250818"}]
+
+    def test_init_with_single_native_tool_caches_by_name(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        assert "memory" in api._native_tools_by_name
+        assert api._native_tools_by_name["memory"] is tool
+
+    def test_init_with_multiple_native_tools_caches_all(self):
+        tool1 = Mock()
+        tool1.to_dict.return_value = {"name": "memory"}
+        tool2 = Mock()
+        tool2.to_dict.return_value = {"name": "bash"}
+
+        api = AnthropicApi(system_prompt="test", native_tools=[tool1, tool2])
+
+        assert len(api._native_tool_dicts) == 2
+        assert api._native_tools_by_name["memory"] is tool1
+        assert api._native_tools_by_name["bash"] is tool2
+
+    def test_init_calls_to_dict_exactly_once_per_tool(self):
+        """to_dict() must not be called again on subsequent API calls."""
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+
+        AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        assert tool.to_dict.call_count == 1
+
+
+@pytest.mark.unit
+class TestAnthropicApiCallApiWithTools:
+    """Tests for _call_api including/excluding the tools kwarg."""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        pass
+
+    def test_call_api_without_tools_omits_tools_kwarg(self):
+        api = AnthropicApi(system_prompt="test", deployment_name="claude-3")
+        api.messages = [{"role": "user", "content": "hello"}]
+        api.ai_client.messages.create = Mock(return_value=Mock())
+
+        api._call_api()
+
+        call_kwargs = api.ai_client.messages.create.call_args[1]
+        assert "tools" not in call_kwargs
+
+    def test_call_api_with_tools_passes_cached_dicts(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory", "type": "memory_20250818"}
+        api = AnthropicApi(system_prompt="test", deployment_name="claude-3", native_tools=[tool])
+        api.messages = [{"role": "user", "content": "hello"}]
+        api.ai_client.messages.create = Mock(return_value=Mock())
+
+        api._call_api()
+
+        call_kwargs = api.ai_client.messages.create.call_args[1]
+        assert "tools" in call_kwargs
+        assert call_kwargs["tools"] == [{"name": "memory", "type": "memory_20250818"}]
+
+    def test_call_api_does_not_call_to_dict_again(self):
+        """to_dict() should only be called during __init__, never during _call_api."""
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        api = AnthropicApi(system_prompt="test", deployment_name="claude-3", native_tools=[tool])
+        api.messages = [{"role": "user", "content": "hello"}]
+        api.ai_client.messages.create = Mock(return_value=Mock())
+
+        count_after_init = tool.to_dict.call_count  # should be 1
+        api._call_api()
+        api._call_api()
+
+        assert tool.to_dict.call_count == count_after_init  # no increase
+
+
+@pytest.mark.unit
+class TestAnthropicApiDispatchToolUse:
+    """Tests for _dispatch_tool_use."""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        pass
+
+    # ------------------------------------------------------------------ #
+    # Helpers
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _tool_use_block(name, tool_id="tu_001", input_data=None):
+        block = Mock()
+        block.type = "tool_use"
+        block.name = name
+        block.id = tool_id
+        block.input = input_data or {}
+        block.model_dump.return_value = {"type": "tool_use", "id": tool_id, "name": name}
+        return block
+
+    @staticmethod
+    def _text_block(text="hello"):
+        block = Mock()
+        block.type = "text"
+        block.text = text
+        block.model_dump.return_value = {"type": "text", "text": text}
+        return block
+
+    # ------------------------------------------------------------------ #
+    # Tests
+    # ------------------------------------------------------------------ #
+
+    def test_dispatch_appends_assistant_message_first(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "ok"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        response = Mock()
+        response.content = [self._tool_use_block("memory")]
+        api._dispatch_tool_use(response)
+
+        assert api.messages[0]["role"] == "assistant"
+
+    def test_dispatch_appends_tool_result_user_message(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "file listing"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        response = Mock()
+        response.content = [self._tool_use_block("memory", tool_id="tu_abc")]
+        api._dispatch_tool_use(response)
+
+        user_msg = api.messages[1]
+        assert user_msg["role"] == "user"
+        assert user_msg["content"][0]["type"] == "tool_result"
+        assert user_msg["content"][0]["tool_use_id"] == "tu_abc"
+        assert user_msg["content"][0]["content"] == "file listing"
+
+    def test_dispatch_calls_tool_with_correct_input(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "ok"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        input_data = {"command": "view", "path": "/memories"}
+        response = Mock()
+        response.content = [self._tool_use_block("memory", input_data=input_data)]
+        api._dispatch_tool_use(response)
+
+        tool.call.assert_called_once_with(input_data)
+
+    def test_dispatch_unknown_tool_returns_error_in_result(self):
+        api = AnthropicApi(system_prompt="test")  # no native tools
+
+        response = Mock()
+        response.content = [self._tool_use_block("unknown_tool", tool_id="tu_err")]
+        api._dispatch_tool_use(response)
+
+        content = api.messages[1]["content"][0]["content"]
+        assert "Error" in content
+        assert "unknown_tool" in content
+
+    def test_dispatch_tool_exception_returns_error_message(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.side_effect = RuntimeError("disk full")
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        response = Mock()
+        response.content = [self._tool_use_block("memory", tool_id="tu_exc")]
+        api._dispatch_tool_use(response)
+
+        content = api.messages[1]["content"][0]["content"]
+        assert "Error" in content
+        assert "disk full" in content
+
+    def test_dispatch_skips_non_tool_use_content_blocks(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "result"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        response = Mock()
+        response.content = [
+            self._text_block("thinking..."),
+            self._tool_use_block("memory", tool_id="tu_only"),
+        ]
+        api._dispatch_tool_use(response)
+
+        tool_results = api.messages[1]["content"]
+        assert len(tool_results) == 1
+        assert tool_results[0]["tool_use_id"] == "tu_only"
+
+    def test_dispatch_handles_multiple_tool_use_blocks(self):
+        tool1 = Mock()
+        tool1.to_dict.return_value = {"name": "memory"}
+        tool1.call.return_value = "memory result"
+        tool2 = Mock()
+        tool2.to_dict.return_value = {"name": "bash"}
+        tool2.call.return_value = "bash result"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool1, tool2])
+
+        response = Mock()
+        response.content = [
+            self._tool_use_block("memory", tool_id="id_1"),
+            self._tool_use_block("bash", tool_id="id_2"),
+        ]
+        api._dispatch_tool_use(response)
+
+        results = api.messages[1]["content"]
+        assert len(results) == 2
+        assert results[0]["tool_use_id"] == "id_1"
+        assert results[0]["content"] == "memory result"
+        assert results[1]["tool_use_id"] == "id_2"
+        assert results[1]["content"] == "bash result"
+
+
+@pytest.mark.unit
+class TestAnthropicApiAskWithToolUseLoop:
+    """Tests for ask() cycling through tool_use rounds before returning JSON."""
+
+    @pytest.fixture(autouse=True)
+    def _use_patch(self, patch_anthropic_config):
+        pass
+
+    @staticmethod
+    def _tool_use_response(tool_name, tool_id):
+        block = Mock()
+        block.type = "tool_use"
+        block.name = tool_name
+        block.id = tool_id
+        block.input = {}
+        block.model_dump.return_value = {"type": "tool_use", "id": tool_id, "name": tool_name}
+        response = Mock()
+        response.stop_reason = "tool_use"
+        response.content = [block]
+        return response
+
+    @staticmethod
+    def _text_response(json_dict):
+        block = Mock()
+        block.type = "text"
+        block.text = json.dumps(json_dict)
+        block.model_dump.return_value = {"type": "text", "text": block.text}
+        response = Mock()
+        response.stop_reason = "end_turn"
+        response.content = [block]
+        return response
+
+    def test_ask_dispatches_one_tool_use_round_then_returns(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "viewed /memories"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        tool_resp = self._tool_use_response("memory", "tu_1")
+        final_resp = self._text_response({"task_done": False, "command": "ls /", "thoughts": ""})
+        api.ai_client.messages.create = Mock(side_effect=[tool_resp, final_resp])
+
+        result = api.ask("do the task")
+
+        assert api.ai_client.messages.create.call_count == 2
+        tool.call.assert_called_once()
+        assert result.command == "ls /"
+
+    def test_ask_dispatches_multiple_tool_use_rounds(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "ok"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        tool_resp1 = self._tool_use_response("memory", "tu_1")
+        tool_resp2 = self._tool_use_response("memory", "tu_2")
+        final_resp = self._text_response({"task_done": True, "command": "", "thoughts": "done"})
+        api.ai_client.messages.create = Mock(side_effect=[tool_resp1, tool_resp2, final_resp])
+
+        result = api.ask("do the task")
+
+        assert api.ai_client.messages.create.call_count == 3
+        assert tool.call.call_count == 2
+        assert result.task_done is True
+
+    def test_ask_without_tool_use_does_not_dispatch(self):
+        api = AnthropicApi(system_prompt="test")
+
+        final_resp = self._text_response({"task_done": False, "command": "pwd", "thoughts": ""})
+        api.ai_client.messages.create = Mock(return_value=final_resp)
+
+        result = api.ask("where am I?")
+
+        assert api.ai_client.messages.create.call_count == 1
+        assert result.command == "pwd"
+
+    def test_ask_tool_use_messages_are_added_to_history(self):
+        tool = Mock()
+        tool.to_dict.return_value = {"name": "memory"}
+        tool.call.return_value = "result"
+        api = AnthropicApi(system_prompt="test", native_tools=[tool])
+
+        tool_resp = self._tool_use_response("memory", "tu_1")
+        final_resp = self._text_response({"task_done": False, "command": "echo hi", "thoughts": ""})
+        api.ai_client.messages.create = Mock(side_effect=[tool_resp, final_resp])
+
+        api.ask("do it")
+
+        # Messages: user, assistant(tool_use), user(tool_result), assistant(final json)
+        roles = [m["role"] for m in api.messages]
+        assert roles.count("user") == 2
+        assert roles.count("assistant") == 2
 
 
 if __name__ == "__main__":
