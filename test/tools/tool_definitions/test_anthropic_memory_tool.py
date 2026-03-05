@@ -209,13 +209,20 @@ class TestAnthropicMemoryToolCreate:
         assert (tool._memory_dir / "new.md").read_text() == "hello world"
 
     def test_create_raises_runtime_error_on_failure(self, tmp_path):
+        """Ensures the `raise RuntimeError(result.stderr)` branch is exercised by
+        mocking _create to return a non-zero CmdReturn."""
+        from unittest.mock import patch
+        from microbots.environment.Environment import CmdReturn
+
         tool = make_tool(tmp_path)
-        # Path traversal should cause _create to fail via _resolve
         cmd = BetaMemoryTool20250818CreateCommand(
-            command="create", path="/memories/../../etc/evil.md", file_text="x"
+            command="create", path="/memories/new.md", file_text="x"
         )
-        with pytest.raises((RuntimeError, ValueError)):
-            tool.create(cmd)
+        with patch.object(
+            tool, "_create", return_value=CmdReturn(stdout="", stderr="disk full", return_code=1)
+        ):
+            with pytest.raises(RuntimeError, match="disk full"):
+                tool.create(cmd)
 
 
 # ---------------------------------------------------------------------------

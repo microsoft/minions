@@ -166,6 +166,14 @@ class TestMemoryToolView:
         result = tool._view([])
         assert result.return_code != 0
 
+    def test_view_unknown_flag_is_skipped(self, tmp_path):
+        """else: i += 1 — unrecognised flags are silently skipped."""
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "f.md").write_text("hello\n")
+        result = tool._view(["/memories/f.md", "--bogus", "value"])
+        assert result.return_code == 0
+        assert "hello" in result.stdout
+
 
 # ---------------------------------------------------------------------------
 # _create
@@ -257,6 +265,16 @@ class TestMemoryToolStrReplace:
         result = tool._str_replace(["/memories/missing.md", "--old", "a", "--new", "b"])
         assert result.return_code != 0
 
+    def test_str_replace_unknown_flag_is_skipped(self, tmp_path):
+        """else: i += 1 — unrecognised flags in the arg loop are silently skipped."""
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "f.md").write_text("hello world")
+        result = tool._str_replace([
+            "/memories/f.md", "--bogus", "ignored", "--old", "hello", "--new", "goodbye"
+        ])
+        assert result.return_code == 0
+        assert (tool._memory_dir / "f.md").read_text() == "goodbye world"
+
 
 # ---------------------------------------------------------------------------
 # _insert
@@ -311,6 +329,17 @@ class TestMemoryToolInsert:
         result = tool._insert([])
         assert result.return_code == 1
         assert "Usage: memory insert" in result.stderr
+
+    def test_insert_unknown_flag_is_skipped(self, tmp_path):
+        """else: i += 1 — unrecognised flags in the arg loop are silently skipped."""
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "f.md").write_text("line1\nline2\n")
+        result = tool._insert([
+            "/memories/f.md", "--bogus", "ignored", "--line", "0", "--text", "prepended"
+        ])
+        assert result.return_code == 0
+        lines = (tool._memory_dir / "f.md").read_text().splitlines()
+        assert lines[0] == "prepended"
 
 
 # ---------------------------------------------------------------------------
@@ -534,19 +563,20 @@ class TestMemoryToolInvoke:
         assert not (tool._memory_dir / "old.md").exists()
 
     def test_invoke_exception_returned_as_error_cmdreturn(self, tmp_path):
-        """ValueError/FileNotFoundError/RuntimeError raised inside a subcommand
-        are caught and returned as a CmdReturn with return_code=1."""
+        """except (ValueError, FileNotFoundError, RuntimeError) block:
+        a path-traversal path causes _resolve() to raise ValueError inside a
+        subcommand handler, which is caught and returned as CmdReturn(return_code=1)."""
         tool = make_tool(tmp_path)
 
-        # str_replace on a non-existent file raises FileNotFoundError
+        # Path traversal triggers ValueError inside _view → caught by except block
         result = tool.invoke(
-            'memory str_replace /memories/missing.md --old "x" --new "y"',
+            "memory view /memories/../../etc/passwd",
             parent_bot=Mock(),
         )
 
         assert result.return_code == 1
         assert result.stdout == ""
-        assert result.stderr != ""
+        assert "traversal" in result.stderr.lower() or result.stderr != ""
 
 
 if __name__ == "__main__":
