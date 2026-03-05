@@ -8,8 +8,8 @@ rename) and the client executes it against a local filesystem directory.
 
 This implementation extends both:
   - ``MemoryTool``:  provides all file-operation logic (_resolve, _view,
-    _create, _str_replace, _insert, _delete, _rename, _clear) and the
-    ToolAbstract duck-typing interface.
+    _create, _str_replace, _insert, _delete, _rename, _clear) and satisfies
+    the ``ToolAbstract`` ABC (install_tool, verify_tool_installation, etc.).
   - ``BetaAbstractMemoryTool`` (SDK): provides native Anthropic dispatch and
     the ``to_dict()`` / ``call()`` interface required by AnthropicApi.
 
@@ -108,7 +108,7 @@ class AnthropicMemoryTool(MemoryTool, _SDKMemoryTool):
         _SDKMemoryTool.__init__(self)  # type: ignore[call-arg]
 
     # ---------------------------------------------------------------------- #
-    # ToolAbstract duck-typing overrides
+    # ToolAbstract overrides
     # ---------------------------------------------------------------------- #
 
     def is_model_supported(self, model_name: str) -> bool:
