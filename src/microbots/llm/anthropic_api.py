@@ -21,12 +21,31 @@ api_key = os.getenv("ANTHROPIC_API_KEY")
 
 class AnthropicApi(LLMInterface):
 
+    def upgrade_tools(self, tools: list) -> list:
+        """Replace ``MemoryTool`` with ``AnthropicMemoryTool`` for native tool-use."""
+        from microbots.tools.tool_definitions.memory_tool import MemoryTool
+        from microbots.tools.tool_definitions.anthropic_memory_tool import AnthropicMemoryTool
+
+        upgraded = []
+        for tool in tools:
+            if isinstance(tool, MemoryTool) and not isinstance(tool, AnthropicMemoryTool):
+                logger.info(
+                    "\U0001f9e0 Auto-upgrading MemoryTool \u2192 AnthropicMemoryTool for Anthropic provider"
+                )
+                upgraded.append(AnthropicMemoryTool(
+                    memory_dir=tool.memory_dir,
+                    usage_instructions=tool.usage_instructions_to_llm,
+                ))
+            else:
+                upgraded.append(tool)
+        return upgraded
+
     def __init__(
         self,
         system_prompt: str,
         deployment_name: str = deployment_name,
         max_retries: int = 3,
-        native_tools: Optional[List] = None,
+        additional_tools: Optional[List] = None,
     ):
         """
         Parameters
@@ -37,11 +56,10 @@ class AnthropicApi(LLMInterface):
             The Anthropic model deployment name.
         max_retries : int
             Maximum number of retries for invalid LLM responses.
-        native_tools : Optional[List]
-            Anthropic-native tool objects (e.g. ``AnthropicMemoryTool``) that
-            have both a ``to_dict()`` and a ``call()`` method.  These are passed
-            directly to the API and their tool-use blocks are dispatched here
-            before the JSON response is returned to the caller.
+        additional_tools : Optional[List]
+            Tool objects passed from MicroBot.  Any provider-agnostic tools
+            (e.g. ``MemoryTool``) are silently upgraded to their Anthropic-
+            native variants, and their API schemas are extracted.
         """
         self.ai_client = Anthropic(
             api_key=api_key,
@@ -50,12 +68,18 @@ class AnthropicApi(LLMInterface):
         self.deployment_name = deployment_name
         self.system_prompt = system_prompt
         self.messages = []
-        self.native_tools = native_tools or []
-        # Cache tool dicts once so _call_api and _dispatch_tool_use don't
-        # re-serialise on every invocation (important when multiple native
-        # tools are registered, e.g. memory + bash).
-        self._native_tool_dicts = [t.to_dict() for t in self.native_tools]
-        self._native_tools_by_name = {d["name"]: t for d, t in zip(self._native_tool_dicts, self.native_tools)}
+
+        # Silently upgrade tools in-place and extract API schemas
+        tools = additional_tools or []
+        upgraded = self.upgrade_tools(tools)
+        # Mutate the original list so the caller (MicroBot) sees upgraded tools
+        if additional_tools is not None:
+            additional_tools[:] = upgraded
+        self._tool_dicts = [
+            t.to_dict() for t in upgraded
+            if callable(getattr(t, "to_dict", None))
+        ]
+        self._pending_tool_response = None
 
         # Set these values here. This logic will be handled in the parent class.
         self.max_retries = max_retries
@@ -66,7 +90,7 @@ class AnthropicApi(LLMInterface):
     # ---------------------------------------------------------------------- #
 
     def _call_api(self) -> object:
-        """Call the Anthropic messages API, including native tools when present."""
+        """Call the Anthropic messages API, including tool definitions when present."""
         kwargs = dict(
             model=self.deployment_name,
             system=self.system_prompt,
@@ -74,44 +98,24 @@ class AnthropicApi(LLMInterface):
             max_tokens=4096,
         )
 
-        if self.native_tools:
-            kwargs["tools"] = self._native_tool_dicts
+        if self._tool_dicts:
+            kwargs["tools"] = self._tool_dicts
 
         return self.ai_client.messages.create(**kwargs)
 
-    def _dispatch_tool_use(self, response) -> None:
-        """Handle a tool_use response: execute each tool call and append results.
+    def _append_tool_result(self, response, result_text: str) -> None:
+        """Append the assistant tool_use turn and the corresponding tool_result user turn.
 
-        Mutates ``self.messages`` in place — appends the assistant turn (with
-        all content blocks) and the corresponding tool_result user turn.
+        Called when the caller provides the tool execution result via
+        the next ``ask()`` call.
         """
-        # Append the full assistant message as-is (content is a list of blocks)
         assistant_content = [block.model_dump() for block in response.content]
         self.messages.append({"role": "assistant", "content": assistant_content})
 
-        # Build tool_result entries for every tool_use block
         tool_results = []
         for block in response.content:
             if block.type != "tool_use":
                 continue
-
-            # Find the matching native tool by name
-            tool = self._native_tools_by_name.get(block.name)
-            if tool is None:
-                result_text = f"Error: unknown tool '{block.name}'"
-                logger.error("Received tool_use for unknown tool: %s", block.name)
-            else:
-                try:
-                    result_text = tool.call(block.input)
-                    logger.info(
-                        "🧠 Native tool '%s' executed. Result (first 200 chars): %s",
-                        block.name,
-                        str(result_text)[:200],
-                    )
-                except Exception as exc:
-                    result_text = f"Error executing tool '{block.name}': {exc}"
-                    logger.error("Native tool '%s' raised: %s", block.name, exc)
-
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
@@ -127,18 +131,39 @@ class AnthropicApi(LLMInterface):
     def ask(self, message: str) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
 
-        self.messages.append({"role": "user", "content": message})
+        if self._pending_tool_response:
+            # Previous response was tool_use — format this message as tool results.
+            self._append_tool_result(self._pending_tool_response, message)
+            self._pending_tool_response = None
+        else:
+            self.messages.append({"role": "user", "content": message})
 
         valid = False
         while not valid:
             response = self._call_api()
 
-            # Dispatch any tool_use rounds before looking for a JSON response.
-            # The model may call the memory tool multiple times before producing
-            # its final JSON command.
-            while response.stop_reason == "tool_use":
-                self._dispatch_tool_use(response)
-                response = self._call_api()
+            if response.stop_reason == "tool_use":
+                # Return tool call info as an LLMAskResponse so the
+                # caller (MicroBot.run) can dispatch the tool.
+                self._pending_tool_response = response
+
+                thoughts = ""
+                for block in response.content:
+                    if block.type == "text":
+                        thoughts = block.text
+                        break
+
+                tool_calls = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        tool_calls.append({
+                            "name": block.name,
+                            "id": block.id,
+                            "input": block.input,
+                        })
+
+                command = json.dumps({"native_tool_calls": tool_calls})
+                return LLMAskResponse(task_done=False, thoughts=thoughts, command=command)
 
             # Extract text content from the final response
             response_text = ""

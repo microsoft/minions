@@ -317,38 +317,7 @@ class MicroBot:
             folder_to_mount=folder_to_mount,
         )
 
-    def _upgrade_tools_for_provider(self):
-        """Auto-upgrade provider-agnostic tools to their provider-optimised variants.
-
-        Currently: replaces any ``MemoryTool`` with ``AnthropicMemoryTool`` when
-        the provider is Anthropic so the model gets native structured tool-use
-        instead of the text-command loop.  The ``memory_dir`` and any custom
-        ``usage_instructions_to_llm`` are forwarded to the upgraded instance.
-        """
-        if self.model_provider != ModelProvider.ANTHROPIC:
-            return
-
-        # Local imports to avoid pulling Anthropic SDK into non-Anthropic paths
-        from microbots.tools.tool_definitions.memory_tool import MemoryTool
-        from microbots.tools.tool_definitions.anthropic_memory_tool import AnthropicMemoryTool
-
-        upgraded = []
-        for tool in self.additional_tools:
-            if isinstance(tool, MemoryTool) and not isinstance(tool, AnthropicMemoryTool):
-                logger.info(
-                    "🧠 Auto-upgrading MemoryTool → AnthropicMemoryTool for Anthropic provider"
-                )
-                upgraded.append(AnthropicMemoryTool(
-                    memory_dir=tool.memory_dir,
-                    usage_instructions=tool.usage_instructions_to_llm,
-                ))
-            else:
-                upgraded.append(tool)
-        self.additional_tools = upgraded
-
     def _create_llm(self):
-        self._upgrade_tools_for_provider()
-
         # Append tool usage instructions to system prompt
         system_prompt_with_tools = self.system_prompt if self.system_prompt else ""
         if self.additional_tools:
@@ -365,16 +334,10 @@ class MicroBot:
                 system_prompt=system_prompt_with_tools, model_name=self.deployment_name
             )
         elif self.model_provider == ModelProvider.ANTHROPIC:
-            # Detect Anthropic-native tools (e.g. AnthropicMemoryTool) by duck-typing:
-            # any tool that exposes both to_dict() and call() is a native Anthropic tool.
-            native_tools = [
-                t for t in self.additional_tools
-                if callable(getattr(t, "to_dict", None)) and callable(getattr(t, "call", None))
-            ]
             self.llm = AnthropicApi(
                 system_prompt=system_prompt_with_tools,
                 deployment_name=self.deployment_name,
-                native_tools=native_tools or None,
+                additional_tools=self.additional_tools,
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 

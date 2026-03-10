@@ -21,8 +21,9 @@ string as the SDK expects.
 The memory tool (type ``memory_20250818``) is available in the standard
 Anthropic library and does not require a beta endpoint or header.  Pass it
 via ``tools=[{"type": "memory_20250818", "name": "memory"}]`` on a regular
-``client.messages.create(...)`` call.  ``AnthropicApi`` handles this
-automatically when ``native_tools`` contains an ``AnthropicMemoryTool``.
+``client.messages.create(...)`` call.  ``MicroBot`` auto-upgrades
+``MemoryTool`` to ``AnthropicMemoryTool`` for Anthropic providers and
+passes the tool schema to ``AnthropicApi`` via ``tool_dicts``.
 
 Usage:
     from microbots.tools.tool_definitions.anthropic_memory_tool import AnthropicMemoryTool
@@ -33,6 +34,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 from logging import getLogger
 from pathlib import Path
 
@@ -48,6 +50,7 @@ from anthropic.types.beta import (
     BetaMemoryTool20250818ViewCommand,
 )
 
+from microbots.environment.Environment import CmdReturn
 from microbots.tools.tool_definitions.memory_tool import MemoryTool
 
 logger = getLogger(__name__)
@@ -116,9 +119,35 @@ class AnthropicMemoryTool(MemoryTool, _SDKMemoryTool):
         return "claude" in model_name.lower()
 
     def is_invoked(self, command: str) -> bool:
-        """Return False — this tool is dispatched natively by AnthropicApi,
-        not via the shell command loop."""
+        """Return True when the command is a serialized native_tool_calls JSON
+        containing a call to the ``memory`` tool."""
+        try:
+            data = json.loads(command)
+            if "native_tool_calls" in data:
+                return any(tc["name"] == "memory" for tc in data["native_tool_calls"])
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
         return False
+
+    def invoke(self, command: str, parent_bot) -> CmdReturn:
+        """Execute all memory tool calls in the serialized native_tool_calls batch."""
+        data = json.loads(command)
+        results = []
+        for tc in data["native_tool_calls"]:
+            if tc["name"] != "memory":
+                continue
+            try:
+                result = self.call(tc["input"])
+                logger.info(
+                    "\U0001f9e0 Native tool 'memory' executed. Result (first 200 chars): %s",
+                    str(result)[:200],
+                )
+                results.append(str(result))
+            except Exception as exc:
+                logger.error("Native tool 'memory' raised: %s", exc)
+                results.append(f"Error executing tool 'memory': {exc}")
+        combined = "\n".join(results)
+        return CmdReturn(stdout=combined, stderr="", return_code=0)
 
     def clear_all(self) -> None:
         """Delete all memory files (useful for testing or resetting state)."""

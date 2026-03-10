@@ -101,7 +101,19 @@ class TestAnthropicMemoryToolIsModelSupported:
 @pytest.mark.unit
 class TestAnthropicMemoryToolIsInvoked:
 
-    def test_always_returns_false(self, tmp_path):
+    def test_returns_true_for_native_tool_calls_with_memory(self, tmp_path):
+        tool = make_tool(tmp_path)
+        import json
+        cmd = json.dumps({"native_tool_calls": [{"name": "memory", "id": "tu_1", "input": {}}]})
+        assert tool.is_invoked(cmd) is True
+
+    def test_returns_false_for_native_tool_calls_without_memory(self, tmp_path):
+        tool = make_tool(tmp_path)
+        import json
+        cmd = json.dumps({"native_tool_calls": [{"name": "bash", "id": "tu_1", "input": {}}]})
+        assert tool.is_invoked(cmd) is False
+
+    def test_returns_false_for_plain_commands(self, tmp_path):
         tool = make_tool(tmp_path)
         for cmd in ("memory view /memories", "memory clear", "anything", ""):
             assert tool.is_invoked(cmd) is False
