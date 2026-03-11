@@ -1,4 +1,5 @@
 import logging
+import os
 import shlex
 import shutil
 from pathlib import Path
@@ -110,19 +111,22 @@ class MemoryTool(ExternalTool):
     def _resolve(self, path: str) -> Path:
         """Resolve a /memories/… path to an absolute host path."""
         stripped = path.lstrip("/")
+
+        # Reject any path containing '..' components before resolving
+        if ".." in Path(stripped).parts:
+            raise ValueError(f"Path traversal not allowed: {path!r}")
+
         if stripped == "memories":
             rel = ""
         elif stripped.startswith("memories/"):
             rel = stripped[len("memories/"):]
-        elif stripped.startswith(("workdir", "home", "tmp", "var", "etc", "usr")):
-            raise ValueError(
-                f"Invalid memory path: {path!r}. Use paths under /memories/."
-            )
         else:
             rel = stripped  # treat as relative to memory_dir
 
         resolved = (self._memory_dir / rel).resolve() if rel else self._memory_dir.resolve()
-        if not str(resolved).startswith(str(self._memory_dir.resolve())):
+        # Use trailing separator to prevent prefix confusion with sibling dirs
+        memory_root = str(self._memory_dir.resolve())
+        if resolved != self._memory_dir.resolve() and not str(resolved).startswith(memory_root + os.sep):
             raise ValueError(f"Path traversal not allowed: {path!r}")
         return resolved
 
@@ -184,6 +188,7 @@ class MemoryTool(ExternalTool):
             elif args[i] == "--end" and i + 1 < len(args):
                 end_line = int(args[i + 1]); i += 2
             else:
+                logger.warning("🧠 MemoryTool view: unknown flag %r (skipped)", args[i])
                 i += 1
 
         resolved = self._resolve(path)
@@ -232,6 +237,7 @@ class MemoryTool(ExternalTool):
             elif args[i] == "--new" and i + 1 < len(args):
                 new_text = args[i + 1]; i += 2
             else:
+                logger.warning("🧠 MemoryTool str_replace: unknown flag %r (skipped)", args[i])
                 i += 1
         if old_text is None or new_text is None:
             return CmdReturn(stdout="", stderr="--old and --new are required", return_code=1)
@@ -259,6 +265,7 @@ class MemoryTool(ExternalTool):
             elif args[i] == "--text" and i + 1 < len(args):
                 text = args[i + 1]; i += 2
             else:
+                logger.warning("🧠 MemoryTool insert: unknown flag %r (skipped)", args[i])
                 i += 1
         if line_num is None or text is None:
             return CmdReturn(stdout="", stderr="--line and --text are required", return_code=1)

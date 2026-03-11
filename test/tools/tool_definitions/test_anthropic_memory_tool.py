@@ -364,3 +364,58 @@ class TestAnthropicMemoryToolRename:
         )
         with pytest.raises(RuntimeError):
             tool.rename(cmd)
+
+
+# ---------------------------------------------------------------------------
+# invoke — non-memory tool calls are skipped
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestAnthropicMemoryToolInvoke:
+
+    def test_invoke_skips_non_memory_tool_calls(self, tmp_path):
+        """The ``if tc["name"] != "memory": continue`` branch is exercised
+        when native_tool_calls contains a non-memory tool."""
+        import json
+        from unittest.mock import Mock
+
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "f.md").write_text("hello")
+
+        command = json.dumps({
+            "native_tool_calls": [
+                {"name": "bash", "id": "tu_1", "input": {"command": "ls"}},
+                {"name": "memory", "id": "tu_2", "input": {
+                    "command": "view", "path": "/memories/f.md", "view_range": None,
+                }},
+            ]
+        })
+
+        result = tool.invoke(command, parent_bot=Mock())
+
+        assert result.return_code == 0
+        # Only the memory call should produce output; bash should be skipped
+        assert "hello" in result.stdout
+
+    def test_invoke_catches_exception_from_tool_call(self, tmp_path):
+        """The ``except Exception`` branch is exercised when tool.call() raises."""
+        import json
+        from unittest.mock import Mock, patch
+
+        tool = make_tool(tmp_path)
+
+        command = json.dumps({
+            "native_tool_calls": [
+                {"name": "memory", "id": "tu_1", "input": {
+                    "command": "view", "path": "/memories/nonexistent.md", "view_range": None,
+                }},
+            ]
+        })
+
+        # Force call() to raise an exception
+        with patch.object(tool, "call", side_effect=RuntimeError("boom")):
+            result = tool.invoke(command, parent_bot=Mock())
+
+        assert result.return_code == 0
+        assert "Error executing tool 'memory'" in result.stdout
+        assert "boom" in result.stdout
