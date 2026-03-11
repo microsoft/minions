@@ -92,6 +92,19 @@ class TestMemoryToolResolve:
         with pytest.raises(ValueError, match="Path traversal"):
             tool._resolve("/memories/../../etc/passwd")
 
+    def test_resolve_rejects_symlink_escaping_memory_dir(self, tmp_path):
+        """A symlink inside memory_dir that resolves outside must be rejected
+        by the startswith guard (not the '..' check)."""
+        tool = make_tool(tmp_path)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "secret.txt").write_text("sensitive")
+        # Create a symlink inside the memory dir pointing outside
+        link = tool._memory_dir / "escape"
+        link.symlink_to(outside)
+        with pytest.raises(ValueError, match="Path traversal"):
+            tool._resolve("/memories/escape/secret.txt")
+
     def test_resolve_rejects_non_memory_paths(self, tmp_path):
         tool = make_tool(tmp_path)
         for bad in ("/workdir/file", "/home/user/file", "/tmp/file"):
