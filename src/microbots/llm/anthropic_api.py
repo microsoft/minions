@@ -21,25 +21,6 @@ api_key = os.getenv("ANTHROPIC_API_KEY")
 
 class AnthropicApi(LLMInterface):
 
-    def upgrade_tools(self, tools: list) -> list:
-        """Replace ``MemoryTool`` with ``AnthropicMemoryTool`` for native tool-use."""
-        from microbots.tools.tool_definitions.memory_tool import MemoryTool
-        from microbots.tools.tool_definitions.anthropic_memory_tool import AnthropicMemoryTool
-
-        upgraded = []
-        for tool in tools:
-            if isinstance(tool, MemoryTool) and not isinstance(tool, AnthropicMemoryTool):
-                logger.info(
-                    "\U0001f9e0 Auto-upgrading MemoryTool \u2192 AnthropicMemoryTool for Anthropic provider"
-                )
-                upgraded.append(AnthropicMemoryTool(
-                    memory_dir=tool.memory_dir,
-                    usage_instructions=tool.usage_instructions_to_llm,
-                ))
-            else:
-                upgraded.append(tool)
-        return upgraded
-
     def __init__(
         self,
         system_prompt: str,
@@ -57,9 +38,8 @@ class AnthropicApi(LLMInterface):
         max_retries : int
             Maximum number of retries for invalid LLM responses.
         additional_tools : Optional[List]
-            Tool objects passed from MicroBot.  Any provider-agnostic tools
-            (e.g. ``MemoryTool``) are silently upgraded to their Anthropic-
-            native variants, and their API schemas are extracted.
+            Tool objects passed from MicroBot. Any tools exposing a native
+            Anthropic schema via ``to_dict()`` are forwarded to the API.
         """
         self.ai_client = Anthropic(
             api_key=api_key,
@@ -69,10 +49,9 @@ class AnthropicApi(LLMInterface):
         self.system_prompt = system_prompt
         self.messages = []
 
-        # Silently upgrade tools in-place and extract API schemas
+        # Preserve tool instances as provided and extract native Anthropic schemas.
         tools = additional_tools or []
         upgraded = self.upgrade_tools(tools)
-        # Mutate the original list so the caller (MicroBot) sees upgraded tools
         if additional_tools is not None:
             additional_tools[:] = upgraded
         self._tool_dicts = [

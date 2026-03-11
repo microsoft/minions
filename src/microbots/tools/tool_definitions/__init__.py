@@ -1,2 +1,1 @@
 from microbots.tools.tool_definitions.memory_tool import MemoryTool
-from microbots.tools.tool_definitions.anthropic_memory_tool import AnthropicMemoryTool

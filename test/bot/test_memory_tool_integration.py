@@ -1,7 +1,7 @@
-"""Tests for the Anthropic memory tool end-to-end flow.
+"""Tests for memory tool end-to-end flow.
 
 Unit tests (mocked API):
-  Verify wiring — auto-upgrade, tool dispatch, and memory file operations
+    Verify wiring, tool dispatch, and memory file operations
   with a mocked Anthropic client. Fast, free, no API key needed.
 
 Integration tests (real API):
@@ -28,41 +28,11 @@ sys.path.insert(
 from microbots import MicroBot, BotRunResult
 from microbots.llm.llm import llm_output_format_str
 from microbots.tools.tool_definitions.memory_tool import MemoryTool
-from microbots.tools.tool_definitions.anthropic_memory_tool import AnthropicMemoryTool
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _make_tool_use_response(tool_name, tool_id, tool_input, thinking_text=""):
-    """Build a mock Anthropic API response with stop_reason='tool_use'."""
-    blocks = []
-
-    if thinking_text:
-        text_block = Mock()
-        text_block.type = "text"
-        text_block.text = thinking_text
-        blocks.append(text_block)
-
-    tool_block = Mock()
-    tool_block.type = "tool_use"
-    tool_block.name = tool_name
-    tool_block.id = tool_id
-    tool_block.input = tool_input
-    tool_block.model_dump = Mock(return_value={
-        "type": "tool_use",
-        "id": tool_id,
-        "name": tool_name,
-        "input": tool_input,
-    })
-    blocks.append(tool_block)
-
-    resp = Mock()
-    resp.stop_reason = "tool_use"
-    resp.content = blocks
-    return resp
-
 
 def _make_end_turn_response(task_done, thoughts, command=""):
     """Build a mock Anthropic API response with stop_reason='end_turn'."""
@@ -88,7 +58,7 @@ def _make_end_turn_response(task_done, thoughts, command=""):
 
 @pytest.mark.unit
 class TestMemoryToolWiring:
-    """Unit tests — mocked Anthropic client, real tool dispatch and file ops."""
+    """Unit tests for provider-agnostic MemoryTool dispatch with a mocked Anthropic client."""
 
     @pytest.fixture()
     def memory_dir(self, tmp_path):
@@ -101,7 +71,7 @@ class TestMemoryToolWiring:
         """Create a MicroBot with Anthropic provider and a MemoryTool.
 
         The Anthropic client is mocked, but the rest of the stack is real:
-        auto-upgrade, tool dispatch, and memory file operations.
+        tool dispatch and memory file operations.
         """
         tool = MemoryTool(
             memory_dir=str(memory_dir),
@@ -131,34 +101,27 @@ class TestMemoryToolWiring:
 
     # -- Upgrade verification -----------------------------------------------
 
-    def test_memory_tool_auto_upgraded_to_anthropic_variant(self, bot):
-        """MemoryTool passed to MicroBot should be auto-upgraded to AnthropicMemoryTool."""
-        upgraded_tools = bot.additional_tools
-        memory_tools = [t for t in upgraded_tools if isinstance(t, AnthropicMemoryTool)]
-        assert len(memory_tools) == 1, "Expected exactly one AnthropicMemoryTool after auto-upgrade"
+    def test_memory_tool_is_retained(self, bot):
+        """MemoryTool passed to MicroBot should remain provider-agnostic."""
+        memory_tools = [t for t in bot.additional_tools if isinstance(t, MemoryTool)]
+        assert len(memory_tools) == 1, "Expected exactly one MemoryTool to remain attached"
 
     def test_tool_dicts_include_memory_schema(self, bot):
-        """The LLM should have received the memory tool schema."""
-        assert len(bot.llm._tool_dicts) == 1
-        assert bot.llm._tool_dicts[0]["type"] == "memory_20250818"
+        """Provider-agnostic MemoryTool should not register Anthropic-native schemas."""
+        assert bot.llm._tool_dicts == []
 
-    # -- Create file via tool_use -------------------------------------------
+    # -- Create file via text command ---------------------------------------
 
     def test_create_memory_file_via_tool_dispatch(self, bot, memory_dir):
         """LLM requests a memory create → MicroBot dispatches → file appears on disk."""
         # Sequence:
-        # 1. ask(task) → API returns tool_use (memory create)
-        # 2. ask(tool_result) → API returns end_turn (task_done=True)
+        # 1. ask(task) → API returns JSON command (memory create)
+        # 2. ask(command output) → API returns end_turn (task_done=True)
         self._mock_client.messages.create.side_effect = [
-            _make_tool_use_response(
-                tool_name="memory",
-                tool_id="tool_001",
-                tool_input={
-                    "command": "create",
-                    "path": "/memories/notes.md",
-                    "file_text": "Hello from integration test",
-                },
-                thinking_text="I'll save a note to memory.",
+            _make_end_turn_response(
+                task_done=False,
+                thoughts="I'll save a note to memory.",
+                command='memory create /memories/notes.md "Hello from integration test"',
             ),
             _make_end_turn_response(
                 task_done=True,
@@ -181,7 +144,7 @@ class TestMemoryToolWiring:
         assert created_file.exists(), f"Expected {created_file} to be created"
         assert created_file.read_text() == "Hello from integration test"
 
-    # -- View file via tool_use ---------------------------------------------
+    # -- View file via text command -----------------------------------------
 
     def test_view_memory_file_via_tool_dispatch(self, bot, memory_dir):
         """LLM requests a memory view → MicroBot dispatches → file content returned."""
@@ -190,14 +153,10 @@ class TestMemoryToolWiring:
         (memory_dir / "existing.md").write_text("Previously saved content")
 
         self._mock_client.messages.create.side_effect = [
-            _make_tool_use_response(
-                tool_name="memory",
-                tool_id="tool_002",
-                tool_input={
-                    "command": "view",
-                    "path": "/memories/existing.md",
-                },
-                thinking_text="Let me check my memory.",
+            _make_end_turn_response(
+                task_done=False,
+                thoughts="Let me check my memory.",
+                command="memory view /memories/existing.md",
             ),
             _make_end_turn_response(
                 task_done=True,
@@ -213,20 +172,17 @@ class TestMemoryToolWiring:
 
         assert result.status is True
 
-        # Verify the view result was passed back to the API as tool_result
+        # Verify the view result was passed back to the API as the next user message
         calls = self._mock_client.messages.create.call_args_list
         assert len(calls) == 2
-        # The second call should have messages including the tool_result
+        # The second call should have messages including the file content
         second_call_messages = calls[1].kwargs.get("messages") or calls[1][1].get("messages", [])
-        tool_result_msgs = [
+        user_messages = [
             m for m in second_call_messages
-            if m.get("role") == "user" and isinstance(m.get("content"), list)
-            and any(c.get("type") == "tool_result" for c in m["content"])
+            if m.get("role") == "user" and isinstance(m.get("content"), str)
         ]
-        assert len(tool_result_msgs) >= 1, "Expected a tool_result message in the second API call"
-        # The tool_result content should contain the file content
-        tool_result_content = tool_result_msgs[-1]["content"][0]["content"]
-        assert "Previously saved content" in tool_result_content
+        assert len(user_messages) >= 2, "Expected the command output to be sent as a user message"
+        assert "Previously saved content" in user_messages[-1]["content"]
 
     # -- Multiple tool calls in sequence ------------------------------------
 
@@ -234,25 +190,16 @@ class TestMemoryToolWiring:
         """LLM creates a file, then views it — both dispatched via MicroBot loop."""
         self._mock_client.messages.create.side_effect = [
             # Step 1: create file
-            _make_tool_use_response(
-                tool_name="memory",
-                tool_id="tool_003",
-                tool_input={
-                    "command": "create",
-                    "path": "/memories/todo.md",
-                    "file_text": "- Fix bug #42\n- Write tests",
-                },
-                thinking_text="Creating a todo list.",
+            _make_end_turn_response(
+                task_done=False,
+                thoughts="Creating a todo list.",
+                command='memory create /memories/todo.md "- Fix bug #42\n- Write tests"',
             ),
             # Step 2: view file
-            _make_tool_use_response(
-                tool_name="memory",
-                tool_id="tool_004",
-                tool_input={
-                    "command": "view",
-                    "path": "/memories/todo.md",
-                },
-                thinking_text="Let me verify what I wrote.",
+            _make_end_turn_response(
+                task_done=False,
+                thoughts="Let me verify what I wrote.",
+                command="memory view /memories/todo.md",
             ),
             # Step 3: done
             _make_end_turn_response(
@@ -358,10 +305,10 @@ class TestMemoryToolRealApi:
         yield bot
         del bot
 
-    def test_memory_tool_auto_upgraded(self, memory_bot):
-        """MemoryTool should be silently auto-upgraded to AnthropicMemoryTool."""
-        memory_tools = [t for t in memory_bot.additional_tools if isinstance(t, AnthropicMemoryTool)]
-        assert len(memory_tools) == 1, "Expected exactly one AnthropicMemoryTool after auto-upgrade"
+    def test_memory_tool_is_retained(self, memory_bot):
+        """MemoryTool should remain attached for Anthropic just like other providers."""
+        memory_tools = [t for t in memory_bot.additional_tools if isinstance(t, MemoryTool)]
+        assert len(memory_tools) == 1, "Expected exactly one MemoryTool to remain attached"
 
     def test_create_memory_file(self, memory_bot, memory_dir):
         """MicroBot should persist a debugging plan to memory.

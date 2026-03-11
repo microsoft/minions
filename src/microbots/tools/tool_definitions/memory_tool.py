@@ -67,8 +67,8 @@ Clear all memory:
 @dataclass
 class MemoryTool(ExternalTool):
     """
-    File-backed memory tool that mirrors the ``AnthropicMemoryTool`` interface
-    but dispatches through the text command loop (compatible with all providers).
+    File-backed memory tool that dispatches through the text command loop and
+    works consistently across providers.
 
     Subclass of ``ExternalTool`` — all command lists are empty so
     ``install_tool``, ``setup_tool``, ``verify_tool_installation``, and
