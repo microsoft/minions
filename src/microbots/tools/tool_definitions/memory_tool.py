@@ -101,9 +101,6 @@ class MemoryTool(ExternalTool):
         self._memory_dir = base
         self._memory_dir.mkdir(parents=True, exist_ok=True)
 
-    def is_model_supported(self, model_name: str) -> bool:
-        return True
-
     # ---------------------------------------------------------------------- #
     # Path helpers
     # ---------------------------------------------------------------------- #
@@ -115,6 +112,11 @@ class MemoryTool(ExternalTool):
         # Reject any path containing '..' components before resolving
         if ".." in Path(stripped).parts:
             raise ValueError(f"Path traversal not allowed: {path!r}")
+
+        if path.startswith("/") and stripped != "memories" and not stripped.startswith("memories/"):
+            raise ValueError(
+                f"Invalid memory path: {path!r}. Use paths under /memories/."
+            )
 
         if stripped == "memories":
             rel = ""
