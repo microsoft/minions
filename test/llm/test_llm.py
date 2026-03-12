@@ -742,32 +742,3 @@ class TestValidateLlmResponseAdditionalCases:
         assert llm_response is None
         assert llm.retries == 1
         assert len(llm.messages) == 1
-
-
-@pytest.mark.unit
-class TestUpgradeToolsDefault:
-    """Tests for the default LLMInterface.upgrade_tools no-op implementation."""
-
-    @pytest.fixture
-    def llm(self):
-        return ConcreteLLM()
-
-    def test_returns_same_list(self, llm):
-        """Default upgrade_tools returns the input list unchanged."""
-        tools = ["tool_a", "tool_b"]
-        result = llm.upgrade_tools(tools)
-        assert result is tools
-
-    def test_empty_list(self, llm):
-        """Default upgrade_tools handles an empty list."""
-        tools = []
-        result = llm.upgrade_tools(tools)
-        assert result == []
-
-    def test_preserves_tool_order_and_identity(self, llm):
-        """Default upgrade_tools does not reorder or copy elements."""
-        sentinel = object()
-        tools = [sentinel, "other"]
-        result = llm.upgrade_tools(tools)
-        assert result[0] is sentinel
-        assert result[1] == "other"

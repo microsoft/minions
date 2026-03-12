@@ -40,8 +40,8 @@ class ToolAbstract(ABC):
     Tool hierarchy:
         ToolAbstract (ABC)
         ├── Tool (ToolAbstract)   — Docker sandbox tools (install_commands, env_variables, etc.)
-        └── ExternalTool (ToolAbstract)   — LLM-native tools (get_tool_definition, execute)
-                └── AnthropicMemoryTool
+        └── ExternalTool (ToolAbstract)   — Host-side tools (get_tool_definition, execute)
+                └── MemoryTool
     """
     # TODO: Handle different instructions based on the platform (linux flavours, windows, mac)
     # TODO: Add versioning to tools

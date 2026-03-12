@@ -29,15 +29,6 @@ class LLMInterface(ABC):
     def clear_history(self) -> bool:
         pass
 
-    def upgrade_tools(self, tools: list) -> list:
-        """Upgrade tools for the specific LLM provider.
-
-        The default implementation is a no-op.  Subclasses (e.g.
-        ``AnthropicApi``) override this to swap provider-agnostic tools
-        with their native equivalents.
-        """
-        return tools
-
     def _validate_llm_response(self, response: str) -> tuple[bool, LLMAskResponse]:
 
         if self.retries >= self.max_retries:

@@ -106,10 +106,6 @@ class TestMemoryToolWiring:
         memory_tools = [t for t in bot.additional_tools if isinstance(t, MemoryTool)]
         assert len(memory_tools) == 1, "Expected exactly one MemoryTool to remain attached"
 
-    def test_tool_dicts_include_memory_schema(self, bot):
-        """Provider-agnostic MemoryTool should not register Anthropic-native schemas."""
-        assert bot.llm._tool_dicts == []
-
     # -- Create file via text command ---------------------------------------
 
     def test_create_memory_file_via_tool_dispatch(self, bot, memory_dir):

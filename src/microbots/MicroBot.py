@@ -335,9 +335,7 @@ class MicroBot:
             )
         elif self.model_provider == ModelProvider.ANTHROPIC:
             self.llm = AnthropicApi(
-                system_prompt=system_prompt_with_tools,
-                deployment_name=self.deployment_name,
-                additional_tools=self.additional_tools,
+                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 
