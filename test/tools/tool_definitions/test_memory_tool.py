@@ -5,6 +5,7 @@ All tests use pytest's tmp_path fixture so they are isolated from the
 user's real ~/.microbots/memory directory.
 """
 import pytest
+from argparse import Namespace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -55,6 +56,12 @@ class TestMemoryToolIsInvoked:
         tool = make_tool(tmp_path)
         assert tool.is_invoked("memory view /memories") is True
         assert tool.is_invoked("memory create /memories/f.md hello") is True
+
+    def test_returns_true_for_bare_memory(self, tmp_path):
+        tool = make_tool(tmp_path)
+        assert tool.is_invoked("memory") is True
+        assert tool.is_invoked("memory\n") is True
+        assert tool.is_invoked("  memory  ") is True
 
     def test_returns_false_for_other_commands(self, tmp_path):
         tool = make_tool(tmp_path)
@@ -134,7 +141,7 @@ class TestMemoryToolView:
         (tool._memory_dir / "notes.md").write_text("hello")
         (tool._memory_dir / "sub").mkdir()
 
-        result = tool._view(["/memories"])
+        result = tool._view(Namespace(path="/memories", start=None, end=None))
 
         assert result.return_code == 0
         assert "notes.md" in result.stdout
@@ -144,7 +151,7 @@ class TestMemoryToolView:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("line1\nline2\nline3\n")
 
-        result = tool._view(["/memories/f.md"])
+        result = tool._view(Namespace(path="/memories/f.md", start=None, end=None))
 
         assert result.return_code == 0
         assert "1:" in result.stdout
@@ -155,7 +162,7 @@ class TestMemoryToolView:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("a\nb\nc\nd\ne\n")
 
-        result = tool._view(["/memories/f.md", "--start", "2", "--end", "4"])
+        result = tool._view(Namespace(path="/memories/f.md", start=2, end=4))
 
         assert result.return_code == 0
         assert "b" in result.stdout
@@ -166,22 +173,21 @@ class TestMemoryToolView:
     def test_view_nonexistent_path_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
 
-        result = tool._view(["/memories/nonexistent.md"])
+        result = tool._view(Namespace(path="/memories/nonexistent.md", start=None, end=None))
 
         assert result.return_code != 0
 
     def test_view_no_args_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._view([])
+        result = tool.invoke("memory view", parent_bot=Mock())
         assert result.return_code != 0
 
-    def test_view_unknown_flag_is_skipped(self, tmp_path):
-        """else: i += 1 — unrecognised flags are silently skipped."""
+    def test_view_unknown_flag_returns_error(self, tmp_path):
+        """Argparse rejects unrecognised flags."""
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("hello\n")
-        result = tool._view(["/memories/f.md", "--bogus", "value"])
-        assert result.return_code == 0
-        assert "hello" in result.stdout
+        result = tool.invoke("memory view /memories/f.md --bogus value", parent_bot=Mock())
+        assert result.return_code != 0
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +200,7 @@ class TestMemoryToolCreate:
     def test_create_writes_file(self, tmp_path):
         tool = make_tool(tmp_path)
 
-        result = tool._create(["/memories/notes.md", "hello world"])
+        result = tool._create(Namespace(path="/memories/notes.md", content=["hello world"]))
 
         assert result.return_code == 0
         assert (tool._memory_dir / "notes.md").read_text() == "hello world"
@@ -203,7 +209,7 @@ class TestMemoryToolCreate:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("old content")
 
-        result = tool._create(["/memories/f.md", "new content"])
+        result = tool._create(Namespace(path="/memories/f.md", content=["new content"]))
 
         assert result.return_code == 0
         assert (tool._memory_dir / "f.md").read_text() == "new content"
@@ -211,14 +217,14 @@ class TestMemoryToolCreate:
     def test_create_creates_parent_directories(self, tmp_path):
         tool = make_tool(tmp_path)
 
-        result = tool._create(["/memories/sub/dir/f.md", "content"])
+        result = tool._create(Namespace(path="/memories/sub/dir/f.md", content=["content"]))
 
         assert result.return_code == 0
         assert (tool._memory_dir / "sub" / "dir" / "f.md").exists()
 
     def test_create_missing_args_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._create(["/memories/f.md"])  # missing content
+        result = tool.invoke("memory create /memories/f.md", parent_bot=Mock())  # missing content
         assert result.return_code != 0
 
 
@@ -233,7 +239,7 @@ class TestMemoryToolStrReplace:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("hello world")
 
-        result = tool._str_replace(["/memories/f.md", "--old", "hello", "--new", "goodbye"])
+        result = tool._str_replace(Namespace(path="/memories/f.md", old="hello", new="goodbye"))
 
         assert result.return_code == 0
         assert (tool._memory_dir / "f.md").read_text() == "goodbye world"
@@ -242,7 +248,7 @@ class TestMemoryToolStrReplace:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("hello world")
 
-        result = tool._str_replace(["/memories/f.md", "--old", "nothere", "--new", "x"])
+        result = tool._str_replace(Namespace(path="/memories/f.md", old="nothere", new="x"))
 
         assert result.return_code != 0
         assert "not found" in result.stderr.lower()
@@ -251,7 +257,7 @@ class TestMemoryToolStrReplace:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("hello hello")
 
-        result = tool._str_replace(["/memories/f.md", "--old", "hello", "--new", "bye"])
+        result = tool._str_replace(Namespace(path="/memories/f.md", old="hello", new="bye"))
 
         assert result.return_code != 0
         assert "2" in result.stderr  # appears N times
@@ -259,30 +265,29 @@ class TestMemoryToolStrReplace:
     def test_str_replace_missing_flags_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("text")
-        result = tool._str_replace(["/memories/f.md"])
+        result = tool.invoke("memory str_replace /memories/f.md", parent_bot=Mock())
         assert result.return_code != 0
 
     def test_str_replace_empty_args_returns_usage_error(self, tmp_path):
-        """if not args branch: calling _str_replace([]) returns the usage message."""
+        """Calling str_replace with no args returns an error via argparse."""
         tool = make_tool(tmp_path)
-        result = tool._str_replace([])
+        result = tool.invoke("memory str_replace", parent_bot=Mock())
         assert result.return_code == 1
-        assert "Usage: memory str_replace" in result.stderr
 
     def test_str_replace_nonexistent_file_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._str_replace(["/memories/missing.md", "--old", "a", "--new", "b"])
+        result = tool._str_replace(Namespace(path="/memories/missing.md", old="a", new="b"))
         assert result.return_code != 0
 
-    def test_str_replace_unknown_flag_is_skipped(self, tmp_path):
-        """else: i += 1 — unrecognised flags in the arg loop are silently skipped."""
+    def test_str_replace_unknown_flag_returns_error(self, tmp_path):
+        """Argparse rejects unrecognised flags."""
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("hello world")
-        result = tool._str_replace([
-            "/memories/f.md", "--bogus", "ignored", "--old", "hello", "--new", "goodbye"
-        ])
-        assert result.return_code == 0
-        assert (tool._memory_dir / "f.md").read_text() == "goodbye world"
+        result = tool.invoke(
+            'memory str_replace /memories/f.md --bogus ignored --old "hello" --new "goodbye"',
+            parent_bot=Mock(),
+        )
+        assert result.return_code != 0
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +301,7 @@ class TestMemoryToolInsert:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("line1\nline2\n")
 
-        result = tool._insert(["/memories/f.md", "--line", "0", "--text", "prepended"])
+        result = tool._insert(Namespace(path="/memories/f.md", line=0, text="prepended"))
 
         assert result.return_code == 0
         lines = (tool._memory_dir / "f.md").read_text().splitlines()
@@ -307,7 +312,7 @@ class TestMemoryToolInsert:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("line1\nline2\n")
 
-        result = tool._insert(["/memories/f.md", "--line", "2", "--text", "appended"])
+        result = tool._insert(Namespace(path="/memories/f.md", line=2, text="appended"))
 
         assert result.return_code == 0
         lines = (tool._memory_dir / "f.md").read_text().splitlines()
@@ -317,38 +322,36 @@ class TestMemoryToolInsert:
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("line1\n")
 
-        result = tool._insert(["/memories/f.md", "--line", "99", "--text", "x"])
+        result = tool._insert(Namespace(path="/memories/f.md", line=99, text="x"))
 
         assert result.return_code != 0
 
     def test_insert_nonexistent_file_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._insert(["/memories/missing.md", "--line", "0", "--text", "x"])
+        result = tool._insert(Namespace(path="/memories/missing.md", line=0, text="x"))
         assert result.return_code != 0
 
     def test_insert_missing_flags_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("line1\n")
-        result = tool._insert(["/memories/f.md"])
+        result = tool.invoke("memory insert /memories/f.md", parent_bot=Mock())
         assert result.return_code != 0
 
     def test_insert_empty_args_returns_usage_error(self, tmp_path):
-        """if not args branch: calling _insert([]) returns the usage message."""
+        """Calling insert with no args returns an error via argparse."""
         tool = make_tool(tmp_path)
-        result = tool._insert([])
+        result = tool.invoke("memory insert", parent_bot=Mock())
         assert result.return_code == 1
-        assert "Usage: memory insert" in result.stderr
 
-    def test_insert_unknown_flag_is_skipped(self, tmp_path):
-        """else: i += 1 — unrecognised flags in the arg loop are silently skipped."""
+    def test_insert_unknown_flag_returns_error(self, tmp_path):
+        """Argparse rejects unrecognised flags."""
         tool = make_tool(tmp_path)
         (tool._memory_dir / "f.md").write_text("line1\nline2\n")
-        result = tool._insert([
-            "/memories/f.md", "--bogus", "ignored", "--line", "0", "--text", "prepended"
-        ])
-        assert result.return_code == 0
-        lines = (tool._memory_dir / "f.md").read_text().splitlines()
-        assert lines[0] == "prepended"
+        result = tool.invoke(
+            'memory insert /memories/f.md --bogus ignored --line 0 --text "prepended"',
+            parent_bot=Mock(),
+        )
+        assert result.return_code != 0
 
 
 # ---------------------------------------------------------------------------
@@ -363,7 +366,7 @@ class TestMemoryToolDelete:
         f = tool._memory_dir / "f.md"
         f.write_text("data")
 
-        result = tool._delete(["/memories/f.md"])
+        result = tool._delete(Namespace(path="/memories/f.md"))
 
         assert result.return_code == 0
         assert not f.exists()
@@ -374,7 +377,7 @@ class TestMemoryToolDelete:
         sub.mkdir()
         (sub / "f.md").write_text("data")
 
-        result = tool._delete(["/memories/sub"])
+        result = tool._delete(Namespace(path="/memories/sub"))
 
         assert result.return_code == 0
         assert not sub.exists()
@@ -382,17 +385,17 @@ class TestMemoryToolDelete:
     def test_delete_prevents_root_deletion(self, tmp_path):
         tool = make_tool(tmp_path)
         for path in ("/memories", "memories", "/memories/"):
-            result = tool._delete([path])
+            result = tool._delete(Namespace(path=path))
             assert result.return_code != 0
 
     def test_delete_nonexistent_path_raises(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._delete(["/memories/nonexistent.md"])
+        result = tool._delete(Namespace(path="/memories/nonexistent.md"))
         assert result.return_code != 0
 
     def test_delete_no_args_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._delete([])
+        result = tool.invoke("memory delete", parent_bot=Mock())
         assert result.return_code != 0
 
 
@@ -408,7 +411,7 @@ class TestMemoryToolRename:
         src = tool._memory_dir / "old.md"
         src.write_text("content")
 
-        result = tool._rename(["/memories/old.md", "/memories/new.md"])
+        result = tool._rename(Namespace(old_path="/memories/old.md", new_path="/memories/new.md"))
 
         assert result.return_code == 0
         assert not src.exists()
@@ -416,7 +419,7 @@ class TestMemoryToolRename:
 
     def test_rename_nonexistent_source_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._rename(["/memories/missing.md", "/memories/new.md"])
+        result = tool._rename(Namespace(old_path="/memories/missing.md", new_path="/memories/new.md"))
         assert result.return_code != 0
 
     def test_rename_fails_if_destination_exists(self, tmp_path):
@@ -424,13 +427,13 @@ class TestMemoryToolRename:
         (tool._memory_dir / "a.md").write_text("a")
         (tool._memory_dir / "b.md").write_text("b")
 
-        result = tool._rename(["/memories/a.md", "/memories/b.md"])
+        result = tool._rename(Namespace(old_path="/memories/a.md", new_path="/memories/b.md"))
 
         assert result.return_code != 0
 
     def test_rename_missing_args_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)
-        result = tool._rename(["/memories/a.md"])
+        result = tool.invoke("memory rename /memories/a.md", parent_bot=Mock())
         assert result.return_code != 0
 
 
@@ -510,7 +513,7 @@ class TestMemoryToolInvoke:
         tool = make_tool(tmp_path)
         result = tool.invoke("memory frobnicate /memories/f.md", parent_bot=Mock())
         assert result.return_code != 0
-        assert "Unknown subcommand" in result.stderr
+        assert "invalid choice" in result.stderr
 
     def test_invoke_too_few_tokens_returns_error(self, tmp_path):
         tool = make_tool(tmp_path)

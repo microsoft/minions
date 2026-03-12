@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import shlex
@@ -11,6 +12,13 @@ from microbots.environment.Environment import CmdReturn
 from microbots.tools.external_tool import ExternalTool
 
 logger = logging.getLogger(" 🧠 MemoryTool")
+
+
+class _NoExitArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser that raises ``ValueError`` instead of calling ``sys.exit``."""
+
+    def error(self, message: str) -> None:  # type: ignore[override]
+        raise ValueError(message)
 
 INSTRUCTIONS_TO_LLM = """
 Use this tool to persist information to files across steps — same interface as
@@ -101,6 +109,42 @@ class MemoryTool(ExternalTool):
         base = Path(self.memory_dir) if self.memory_dir else Path.home() / ".microbots" / "memory"
         self._memory_dir = base
         self._memory_dir.mkdir(parents=True, exist_ok=True)
+        self._parser = self._build_parser()
+
+    def _build_parser(self) -> _NoExitArgumentParser:
+        """Build the argparse parser with subparsers for each memory subcommand."""
+        parser = _NoExitArgumentParser(prog="memory", add_help=False)
+        subs = parser.add_subparsers(dest="subcommand")
+
+        p_view = subs.add_parser("view", add_help=False)
+        p_view.add_argument("path")
+        p_view.add_argument("--start", type=int, default=None)
+        p_view.add_argument("--end", type=int, default=None)
+
+        p_create = subs.add_parser("create", add_help=False)
+        p_create.add_argument("path")
+        p_create.add_argument("content", nargs=argparse.REMAINDER)
+
+        p_str = subs.add_parser("str_replace", add_help=False)
+        p_str.add_argument("path")
+        p_str.add_argument("--old", required=True)
+        p_str.add_argument("--new", required=True)
+
+        p_ins = subs.add_parser("insert", add_help=False)
+        p_ins.add_argument("path")
+        p_ins.add_argument("--line", type=int, required=True)
+        p_ins.add_argument("--text", required=True)
+
+        p_del = subs.add_parser("delete", add_help=False)
+        p_del.add_argument("path")
+
+        p_ren = subs.add_parser("rename", add_help=False)
+        p_ren.add_argument("old_path")
+        p_ren.add_argument("new_path")
+
+        subs.add_parser("clear", add_help=False)
+
+        return parser
 
     # ---------------------------------------------------------------------- #
     # Path helpers
@@ -138,7 +182,8 @@ class MemoryTool(ExternalTool):
     # ---------------------------------------------------------------------- #
 
     def is_invoked(self, command: str) -> bool:
-        return command.strip().startswith("memory ")
+        cmd = command.strip()
+        return cmd == "memory" or cmd.startswith("memory ")
 
     def invoke(self, command: str, parent_bot) -> CmdReturn:
         try:
@@ -146,30 +191,28 @@ class MemoryTool(ExternalTool):
         except ValueError as exc:
             return CmdReturn(stdout="", stderr=f"Parse error: {exc}", return_code=1)
 
-        if len(tokens) < 2:
+        try:
+            args = self._parser.parse_args(tokens[1:])  # skip "memory"
+        except ValueError as exc:
+            return CmdReturn(stdout="", stderr=str(exc), return_code=1)
+
+        if args.subcommand is None:
             return CmdReturn(stdout="", stderr="Usage: memory <subcommand> ...", return_code=1)
 
-        sub = tokens[1]
-        args = tokens[2:]
+        dispatch = {
+            "view": self._view,
+            "create": self._create,
+            "str_replace": self._str_replace,
+            "insert": self._insert,
+            "delete": self._delete,
+            "rename": self._rename,
+        }
 
         try:
-            if sub == "view":
-                return self._view(args)
-            elif sub == "create":
-                return self._create(args)
-            elif sub == "str_replace":
-                return self._str_replace(args)
-            elif sub == "insert":
-                return self._insert(args)
-            elif sub == "delete":
-                return self._delete(args)
-            elif sub == "rename":
-                return self._rename(args)
-            elif sub == "clear":
+            if args.subcommand == "clear":
                 return self._clear()
-            else:
-                return CmdReturn(stdout="", stderr=f"Unknown subcommand: {sub!r}", return_code=1)
-        except (ValueError, FileNotFoundError, RuntimeError) as exc:
+            return dispatch[args.subcommand](args)
+        except (OSError, ValueError, RuntimeError, UnicodeDecodeError) as exc:
             logger.error("🧠 MemoryTool error: %s", exc)
             return CmdReturn(stdout="", stderr=str(exc), return_code=1)
 
@@ -177,26 +220,10 @@ class MemoryTool(ExternalTool):
     # Subcommand handlers
     # ---------------------------------------------------------------------- #
 
-    def _view(self, args: list) -> CmdReturn:
-        if not args:
-            return CmdReturn(stdout="", stderr="Usage: memory view <path> [--start N] [--end N]", return_code=1)
-
-        path = args[0]
-        start_line = None
-        end_line = None
-        i = 1
-        while i < len(args):
-            if args[i] == "--start" and i + 1 < len(args):
-                start_line = int(args[i + 1]); i += 2
-            elif args[i] == "--end" and i + 1 < len(args):
-                end_line = int(args[i + 1]); i += 2
-            else:
-                logger.warning("🧠 MemoryTool view: unknown flag %r (skipped)", args[i])
-                i += 1
-
-        resolved = self._resolve(path)
+    def _view(self, args: argparse.Namespace) -> CmdReturn:
+        resolved = self._resolve(args.path)
         if not resolved.exists():
-            return CmdReturn(stdout="", stderr=f"Path not found: {path!r}", return_code=1)
+            return CmdReturn(stdout="", stderr=f"Path not found: {args.path!r}", return_code=1)
 
         if resolved.is_dir():
             items = [
@@ -204,13 +231,13 @@ class MemoryTool(ExternalTool):
                 for item in sorted(resolved.iterdir())
                 if not item.name.startswith(".")
             ]
-            result = f"Directory: {path}\n" + "\n".join(f"- {i}" for i in items)
+            result = f"Directory: {args.path}\n" + "\n".join(f"- {i}" for i in items)
             return CmdReturn(stdout=result, stderr="", return_code=0)
 
         lines = resolved.read_text(encoding="utf-8").splitlines()
-        if start_line is not None or end_line is not None:
-            s = max(0, (start_line or 1) - 1)
-            e = len(lines) if (end_line is None or end_line == -1) else end_line
+        if args.start is not None or args.end is not None:
+            s = max(0, (args.start or 1) - 1)
+            e = len(lines) if (args.end is None or args.end == -1) else args.end
             lines = lines[s:e]
             base_num = s + 1
         else:
@@ -218,101 +245,65 @@ class MemoryTool(ExternalTool):
         numbered = "\n".join(f"{i + base_num:4d}: {line}" for i, line in enumerate(lines))
         return CmdReturn(stdout=numbered, stderr="", return_code=0)
 
-    def _create(self, args: list) -> CmdReturn:
-        if len(args) < 2:
+    def _create(self, args: argparse.Namespace) -> CmdReturn:
+        if not args.content:
             return CmdReturn(stdout="", stderr="Usage: memory create <path> <content>", return_code=1)
-        path, content = args[0], args[1]
-        resolved = self._resolve(path)
+        content = " ".join(args.content)
+        resolved = self._resolve(args.path)
         resolved.parent.mkdir(parents=True, exist_ok=True)
         resolved.write_text(content, encoding="utf-8")
-        logger.info("🧠 Memory file created: %s", path)
-        return CmdReturn(stdout=f"File created: {path}", stderr="", return_code=0)
+        logger.info("🧠 Memory file created: %s", args.path)
+        return CmdReturn(stdout=f"File created: {args.path}", stderr="", return_code=0)
 
-    def _str_replace(self, args: list) -> CmdReturn:
-        if not args:
-            return CmdReturn(stdout="", stderr="Usage: memory str_replace <path> --old <text> --new <text>", return_code=1)
-        path = args[0]
-        old_text = new_text = None
-        i = 1
-        while i < len(args):
-            if args[i] == "--old" and i + 1 < len(args):
-                old_text = args[i + 1]; i += 2
-            elif args[i] == "--new" and i + 1 < len(args):
-                new_text = args[i + 1]; i += 2
-            else:
-                logger.warning("🧠 MemoryTool str_replace: unknown flag %r (skipped)", args[i])
-                i += 1
-        if old_text is None or new_text is None:
-            return CmdReturn(stdout="", stderr="--old and --new are required", return_code=1)
-        resolved = self._resolve(path)
+    def _str_replace(self, args: argparse.Namespace) -> CmdReturn:
+        resolved = self._resolve(args.path)
         if not resolved.is_file():
-            return CmdReturn(stdout="", stderr=f"File not found: {path!r}", return_code=1)
+            return CmdReturn(stdout="", stderr=f"File not found: {args.path!r}", return_code=1)
         content = resolved.read_text(encoding="utf-8")
-        count = content.count(old_text)
+        count = content.count(args.old)
         if count == 0:
-            return CmdReturn(stdout="", stderr=f"Text not found in {path!r}", return_code=1)
+            return CmdReturn(stdout="", stderr=f"Text not found in {args.path!r}", return_code=1)
         if count > 1:
-            return CmdReturn(stdout="", stderr=f"Text appears {count} times in {path!r} — must be unique", return_code=1)
-        resolved.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
-        return CmdReturn(stdout=f"File {path} edited.", stderr="", return_code=0)
+            return CmdReturn(stdout="", stderr=f"Text appears {count} times in {args.path!r} — must be unique", return_code=1)
+        resolved.write_text(content.replace(args.old, args.new, 1), encoding="utf-8")
+        return CmdReturn(stdout=f"File {args.path} edited.", stderr="", return_code=0)
 
-    def _insert(self, args: list) -> CmdReturn:
-        if not args:
-            return CmdReturn(stdout="", stderr="Usage: memory insert <path> --line N --text <text>", return_code=1)
-        path = args[0]
-        line_num = text = None
-        i = 1
-        while i < len(args):
-            if args[i] == "--line" and i + 1 < len(args):
-                line_num = int(args[i + 1]); i += 2
-            elif args[i] == "--text" and i + 1 < len(args):
-                text = args[i + 1]; i += 2
-            else:
-                logger.warning("🧠 MemoryTool insert: unknown flag %r (skipped)", args[i])
-                i += 1
-        if line_num is None or text is None:
-            return CmdReturn(stdout="", stderr="--line and --text are required", return_code=1)
-        resolved = self._resolve(path)
+    def _insert(self, args: argparse.Namespace) -> CmdReturn:
+        resolved = self._resolve(args.path)
         if not resolved.is_file():
-            return CmdReturn(stdout="", stderr=f"File not found: {path!r}", return_code=1)
-        lines = resolved.read_text(encoding="utf-8").splitlines()
-        if line_num < 0 or line_num > len(lines):
-            return CmdReturn(stdout="", stderr=f"Invalid line number {line_num}. Must be 0–{len(lines)}.", return_code=1)
-        lines.insert(line_num, text.rstrip("\n"))
-        resolved.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return CmdReturn(stdout=f"Text inserted at line {line_num} in {path}.", stderr="", return_code=0)
+            return CmdReturn(stdout="", stderr=f"File not found: {args.path!r}", return_code=1)
+        file_lines = resolved.read_text(encoding="utf-8").splitlines()
+        if args.line < 0 or args.line > len(file_lines):
+            return CmdReturn(stdout="", stderr=f"Invalid line number {args.line}. Must be 0–{len(file_lines)}.", return_code=1)
+        file_lines.insert(args.line, args.text.rstrip("\n"))
+        resolved.write_text("\n".join(file_lines) + "\n", encoding="utf-8")
+        return CmdReturn(stdout=f"Text inserted at line {args.line} in {args.path}.", stderr="", return_code=0)
 
-    def _delete(self, args: list) -> CmdReturn:
-        if not args:
-            return CmdReturn(stdout="", stderr="Usage: memory delete <path>", return_code=1)
-        path = args[0]
-        if path.rstrip("/") in ("/memories", "memories", ""):
+    def _delete(self, args: argparse.Namespace) -> CmdReturn:
+        if args.path.rstrip("/") in ("/memories", "memories", ""):
             return CmdReturn(stdout="", stderr="Cannot delete the /memories root directory", return_code=1)
-        resolved = self._resolve(path)
+        resolved = self._resolve(args.path)
         if resolved.is_file():
             resolved.unlink()
-            logger.info("🧠 Memory file deleted: %s", path)
-            return CmdReturn(stdout=f"Deleted: {path}", stderr="", return_code=0)
+            logger.info("🧠 Memory file deleted: %s", args.path)
+            return CmdReturn(stdout=f"Deleted: {args.path}", stderr="", return_code=0)
         if resolved.is_dir():
             shutil.rmtree(resolved)
-            logger.info("🧠 Memory directory deleted: %s", path)
-            return CmdReturn(stdout=f"Deleted directory: {path}", stderr="", return_code=0)
-        return CmdReturn(stdout="", stderr=f"Path not found: {path!r}", return_code=1)
+            logger.info("🧠 Memory directory deleted: %s", args.path)
+            return CmdReturn(stdout=f"Deleted directory: {args.path}", stderr="", return_code=0)
+        return CmdReturn(stdout="", stderr=f"Path not found: {args.path!r}", return_code=1)
 
-    def _rename(self, args: list) -> CmdReturn:
-        if len(args) < 2:
-            return CmdReturn(stdout="", stderr="Usage: memory rename <old_path> <new_path>", return_code=1)
-        old_path, new_path = args[0], args[1]
-        old_resolved = self._resolve(old_path)
-        new_resolved = self._resolve(new_path)
+    def _rename(self, args: argparse.Namespace) -> CmdReturn:
+        old_resolved = self._resolve(args.old_path)
+        new_resolved = self._resolve(args.new_path)
         if not old_resolved.exists():
-            return CmdReturn(stdout="", stderr=f"Source not found: {old_path!r}", return_code=1)
+            return CmdReturn(stdout="", stderr=f"Source not found: {args.old_path!r}", return_code=1)
         if new_resolved.exists():
-            return CmdReturn(stdout="", stderr=f"Destination already exists: {new_path!r}", return_code=1)
+            return CmdReturn(stdout="", stderr=f"Destination already exists: {args.new_path!r}", return_code=1)
         new_resolved.parent.mkdir(parents=True, exist_ok=True)
         old_resolved.rename(new_resolved)
-        logger.info("🧠 Memory renamed: %s → %s", old_path, new_path)
-        return CmdReturn(stdout=f"Renamed {old_path} to {new_path}.", stderr="", return_code=0)
+        logger.info("🧠 Memory renamed: %s → %s", args.old_path, args.new_path)
+        return CmdReturn(stdout=f"Renamed {args.old_path} to {args.new_path}.", stderr="", return_code=0)
 
     def _clear(self) -> CmdReturn:
         if self._memory_dir.exists():
