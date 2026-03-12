@@ -12,7 +12,6 @@ Integration tests (real API):
 
 import json
 import os
-import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -20,10 +19,6 @@ import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
-
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
-)
 
 from microbots import MicroBot, BotRunResult
 from microbots.llm.llm import llm_output_format_str

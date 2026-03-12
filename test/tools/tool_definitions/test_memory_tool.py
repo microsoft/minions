@@ -4,13 +4,9 @@ Unit tests for MemoryTool — file-backed memory store.
 All tests use pytest's tmp_path fixture so they are isolated from the
 user's real ~/.microbots/memory directory.
 """
-import sys
-import os
 import pytest
 from pathlib import Path
 from unittest.mock import Mock
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src")))
 
 from microbots.tools.tool_definitions.memory_tool import MemoryTool
 from microbots.environment.Environment import CmdReturn

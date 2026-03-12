@@ -61,6 +61,7 @@ Clear all memory:
 - Paths must start with /memories/.
 - memory create overwrites if the file already exists.
 - memory str_replace requires the old text to appear exactly once.
+- In memory view, use --end -1 to read through the end of the file.
 """
 
 

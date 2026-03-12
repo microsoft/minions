@@ -98,9 +98,7 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo 'hello'",
@@ -135,9 +133,7 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": True,
             "command": "",
@@ -161,16 +157,12 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client to return invalid then valid response
         mock_invalid_response = Mock()
-        mock_invalid_response.stop_reason = "end_turn"
         mock_invalid_content = Mock()
-        mock_invalid_content.type = "text"
         mock_invalid_content.text = "invalid json"
         mock_invalid_response.content = [mock_invalid_content]
 
         mock_valid_response = Mock()
-        mock_valid_response.stop_reason = "end_turn"
         mock_valid_content = Mock()
-        mock_valid_content.type = "text"
         mock_valid_content.text = json.dumps({
             "task_done": False,
             "command": "ls -la",
@@ -201,9 +193,7 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "pwd",
@@ -228,9 +218,7 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo test",
@@ -259,9 +247,7 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         response_dict = {
             "task_done": True,
             "command": "",
@@ -291,9 +277,7 @@ class TestAnthropicApiAsk:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "ls",
@@ -315,9 +299,7 @@ class TestAnthropicApiAsk:
 
         # Mock response with markdown-wrapped JSON
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = """Here's the response:
 ```json
 {
@@ -438,9 +420,7 @@ class TestAnthropicApiEdgeCases:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "echo ''",
@@ -463,9 +443,7 @@ class TestAnthropicApiEdgeCases:
 
         # Mock the Anthropic client response
         mock_response = Mock()
-        mock_response.stop_reason = "end_turn"
         mock_content = Mock()
-        mock_content.type = "text"
         mock_content.text = json.dumps({
             "task_done": False,
             "command": "pwd",

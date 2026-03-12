@@ -742,3 +742,4 @@ class TestValidateLlmResponseAdditionalCases:
         assert llm_response is None
         assert llm.retries == 1
         assert len(llm.messages) == 1
+        assert "When 'task_done' is true, 'command' should be an empty string." in llm.messages[0]["content"]
