@@ -117,7 +117,7 @@ class TestMemoryToolResolve:
         """Bare relative paths without /memories/ prefix must be rejected
         to match the documented contract."""
         tool = make_tool(tmp_path)
-        for bad in ("notes.md", "sub/dir/file.md", "file.txt"):
+        for bad in ("notes.md", "sub/dir/file.md", "file.txt", "memories/foo.md"):
             with pytest.raises(ValueError, match="Paths must start with /memories/"):
                 tool._resolve(bad)
 
@@ -377,7 +377,7 @@ class TestMemoryToolDelete:
 
     def test_delete_prevents_root_deletion(self, tmp_path):
         tool = make_tool(tmp_path)
-        for path in ("/memories", "memories", "/memories/"):
+        for path in ("/memories", "/memories/"):
             result = tool._delete(Namespace(path=path))
             assert result.return_code != 0
 
@@ -386,8 +386,6 @@ class TestMemoryToolDelete:
         "/memories/./",      # trailing slash variant
         "//memories",        # double leading slash
         "//memories/",       # double leading slash + trailing slash
-        "memories/.",        # relative with dot
-        "memories/./",       # relative with dot + trailing slash
     ])
     def test_delete_prevents_root_deletion_normalized_paths(self, tmp_path, path):
         """Root-equivalent paths that bypass the simple string guard must
@@ -456,7 +454,6 @@ class TestMemoryToolRename:
         "/memories/",
         "/memories/.",
         "//memories",
-        "memories/.",
     ])
     def test_rename_prevents_renaming_root_as_source(self, tmp_path, old_path):
         """Renaming the memory root itself must be rejected."""
@@ -474,7 +471,6 @@ class TestMemoryToolRename:
         "/memories/",
         "/memories/.",
         "//memories",
-        "memories/.",
     ])
     def test_rename_prevents_overwriting_root_as_destination(self, tmp_path, new_path):
         """Renaming onto the memory root must be rejected."""

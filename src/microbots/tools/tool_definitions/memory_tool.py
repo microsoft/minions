@@ -21,8 +21,8 @@ class _NoExitArgumentParser(argparse.ArgumentParser):
         raise ValueError(message)
 
 INSTRUCTIONS_TO_LLM = """
-Use this tool to persist information to files across steps — same interface as
-the Anthropic memory tool.  All paths must be under /memories/.
+Use this tool to persist information to files across steps.
+All paths must be under /memories/.
 
 MEMORY PROTOCOL:
 1. ALWAYS run `memory view /memories` BEFORE doing anything else to check for
@@ -86,16 +86,6 @@ class MemoryTool(ExternalTool):
     All files are stored under ``memory_dir`` on the host (default
     ``~/.microbots/memory``).  The LLM uses paths like ``/memories/notes.md``
     which are resolved relative to ``memory_dir``.
-
-    Supported subcommands
-    ---------------------
-    memory view <path> [--start N] [--end N]
-    memory create <path> <content>
-    memory str_replace <path> --old <text> --new <text>
-    memory insert <path> --line N --text <text>
-    memory delete <path>
-    memory rename <old> <new>
-    memory clear
     """
 
     name: str = Field(default="memory")
@@ -152,6 +142,11 @@ class MemoryTool(ExternalTool):
 
     def _resolve(self, path: str) -> Path:
         """Resolve a /memories/… path to an absolute host path."""
+        if not path.startswith("/"):
+            raise ValueError(
+                f"Invalid memory path: {path!r}. Paths must start with /memories/."
+            )
+
         stripped = path.lstrip("/")
 
         # Reject any path containing '..' components before resolving
@@ -262,9 +257,9 @@ class MemoryTool(ExternalTool):
         if count == 0:
             return CmdReturn(stdout="", stderr=f"Text not found in {args.path!r}", return_code=1)
         if count > 1:
-            return CmdReturn(stdout="", stderr=f"Text appears {count} times in {args.path!r} — must be unique", return_code=1)
+            return CmdReturn(stdout="", stderr=f"Text appears {count} times in {args.path!r} - must be unique", return_code=1)
         resolved.write_text(content.replace(args.old, args.new, 1), encoding="utf-8")
-        return CmdReturn(stdout=f"File {args.path} edited.", stderr="", return_code=0)
+        return CmdReturn(stdout=f"File {args.path} has been edited.", stderr="", return_code=0)
 
     def _insert(self, args: argparse.Namespace) -> CmdReturn:
         resolved = self._resolve(args.path)
@@ -272,14 +267,12 @@ class MemoryTool(ExternalTool):
             return CmdReturn(stdout="", stderr=f"File not found: {args.path!r}", return_code=1)
         file_lines = resolved.read_text(encoding="utf-8").splitlines()
         if args.line < 0 or args.line > len(file_lines):
-            return CmdReturn(stdout="", stderr=f"Invalid line number {args.line}. Must be 0–{len(file_lines)}.", return_code=1)
+            return CmdReturn(stdout="", stderr=f"Invalid line number {args.line}. Must be 0 - {len(file_lines)}.", return_code=1)
         file_lines.insert(args.line, args.text.rstrip("\n"))
         resolved.write_text("\n".join(file_lines) + "\n", encoding="utf-8")
         return CmdReturn(stdout=f"Text inserted at line {args.line} in {args.path}.", stderr="", return_code=0)
 
     def _delete(self, args: argparse.Namespace) -> CmdReturn:
-        if args.path.rstrip("/") in ("/memories", "memories", ""):
-            return CmdReturn(stdout="", stderr="Cannot delete the /memories root directory", return_code=1)
         resolved = self._resolve(args.path)
         if resolved == self._memory_dir.resolve():
             return CmdReturn(stdout="", stderr="Cannot delete the /memories root directory", return_code=1)
