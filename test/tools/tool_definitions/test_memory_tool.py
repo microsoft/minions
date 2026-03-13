@@ -114,19 +114,13 @@ class TestMemoryToolResolve:
             with pytest.raises(ValueError):
                 tool._resolve(bad)
 
-    def test_resolve_bare_relative_path_treated_as_relative_to_memory_dir(self, tmp_path):
-        """The else branch: a path without a /memories/ prefix is resolved
-        relative to memory_dir."""
+    def test_resolve_rejects_bare_relative_paths(self, tmp_path):
+        """Bare relative paths without /memories/ prefix must be rejected
+        to match the documented contract."""
         tool = make_tool(tmp_path)
-        resolved = tool._resolve("notes.md")
-        assert resolved == (tool._memory_dir / "notes.md").resolve()
-
-    def test_resolve_bare_relative_subdir_path(self, tmp_path):
-        """A bare relative path with subdirectory components is also resolved
-        relative to memory_dir (else branch)."""
-        tool = make_tool(tmp_path)
-        resolved = tool._resolve("sub/dir/file.md")
-        assert resolved == (tool._memory_dir / "sub" / "dir" / "file.md").resolve()
+        for bad in ("notes.md", "sub/dir/file.md", "file.txt"):
+            with pytest.raises(ValueError, match="Paths must start with /memories/"):
+                tool._resolve(bad)
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +382,28 @@ class TestMemoryToolDelete:
             result = tool._delete(Namespace(path=path))
             assert result.return_code != 0
 
+    @pytest.mark.parametrize("path", [
+        "/memories/.",       # dot resolves to root
+        "/memories/./",      # trailing slash variant
+        "//memories",        # double leading slash
+        "//memories/",       # double leading slash + trailing slash
+        "memories/.",        # relative with dot
+        "memories/./",       # relative with dot + trailing slash
+    ])
+    def test_delete_prevents_root_deletion_normalized_paths(self, tmp_path, path):
+        """Root-equivalent paths that bypass the simple string guard must
+        still be rejected so that the entire memory directory is never
+        wiped out via ``_delete``."""
+        tool = make_tool(tmp_path)
+        # Seed the directory so we can verify it survives
+        (tool._memory_dir / "keep.md").write_text("important")
+
+        result = tool._delete(Namespace(path=path))
+
+        assert result.return_code != 0, f"path {path!r} was not rejected"
+        assert tool._memory_dir.exists(), f"path {path!r} deleted the memory root"
+        assert (tool._memory_dir / "keep.md").exists(), f"path {path!r} wiped memory contents"
+
     def test_delete_nonexistent_path_raises(self, tmp_path):
         tool = make_tool(tmp_path)
         result = tool._delete(Namespace(path="/memories/nonexistent.md"))
@@ -435,6 +451,42 @@ class TestMemoryToolRename:
         tool = make_tool(tmp_path)
         result = tool.invoke("memory rename /memories/a.md", parent_bot=Mock())
         assert result.return_code != 0
+
+    @pytest.mark.parametrize("old_path", [
+        "/memories",
+        "/memories/",
+        "/memories/.",
+        "//memories",
+        "memories/.",
+    ])
+    def test_rename_prevents_renaming_root_as_source(self, tmp_path, old_path):
+        """Renaming the memory root itself must be rejected."""
+        tool = make_tool(tmp_path)
+        (tool._memory_dir / "keep.md").write_text("important")
+
+        result = tool._rename(Namespace(old_path=old_path, new_path="/memories/newdir"))
+
+        assert result.return_code != 0, f"old_path {old_path!r} was not rejected"
+        assert tool._memory_dir.exists(), f"old_path {old_path!r} moved the memory root"
+        assert (tool._memory_dir / "keep.md").exists()
+
+    @pytest.mark.parametrize("new_path", [
+        "/memories",
+        "/memories/",
+        "/memories/.",
+        "//memories",
+        "memories/.",
+    ])
+    def test_rename_prevents_overwriting_root_as_destination(self, tmp_path, new_path):
+        """Renaming onto the memory root must be rejected."""
+        tool = make_tool(tmp_path)
+        src = tool._memory_dir / "src.md"
+        src.write_text("data")
+
+        result = tool._rename(Namespace(old_path="/memories/src.md", new_path=new_path))
+
+        assert result.return_code != 0, f"new_path {new_path!r} was not rejected"
+        assert src.exists()
 
 
 # ---------------------------------------------------------------------------

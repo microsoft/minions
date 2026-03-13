@@ -158,17 +158,15 @@ class MemoryTool(ExternalTool):
         if ".." in Path(stripped).parts:
             raise ValueError(f"Path traversal not allowed: {path!r}")
 
-        if path.startswith("/") and stripped != "memories" and not stripped.startswith("memories/"):
+        if stripped != "memories" and not stripped.startswith("memories/"):
             raise ValueError(
-                f"Invalid memory path: {path!r}. Use paths under /memories/."
+                f"Invalid memory path: {path!r}. Paths must start with /memories/."
             )
 
         if stripped == "memories":
             rel = ""
-        elif stripped.startswith("memories/"):
-            rel = stripped[len("memories/"):]
         else:
-            rel = stripped  # treat as relative to memory_dir
+            rel = stripped[len("memories/"):]
 
         resolved = (self._memory_dir / rel).resolve() if rel else self._memory_dir.resolve()
         # Use trailing separator to prevent prefix confusion with sibling dirs
@@ -283,6 +281,8 @@ class MemoryTool(ExternalTool):
         if args.path.rstrip("/") in ("/memories", "memories", ""):
             return CmdReturn(stdout="", stderr="Cannot delete the /memories root directory", return_code=1)
         resolved = self._resolve(args.path)
+        if resolved == self._memory_dir.resolve():
+            return CmdReturn(stdout="", stderr="Cannot delete the /memories root directory", return_code=1)
         if resolved.is_file():
             resolved.unlink()
             logger.info("🧠 Memory file deleted: %s", args.path)
@@ -296,6 +296,11 @@ class MemoryTool(ExternalTool):
     def _rename(self, args: argparse.Namespace) -> CmdReturn:
         old_resolved = self._resolve(args.old_path)
         new_resolved = self._resolve(args.new_path)
+        memory_root = self._memory_dir.resolve()
+        if old_resolved == memory_root:
+            return CmdReturn(stdout="", stderr="Cannot rename the /memories root directory", return_code=1)
+        if new_resolved == memory_root:
+            return CmdReturn(stdout="", stderr="Cannot overwrite the /memories root directory", return_code=1)
         if not old_resolved.exists():
             return CmdReturn(stdout="", stderr=f"Source not found: {args.old_path!r}", return_code=1)
         if new_resolved.exists():
