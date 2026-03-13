@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from microbots.tools.tool_definitions.memory_tool import MemoryTool
-from microbots.environment.Environment import CmdReturn
 
 
 # ---------------------------------------------------------------------------
