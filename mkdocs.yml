@@ -1,8 +1,8 @@
 site_name: Microbots
-site_url: https://microsoft.github.io/minions
+site_url: https://microsoft.github.io/microbots
 site_description: A lightweight, extensible AI agent for code comprehension and controlled file edits.
-repo_url: https://github.com/microsoft/minions
-repo_name: microsoft/minions
+repo_url: https://github.com/microsoft/microbots
+repo_name: microsoft/microbots
 
 theme:
   name: material
