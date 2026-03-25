@@ -6,6 +6,7 @@ class ModelProvider(StrEnum):
     OPENAI = "azure-openai"
     OLLAMA_LOCAL = "ollama-local"
     ANTHROPIC = "anthropic"
+    GITHUB_COPILOT = "github-copilot"
 
 
 class ModelEnum(StrEnum):
