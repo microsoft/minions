@@ -21,6 +21,9 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 
+[project.optional-dependencies]
+ghcp = ["github-copilot-sdk"]
+
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 

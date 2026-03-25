@@ -362,6 +362,17 @@ class MicroBot:
                 system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name,
                 token_provider=self.token_provider,
             )
+        elif self.model_provider == ModelProvider.GITHUB_COPILOT:
+            try:
+                from microbots.llm.copilot_api import CopilotApi
+            except ImportError:
+                raise ValueError(
+                    "GitHub Copilot provider requires the ghcp extra. "
+                    "Install with: pip install microbots[ghcp]"
+                )
+            self.llm = CopilotApi(
+                system_prompt=system_prompt_with_tools, model_name=self.deployment_name
+            )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 
     def _validate_model_and_provider(self, model):
