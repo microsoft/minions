@@ -6,6 +6,7 @@ from logging import getLogger
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from microbots.llm.llm import LLMAskResponse, LLMInterface
+from microbots.llm.token_provider import TokenProvider, env_token_provider
 
 logger = getLogger(__name__)
 
@@ -13,14 +14,14 @@ load_dotenv()
 
 endpoint = os.getenv("ANTHROPIC_END_POINT")
 deployment_name = os.getenv("ANTHROPIC_DEPLOYMENT_NAME")
-api_key = os.getenv("ANTHROPIC_API_KEY")
 
 
 class AnthropicApi(LLMInterface):
 
-    def __init__(self, system_prompt, deployment_name=deployment_name, max_retries=3):
+    def __init__(self, system_prompt, deployment_name=deployment_name, max_retries=3, token_provider: TokenProvider | None = None):
+        self.token_provider = token_provider or env_token_provider("ANTHROPIC_API_KEY")
         self.ai_client = Anthropic(
-            api_key=api_key,
+            api_key=self.token_provider(),
             base_url=endpoint
         )
         self.deployment_name = deployment_name
@@ -33,6 +34,7 @@ class AnthropicApi(LLMInterface):
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0  # reset retries for each ask. Handled in parent class.
+        self.ai_client.api_key = self.token_provider()
 
         self.messages.append({"role": "user", "content": message})
 

@@ -3,6 +3,7 @@ from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.llm.token_provider import TokenProvider
 from microbots.tools.tool import ToolAbstract
 from microbots.extras.mount import Mount
 
@@ -15,6 +16,7 @@ class WritingBot(MicroBot):
         folder_to_mount: str,
         environment: Optional[any] = None,
         additional_tools: Optional[list[ToolAbstract]] = [],
+        token_provider: Optional[TokenProvider] = None,
     ):
         # validate init values before assigning
         bot_type = BotType.WRITING_BOT
@@ -46,4 +48,5 @@ class WritingBot(MicroBot):
             environment=environment,
             additional_tools=additional_tools,
             folder_to_mount=folder_mount_info,
+            token_provider=token_provider,
         )

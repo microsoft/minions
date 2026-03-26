@@ -16,6 +16,7 @@ from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
 from microbots.llm.llm import llm_output_format_str
+from microbots.llm.token_provider import TokenProvider
 from microbots.tools.tool import ToolAbstract, get_tool_from_call
 from microbots.extras.mount import Mount, MountType
 from microbots.utils.logger import LogLevelEmoji
@@ -102,6 +103,7 @@ class MicroBot:
         environment: Optional[any] = None,
         additional_tools: Optional[list[ToolAbstract]] = [],
         folder_to_mount: Optional[Mount] = None,
+        token_provider: Optional[TokenProvider] = None,
     ):
         """
         Init function for MicroBot class.
@@ -151,6 +153,7 @@ class MicroBot:
         self.bot_type = bot_type
         self.environment = environment
         self.additional_tools = additional_tools
+        self.token_provider = token_provider
 
         # TODO: Replace iteration_count and max_iterations with cost management.
         # Iteration count represents overall LLM interactions including interactions
@@ -327,7 +330,8 @@ class MicroBot:
 
         if self.model_provider == ModelProvider.OPENAI:
             self.llm = OpenAIApi(
-                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
+                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name,
+                token_provider=self.token_provider,
             )
         elif self.model_provider == ModelProvider.OLLAMA_LOCAL:
             self.llm = OllamaLocal(
@@ -335,7 +339,8 @@ class MicroBot:
             )
         elif self.model_provider == ModelProvider.ANTHROPIC:
             self.llm = AnthropicApi(
-                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name
+                system_prompt=system_prompt_with_tools, deployment_name=self.deployment_name,
+                token_provider=self.token_provider,
             )
         # No Else case required as model provider is already validated using _validate_model_and_provider
 

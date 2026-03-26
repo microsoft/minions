@@ -4,6 +4,7 @@ from typing import Optional
 
 from microbots.constants import DOCKER_WORKING_DIR, LOG_FILE_DIR, PermissionLabels
 from microbots.MicroBot import BotType, MicroBot, system_prompt_common
+from microbots.llm.token_provider import TokenProvider
 from microbots.tools.tool import ToolAbstract
 from microbots.extras.mount import Mount, MountType
 
@@ -18,6 +19,7 @@ class LogAnalysisBot(MicroBot):
         folder_to_mount: str,
         environment: Optional[any] = None,
         additional_tools: Optional[list[ToolAbstract]] = [],
+        token_provider: Optional[TokenProvider] = None,
     ):
         # validate init values before assigning
         bot_type = BotType.LOG_ANALYSIS_BOT
@@ -44,6 +46,7 @@ Only when you have run all necessary commands and identified the root cause, you
             environment=environment,
             additional_tools=additional_tools,
             folder_to_mount=folder_mount_info,
+            token_provider=token_provider,
         )
 
     def run(self, file_name: str, max_iterations: int = 20, timeout_in_seconds: int = 300) -> any:

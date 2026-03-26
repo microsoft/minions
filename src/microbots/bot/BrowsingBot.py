@@ -2,6 +2,7 @@ from typing import Optional
 
 from microbots.MicroBot import BotType, MicroBot, BotRunResult
 from microbots.environment.Environment import Environment
+from microbots.llm.token_provider import TokenProvider
 from microbots.tools.tool import ToolAbstract
 from microbots.tools.tool_yaml_parser import parse_tool_definition
 
@@ -16,6 +17,7 @@ class BrowsingBot(MicroBot):
         model: str,
         environment: Optional[Environment] = None,
         additional_tools: Optional[list[ToolAbstract]] = [],
+        token_provider: Optional[TokenProvider] = None,
     ):
         # validate init values before assigning
         bot_type = BotType.BROWSING_BOT
@@ -29,6 +31,7 @@ class BrowsingBot(MicroBot):
             system_prompt=system_prompt,
             environment=environment,
             additional_tools=additional_tools + [BROWSER_USE_TOOL],
+            token_provider=token_provider,
         )
 
     def run(self, task, max_iterations=20, timeout_in_seconds=200) -> BotRunResult:

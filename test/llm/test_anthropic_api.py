@@ -24,8 +24,9 @@ def patch_anthropic_config(request):
     else:
         with patch('microbots.llm.anthropic_api.endpoint', 'https://api.anthropic.com'), \
              patch('microbots.llm.anthropic_api.deployment_name', 'claude-sonnet-4-5'), \
-             patch('microbots.llm.anthropic_api.api_key', 'test-api-key'), \
              patch('microbots.llm.anthropic_api.Anthropic') as mock_anthropic:
+            monkeypatch = request.getfixturevalue('monkeypatch')
+            monkeypatch.setenv("ANTHROPIC_API_KEY", "test-api-key")
             yield mock_anthropic
 
 

@@ -5,18 +5,19 @@ from dataclasses import asdict
 from dotenv import load_dotenv
 from openai import OpenAI
 from microbots.llm.llm import LLMAskResponse, LLMInterface
+from microbots.llm.token_provider import TokenProvider, env_token_provider
 
 load_dotenv()
 
 endpoint = os.getenv("OPEN_AI_END_POINT")
 deployment_name = os.getenv("OPEN_AI_DEPLOYMENT_NAME")
-api_key = os.getenv("OPEN_AI_KEY")  # use the api_key
 
 
 class OpenAIApi(LLMInterface):
 
-    def __init__(self, system_prompt, deployment_name=deployment_name, max_retries=3):
-        self.ai_client = OpenAI(base_url=f"{endpoint}", api_key=api_key)
+    def __init__(self, system_prompt, deployment_name=deployment_name, max_retries=3, token_provider: TokenProvider | None = None):
+        self.token_provider = token_provider or env_token_provider("OPEN_AI_KEY")
+        self.ai_client = OpenAI(base_url=f"{endpoint}", api_key=self.token_provider())
         self.deployment_name = deployment_name
         self.system_prompt = system_prompt
         self.messages = [{"role": "system", "content": system_prompt}]
@@ -27,6 +28,7 @@ class OpenAIApi(LLMInterface):
 
     def ask(self, message) -> LLMAskResponse:
         self.retries = 0 # reset retries for each ask. Handled in parent class.
+        self.ai_client.api_key = self.token_provider()
 
         self.messages.append({"role": "user", "content": message})
 

@@ -16,11 +16,11 @@ from microbots.llm.llm import LLMAskResponse, LLMInterface
 
 
 @pytest.fixture(autouse=True)
-def patch_openai_config():
+def patch_openai_config(monkeypatch):
     """Automatically patch OpenAI configuration for all tests"""
+    monkeypatch.setenv("OPEN_AI_KEY", "test-api-key")
     with patch('microbots.llm.openai_api.endpoint', 'https://api.openai.com'), \
          patch('microbots.llm.openai_api.deployment_name', 'gpt-4'), \
-         patch('microbots.llm.openai_api.api_key', 'test-api-key'), \
          patch('microbots.llm.openai_api.OpenAI') as mock_openai:
         yield mock_openai
 
