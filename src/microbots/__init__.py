@@ -1,4 +1,4 @@
-from microbots.bot import ReadingBot, WritingBot, LogAnalysisBot, BrowsingBot, AgentBoss
+from microbots.bot import ReadingBot, WritingBot, LogAnalysisBot, BrowsingBot, AgentBoss, CopilotBot
 from microbots.MicroBot import MicroBot, BotRunResult
 __all__ = [
     "ReadingBot",
@@ -6,6 +6,7 @@ __all__ = [
     "LogAnalysisBot",
     "BrowsingBot",
     "AgentBoss",
+    "CopilotBot",
     "MicroBot",
     "BotRunResult"
 ]
