@@ -122,7 +122,7 @@ class MicroBot:
                 LocalDockerEnvironment will be created.
             additional_tools :Optional[list[ToolAbstract]]
                 A list of additional tools to install in the bot's environment.
-                Defaults to [].
+                Defaults to None (treated as an empty list).
             folder_to_mount :Optional[Mount]
                 A folder to mount into the bot's environment. The bot will be given
                 access to this folder based on the specified permissions. This will

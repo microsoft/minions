@@ -62,6 +62,8 @@ export ANTHROPIC_END_POINT="https://your-foundry-endpoint"
 export ANTHROPIC_DEPLOYMENT_NAME="your-deployment"
 ```
 
+> **Note:** `AZURE_AUTH_METHOD=azure_ad` only auto-creates a token provider for the `azure-openai` provider (using the `https://cognitiveservices.azure.com/.default` scope). For `anthropic` (Azure AI Foundry), the required scope is different and cannot be inferred automatically. You must pass `token_provider` explicitly — see **Option B** below.
+
 ### Option B: Pass a Token Provider Programmatically
 
 Pass any `Callable[[], str]` as `token_provider`. The recommended approach uses `get_bearer_token_provider` from `azure-identity`:
@@ -76,7 +78,7 @@ token_provider = get_bearer_token_provider(
 )
 
 bot = MicroBot(
-    model="openai/gpt-4",
+    model="azure-openai/your-deployment",
     token_provider=token_provider,
 )
 ```
@@ -96,7 +98,7 @@ token_provider = get_bearer_token_provider(
 )
 
 bot = MicroBot(
-    model="openai/gpt-4",
+    model="azure-openai/your-deployment",
     token_provider=token_provider,
 )
 ```
@@ -112,8 +114,8 @@ bot = MicroBot(
 
 | `token_provider` present | LLM provider | SDK client used |
 |---|---|---|
-| Yes | `openai` | `AzureOpenAI(azure_ad_token_provider=...)` |
-| No | `openai` | `OpenAI(api_key=...)` |
+| Yes | `azure-openai` | `AzureOpenAI(azure_ad_token_provider=...)` |
+| No | `azure-openai` | `OpenAI(api_key=...)` |
 | Yes | `anthropic` | `AnthropicFoundry(azure_ad_token_provider=...)` |
 | No | `anthropic` | `Anthropic(api_key=...)` |
 

@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 # Setup logging for tests
 logger = logging.getLogger(__name__)
