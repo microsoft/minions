@@ -28,6 +28,14 @@ class OpenAIApi(LLMInterface):
             )
 
         if token_provider:
+            if not callable(token_provider):
+                raise ValueError("token_provider must be a callable that returns a string token.")
+            try:
+                token = token_provider()
+            except Exception as e:
+                raise ValueError(f"token_provider failed during validation: {e}") from e
+            if not isinstance(token, str) or not token:
+                raise ValueError("token_provider must return a non-empty string token.")
             # Azure users with AD token — use AzureOpenAI which calls token_provider natively per request
             self.ai_client = AzureOpenAI(
                 azure_endpoint=endpoint,

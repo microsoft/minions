@@ -183,9 +183,9 @@ class LocalDockerEnvironment(Environment):
         return command
 
     def execute(
-        self, command: str, timeout: Optional[int] = 300
+        self, command: str, timeout: Optional[int] = 300, sensitive: bool = False
     ) -> CmdReturn:  # TODO: Need proper return value
-        logger.debug("➡️  Executing command in container: %s", command)
+        logger.debug("➡️  Executing command in container: %s", "<redacted>" if sensitive else command)
         # command = self._escape(command)
         start_time = time.perf_counter()
         # command = self._escape(command)

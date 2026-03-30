@@ -32,6 +32,14 @@ class AnthropicApi(LLMInterface):
             )
 
         if token_provider:
+            if not callable(token_provider):
+                raise ValueError("token_provider must be a callable that returns a string token.")
+            try:
+                token = token_provider()
+            except Exception as e:
+                raise ValueError(f"token_provider failed during validation: {e}") from e
+            if not isinstance(token, str) or not token:
+                raise ValueError("token_provider must return a non-empty string token.")
             # Azure AD auth — use AnthropicFoundry with ANTHROPIC_END_POINT as base_url
             self.ai_client = AnthropicFoundry(
                 azure_ad_token_provider=token_provider,

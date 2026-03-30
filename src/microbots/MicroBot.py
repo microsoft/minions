@@ -13,7 +13,6 @@ from microbots.constants import ModelProvider
 from microbots.environment.local_docker.LocalDockerEnvironment import (
     LocalDockerEnvironment,
 )
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from microbots.llm.anthropic_api import AnthropicApi
 from microbots.llm.openai_api import OpenAIApi
 from microbots.llm.ollama_local import OllamaLocal
@@ -173,6 +172,13 @@ class MicroBot:
             os.getenv("AZURE_AUTH_METHOD", "").strip().lower() == "azure_ad"
             and self.model_provider == ModelProvider.OPENAI
         ):
+            try:
+                from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+            except ImportError:
+                raise ImportError(
+                    "Azure AD authentication requires the 'azure-identity' package. "
+                    "Install it with: pip install microbots[azure_ad]"
+                )
             credential = DefaultAzureCredential()
             self.token_provider = get_bearer_token_provider(
                 credential, "https://cognitiveservices.azure.com/.default"

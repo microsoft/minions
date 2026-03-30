@@ -19,7 +19,7 @@ class Environment(ABC):
         pass
 
     @abstractmethod
-    def execute(self, command: str, timeout: Optional[int] = 300) -> CmdReturn:
+    def execute(self, command: str, timeout: Optional[int] = 300, sensitive: bool = False) -> CmdReturn:
         pass
 
     def copy_to_container(self, src_path: str, dest_path: str) -> bool:

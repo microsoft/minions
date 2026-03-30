@@ -30,6 +30,9 @@ dependencies = { file = ["requirements.txt"] }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[project.optional-dependencies]
+azure_ad = ["azure-identity>=1.15.0"]
+
 [project.urls]
 "Source Repo" = "https://github.com/microsoft/minions"
 Issues = "https://github.com/microsoft/minions/issues"

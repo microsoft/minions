@@ -42,7 +42,7 @@ class BrowsingBot(MicroBot):
         # container so that browser.py (running inside Docker) can use it for ChatAzureOpenAI.
         if self.token_provider is not None:
             token = self.token_provider()
-            self.environment.execute(f'export AZURE_OPENAI_AD_TOKEN={shlex.quote(token)}')
+            self.environment.execute(f'export AZURE_OPENAI_AD_TOKEN={shlex.quote(token)}', sensitive=True)
 
         # browser-use will run inside the docker. So, single command to env should be sufficient
         browser_output = self.environment.execute(f"browser {shlex.quote(task)}", timeout=timeout_in_seconds)

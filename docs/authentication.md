@@ -23,7 +23,11 @@ export ANTHROPIC_DEPLOYMENT_NAME="your-deployment"
 
 For environments that require Azure AD authentication (no static API keys), Microbots can automatically obtain and refresh tokens using `azure-identity`.
 
-`azure-identity` is a **default dependency** — no extra install step is needed.
+`azure-identity` is an **optional dependency**. Install it with:
+
+```bash
+pip install microbots[azure_ad]
+```
 
 ### Option A: Environment Variable Opt-In
 
@@ -66,7 +70,13 @@ export ANTHROPIC_DEPLOYMENT_NAME="your-deployment"
 
 ### Option B: Pass a Token Provider Programmatically
 
-Pass any `Callable[[], str]` as `token_provider`. The recommended approach uses `get_bearer_token_provider` from `azure-identity`:
+First install the optional dependency:
+
+```bash
+pip install microbots[azure_ad]
+```
+
+Then pass any `Callable[[], str]` as `token_provider`.
 
 ```python
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
