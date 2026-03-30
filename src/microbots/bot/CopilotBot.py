@@ -49,6 +49,7 @@ from microbots.environment.local_docker.LocalDockerEnvironment import (
 )
 from microbots.extras.mount import Mount, MountType
 from microbots.MicroBot import BotRunResult
+from microbots.tools.external_tool import ExternalTool
 from microbots.tools.tool import ToolAbstract
 from microbots.utils.network import get_free_port
 
@@ -130,10 +131,21 @@ class CopilotBot:
         if not self.environment:
             self._create_environment()
 
+        # ── Validate tools — ExternalTool is not supported ──────────
+        for tool in self.additional_tools:
+            if isinstance(tool, ExternalTool):
+                raise ValueError(
+                    f"CopilotBot does not support ExternalTool '{tool.name}'. "
+                    f"copilot-cli runs inside the Docker container, so only "
+                    f"internal (container-side) tools are allowed."
+                )
+
         # ── Install additional tools inside the container ───────────
         for tool in self.additional_tools:
+            logger.info("🔧 Installing additional tool '%s'...", tool.name)
             tool.install_tool(self.environment)
             tool.verify_tool_installation(self.environment)
+            logger.info("✅ Tool '%s' installed and verified", tool.name)
 
         # ── Install & start copilot-cli inside the container ────────
         self._cli_host_port = get_free_port()
@@ -192,8 +204,11 @@ class CopilotBot:
             status=True on success with the agent's final message in *result*,
             or status=False with an error description.
         """
+        logger.info("🚀 Starting CopilotBot run — task: %.120s...", task)
+
         # Setup additional tools (env vars, files, setup_commands)
         for tool in self.additional_tools:
+            logger.info("⚙️  Setting up tool '%s'", tool.name)
             tool.setup_tool(self.environment)
 
         # Mount additional folders
@@ -203,19 +218,16 @@ class CopilotBot:
         # Build system message with tool instructions
         system_content = self._build_system_message()
 
-        # Build SDK custom tools from additional_tools
-        sdk_tools = self._build_sdk_tools()
-
         try:
             result_text = self._run_async(
                 self._execute_session(
                     task=task,
                     system_content=system_content,
-                    sdk_tools=sdk_tools,
                     timeout=timeout_in_seconds,
                     streaming=streaming,
                 )
             )
+            logger.info("✅ CopilotBot run completed successfully")
             return BotRunResult(status=True, result=result_text, error=None)
         except Exception as e:
             logger.exception("❌ CopilotBot run failed: %s", e)
@@ -261,91 +273,10 @@ class CopilotBot:
 
     def _create_environment(self):
         free_port = get_free_port()
-        # Also map the copilot-cli headless port
-        self._cli_host_port = get_free_port()
         self.environment = LocalDockerEnvironment(
             port=free_port,
             folder_to_mount=self.folder_to_mount,
         )
-        # Expose additional port mapping for copilot-cli
-        self._map_cli_port()
-
-    def _map_cli_port(self):
-        """Add a second port mapping for the copilot-cli headless server.
-
-        Docker port mappings are static after container creation, so we use
-        ``socat`` inside the container to forward the CLI port through the
-        existing shell_server port range, OR we use ``docker exec`` via iptables.
-
-        The simplest reliable approach: install socat and forward from a known
-        port that's already exposed, or use ``docker port``.
-
-        Actually, the cleanest approach: stop the container, recreate it with
-        the additional port.  Since we control environment creation this is safe.
-        """
-        # The environment was just created by us, so recreating with an extra port
-        # is acceptable.  We stop the existing container and create a new one
-        # with both ports mapped.
-        if not self.environment.container:
-            return
-
-        container = self.environment.container
-        image = self.environment.image
-        port = self.environment.port
-        container_port = self.environment.container_port
-
-        # Gather existing volume config from the running container
-        import docker
-
-        container.stop()
-        container.remove()
-
-        # Re-create with both ports
-        volumes_config = {self.environment.working_dir: {"bind": DOCKER_WORKING_DIR, "mode": "rw"}}
-        if self.folder_to_mount:
-            mode_map = {"READ_ONLY": "ro", "READ_WRITE": "rw"}
-            if self.folder_to_mount.permission == PermissionLabels.READ_ONLY:
-                volumes_config[self.folder_to_mount.host_path_info.abs_path] = {
-                    "bind": f"/ro/{os.path.basename(self.folder_to_mount.sandbox_path)}",
-                    "mode": mode_map[self.folder_to_mount.permission],
-                }
-            else:
-                volumes_config[self.folder_to_mount.host_path_info.abs_path] = {
-                    "bind": self.folder_to_mount.sandbox_path,
-                    "mode": mode_map[self.folder_to_mount.permission],
-                }
-
-        port_mapping = {
-            f"{container_port}/tcp": port,
-            f"{_CONTAINER_CLI_PORT}/tcp": self._cli_host_port,
-        }
-
-        client = docker.from_env()
-        self.environment.container = client.containers.run(
-            image,
-            volumes=volumes_config,
-            ports=port_mapping,
-            detach=True,
-            working_dir="/app",
-            privileged=True,
-            environment={"BOT_PORT": str(container_port)},
-        )
-        logger.info(
-            "🚀 Recreated container with CLI port mapping: host %d → container %d",
-            self._cli_host_port,
-            _CONTAINER_CLI_PORT,
-        )
-        time.sleep(2)
-
-        # Re-setup overlay if needed
-        if self.folder_to_mount and self.folder_to_mount.permission == PermissionLabels.READ_ONLY:
-            self.environment._setup_overlay_mount()
-
-        # cd into mounted folder
-        if self.folder_to_mount:
-            self.environment.execute(f"cd {self.folder_to_mount.sandbox_path}")
-        else:
-            self.environment.execute("cd /")
 
     def _install_copilot_cli(self):
         """Install copilot-cli inside the Docker container."""
@@ -405,6 +336,13 @@ class CopilotBot:
                 f"Failed to start copilot-cli server: {result.stderr}"
             )
 
+        # Expose the CLI port from the environment to the host
+        if not self.environment.expose_port(_CONTAINER_CLI_PORT, self._cli_host_port):
+            raise RuntimeError(
+                f"Failed to expose copilot-cli port {_CONTAINER_CLI_PORT} "
+                f"on host port {self._cli_host_port}"
+            )
+
         # Wait for the server to be ready
         self._wait_for_cli_ready()
         logger.info(
@@ -445,7 +383,6 @@ class CopilotBot:
         self,
         task: str,
         system_content: str,
-        sdk_tools: list,
         timeout: int,
         streaming: bool,
     ) -> str:
@@ -456,14 +393,17 @@ class CopilotBot:
             "model": self.model,
             "on_permission_request": self._PermissionHandler.approve_all,
             "streaming": streaming,
+            "hooks": {
+                "on_pre_tool_use": self._on_pre_tool_use,
+                "on_post_tool_use": self._on_post_tool_use,
+            },
         }
 
         if system_content:
             session_kwargs["system_message"] = {"content": system_content}
 
-        if sdk_tools:
-            session_kwargs["tools"] = sdk_tools
-
+        logger.info("📡 Creating Copilot session (model=%s, streaming=%s)", self.model, streaming)
+        logger.debug("Session kwargs: %s", session_kwargs)
         session = await self._client.create_session(**session_kwargs)
 
         collected_text = []
@@ -473,19 +413,27 @@ class CopilotBot:
             if event.type == SessionEventType.ASSISTANT_MESSAGE:
                 if event.data and event.data.content:
                     collected_text.append(event.data.content)
+                    logger.info("💬 Assistant message received (%d chars)", len(event.data.content))
             elif event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
                 if event.data and event.data.delta_content:
                     logger.debug("📝 %s", event.data.delta_content)
             elif event.type == SessionEventType.SESSION_IDLE:
+                logger.info("⏹️  Session idle — agent finished processing")
                 done_event.set()
+            else:
+                logger.debug("📨 Session event: %s", event.type)
 
         session.on(_on_event)
 
         # Send the task prompt and wait for completion
+        logger.info("📤 Sending task to Copilot agent...")
+        logger.debug("Task content: %s", task)
         response = await session.send_and_wait(task, timeout=float(timeout))
 
         # If send_and_wait returned a full response, use it
         if response and response.data and response.data.content:
+            logger.info("✅ Received response from send_and_wait with %d chars", len(response.data.content))
+            logger.info("Response content: %s", response.data.content)
             return response.data.content
 
         # Otherwise wait for the collected events
@@ -493,7 +441,7 @@ class CopilotBot:
             try:
                 await asyncio.wait_for(done_event.wait(), timeout=float(timeout))
             except asyncio.TimeoutError:
-                pass
+                logger.warning("⏱️  Timed out waiting for session idle after %ds", timeout)
 
         await session.disconnect()
 
@@ -518,66 +466,27 @@ class CopilotBot:
 
         return "\n\n".join(parts)
 
-    def _build_sdk_tools(self) -> list:
-        """Convert Microbots additional tools into Copilot SDK tool definitions.
+    # ──────────────────────────────────────────────────────────────────
+    # Private — SDK hooks for tool-use logging
+    # ──────────────────────────────────────────────────────────────────
 
-        Only tools that implement ``is_invoked`` / have an ``invoke`` method
-        (ExternalTools) can be meaningfully wrapped.  Internal tools that run
-        via shell commands are already accessible to Copilot's built-in shell
-        tool and don't need explicit registration.
-        """
-        from microbots.tools.external_tool import ExternalTool
+    async def _on_pre_tool_use(self, input_data, invocation):
+        """Hook called before each tool execution — log the call."""
+        tool_name = input_data.get("toolName", "unknown")
+        tool_args = input_data.get("toolArgs", {})
+        logger.info("➡️  Tool call: %s — args: %s", tool_name, tool_args)
+        return {"permissionDecision": "allow"}
 
-        sdk_tools = []
-        for tool in self.additional_tools:
-            if isinstance(tool, ExternalTool) and hasattr(tool, "invoke"):
-                sdk_tool = self._wrap_external_tool(tool)
-                if sdk_tool:
-                    sdk_tools.append(sdk_tool)
-        return sdk_tools
-
-    def _wrap_external_tool(self, tool: ToolAbstract):
-        """Wrap a Microbots ExternalTool as a Copilot SDK define_tool."""
-        try:
-            from copilot.tools import Tool as CopilotTool, ToolInvocation, ToolResult
-        except ImportError:
-            return None
-
-        bot_ref = self  # Capture reference for the handler closure
-
-        async def handler(invocation: ToolInvocation) -> ToolResult:
-            command = invocation.arguments.get("command", "")
-            try:
-                cmd_return = tool.invoke(command, bot_ref)
-                output = cmd_return.stdout if cmd_return.return_code == 0 else (
-                    f"COMMAND FAILED (rc={cmd_return.return_code})\n"
-                    f"stdout: {cmd_return.stdout}\nstderr: {cmd_return.stderr}"
-                )
-                return ToolResult(
-                    text_result_for_llm=output,
-                    result_type="success" if cmd_return.return_code == 0 else "failure",
-                )
-            except Exception as e:
-                return ToolResult(
-                    text_result_for_llm=f"Tool error: {e}",
-                    result_type="failure",
-                )
-
-        return CopilotTool(
-            name=tool.name,
-            description=tool.description,
-            parameters={
-                "type": "object",
-                "properties": {
-                    "command": {
-                        "type": "string",
-                        "description": f"The command to invoke the {tool.name} tool",
-                    },
-                },
-                "required": ["command"],
-            },
-            handler=handler,
-        )
+    async def _on_post_tool_use(self, input_data, invocation):
+        """Hook called after each tool execution — log the result."""
+        tool_name = input_data.get("toolName", "unknown")
+        result = input_data.get("toolResult", "")
+        # Truncate long results for readable logs
+        result_str = str(result)
+        if len(result_str) > 500:
+            result_str = result_str[:500] + "... (truncated)"
+        logger.info("⬅️  Tool result: %s — output: %s", tool_name, result_str)
+        return {}
 
     # ──────────────────────────────────────────────────────────────────
     # Private — mount helpers

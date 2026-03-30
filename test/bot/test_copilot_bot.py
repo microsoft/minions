@@ -186,6 +186,31 @@ class TestCopilotBotInit:
     def test_additional_tools_default_empty(self, copilot_bot):
         assert copilot_bot.additional_tools == []
 
+    def test_rejects_external_tool(self, mock_environment, mock_copilot_client):
+        """CopilotBot raises ValueError if an ExternalTool is passed."""
+        from microbots.tools.external_tool import ExternalTool
+
+        ext_tool = MagicMock(spec=ExternalTool)
+        ext_tool.name = "my_external"
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000, 4322]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            with pytest.raises(ValueError, match="does not support ExternalTool"):
+                CopilotBot(
+                    model="gpt-4.1",
+                    environment=mock_environment,
+                    additional_tools=[ext_tool],
+                    github_token="ghp_test",
+                )
+
     def test_import_error_without_sdk(self):
         """CopilotBot raises ImportError when copilot SDK is not installed."""
         # Temporarily remove the mock so the import fails
@@ -253,8 +278,6 @@ class TestCopilotBotSystemMessage:
             patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
             patch("copilot.CopilotClient", return_value=mock_copilot_client),
             patch("copilot.ExternalServerConfig", return_value=MagicMock()),
-            patch("microbots.bot.CopilotBot.CopilotBot._map_cli_port"),
-            patch("microbots.bot.CopilotBot.CopilotBot._create_environment"),
         ):
             from microbots.bot.CopilotBot import CopilotBot
             from microbots.extras.mount import Mount
