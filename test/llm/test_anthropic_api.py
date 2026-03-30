@@ -99,6 +99,31 @@ class TestAnthropicApiInitialization:
         assert mock_foundry.call_args.kwargs['azure_ad_token_provider'] is mock_provider
         assert api.token_provider is mock_provider
 
+    def test_init_raises_when_token_provider_not_callable(self):
+        """ValueError is raised when token_provider is not callable."""
+        with patch('microbots.llm.anthropic_api.api_key', None):
+            with pytest.raises(ValueError, match="token_provider must be a callable"):
+                AnthropicApi(system_prompt="test", token_provider="not-a-callable")
+
+    def test_init_raises_when_token_provider_raises(self):
+        """ValueError is raised when token_provider raises an exception during validation."""
+        failing_provider = Mock(side_effect=RuntimeError("credential error"))
+        with patch('microbots.llm.anthropic_api.api_key', None):
+            with pytest.raises(ValueError, match="token_provider failed during validation"):
+                AnthropicApi(system_prompt="test", token_provider=failing_provider)
+
+    def test_init_raises_when_token_provider_returns_empty_string(self):
+        """ValueError is raised when token_provider returns an empty string."""
+        with patch('microbots.llm.anthropic_api.api_key', None):
+            with pytest.raises(ValueError, match="token_provider must return a non-empty string token"):
+                AnthropicApi(system_prompt="test", token_provider=lambda: "")
+
+    def test_init_raises_when_token_provider_returns_non_string(self):
+        """ValueError is raised when token_provider returns a non-string."""
+        with patch('microbots.llm.anthropic_api.api_key', None):
+            with pytest.raises(ValueError, match="token_provider must return a non-empty string token"):
+                AnthropicApi(system_prompt="test", token_provider=lambda: 12345)
+
 
 @pytest.mark.unit
 class TestAnthropicApiAsk:

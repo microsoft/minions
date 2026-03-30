@@ -753,11 +753,11 @@ class TestMicrobotUnit:
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
         mock_credential = Mock()
-        mock_provider = Mock()
+        mock_provider = Mock(return_value="fake-token")
 
         with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
-             patch('microbots.MicroBot.DefaultAzureCredential', return_value=mock_credential), \
-             patch('microbots.MicroBot.get_bearer_token_provider', return_value=mock_provider) as mock_gbtp, \
+             patch('azure.identity.DefaultAzureCredential', return_value=mock_credential), \
+             patch('azure.identity.get_bearer_token_provider', return_value=mock_provider) as mock_gbtp, \
              patch('microbots.llm.openai_api.AzureOpenAI'):
             bot = MicroBot(
                 model="azure-openai/test-model",
@@ -776,7 +776,7 @@ class TestMicrobotUnit:
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
 
         with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
-             patch('microbots.MicroBot.DefaultAzureCredential') as mock_cred_cls, \
+             patch('azure.identity.DefaultAzureCredential') as mock_cred_cls, \
              patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
                 model="anthropic/claude-sonnet-4-5",
@@ -786,6 +786,20 @@ class TestMicrobotUnit:
 
         mock_cred_cls.assert_not_called()
         assert bot.token_provider is None
+
+    def test_azure_ad_env_raises_import_error_when_azure_identity_missing(self):
+        """ImportError with install hint is raised when azure-identity is not installed."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
+
+        with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
+             patch.dict('sys.modules', {'azure.identity': None}):
+            with pytest.raises(ImportError, match="pip install microbots\\[azure_ad\\]"):
+                MicroBot(
+                    model="azure-openai/test-model",
+                    system_prompt="test",
+                    environment=mock_env,
+                )
 
     def test_no_azure_ad_env_leaves_token_provider_none(self):
         """When AZURE_AUTH_METHOD is not set, token_provider defaults to None."""

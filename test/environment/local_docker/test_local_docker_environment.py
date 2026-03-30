@@ -457,3 +457,38 @@ class TestCreateWorkingDir:
             env._create_working_dir(retries=3, delay=2)
 
         assert any("already exists" in record.message for record in caplog.records)
+
+    def test_execute_logs_command_when_not_sensitive(self, caplog):
+        """execute() logs the actual command when sensitive=False (default)."""
+        env = self._make_env()
+        env.port = 9999
+
+        mock_response = Mock()
+        mock_response.json.return_value = {"output": {"return_code": 0, "stdout": "", "stderr": ""}}
+        mock_response.raise_for_status = Mock()
+
+        with patch("microbots.environment.local_docker.LocalDockerEnvironment.requests.post",
+                   return_value=mock_response), \
+             caplog.at_level(logging.DEBUG):
+            env.execute("echo secret")
+
+        assert "echo secret" in caplog.text
+        assert "<redacted>" not in caplog.text
+
+    def test_execute_redacts_command_when_sensitive(self, caplog):
+        """execute() logs <redacted> instead of the command when sensitive=True."""
+        env = self._make_env()
+        env.port = 9999
+
+        mock_response = Mock()
+        mock_response.json.return_value = {"output": {"return_code": 0, "stdout": "", "stderr": ""}}
+        mock_response.raise_for_status = Mock()
+
+        with patch("microbots.environment.local_docker.LocalDockerEnvironment.requests.post",
+                   return_value=mock_response), \
+             caplog.at_level(logging.DEBUG):
+            env.execute("export SECRET_TOKEN=abc123", sensitive=True)
+
+        assert "<redacted>" in caplog.text
+        assert "SECRET_TOKEN" not in caplog.text
+        assert "abc123" not in caplog.text
