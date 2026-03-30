@@ -755,9 +755,12 @@ class TestMicrobotUnit:
         mock_credential = Mock()
         mock_provider = Mock(return_value="fake-token")
 
+        mock_azure_identity = MagicMock()
+        mock_azure_identity.DefaultAzureCredential.return_value = mock_credential
+        mock_azure_identity.get_bearer_token_provider.return_value = mock_provider
+
         with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
-             patch('azure.identity.DefaultAzureCredential', return_value=mock_credential), \
-             patch('azure.identity.get_bearer_token_provider', return_value=mock_provider) as mock_gbtp, \
+             patch.dict('sys.modules', {'azure': MagicMock(), 'azure.identity': mock_azure_identity}), \
              patch('microbots.llm.openai_api.AzureOpenAI'):
             bot = MicroBot(
                 model="azure-openai/test-model",
@@ -765,7 +768,7 @@ class TestMicrobotUnit:
                 environment=mock_env,
             )
 
-        mock_gbtp.assert_called_once_with(
+        mock_azure_identity.get_bearer_token_provider.assert_called_once_with(
             mock_credential, "https://cognitiveservices.azure.com/.default"
         )
         assert bot.token_provider is mock_provider
@@ -775,8 +778,10 @@ class TestMicrobotUnit:
         mock_env = Mock()
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
 
+        mock_azure_identity = MagicMock()
+
         with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
-             patch('azure.identity.DefaultAzureCredential') as mock_cred_cls, \
+             patch.dict('sys.modules', {'azure': MagicMock(), 'azure.identity': mock_azure_identity}), \
              patch('microbots.llm.anthropic_api.Anthropic'):
             bot = MicroBot(
                 model="anthropic/claude-sonnet-4-5",
@@ -784,7 +789,7 @@ class TestMicrobotUnit:
                 environment=mock_env,
             )
 
-        mock_cred_cls.assert_not_called()
+        mock_azure_identity.DefaultAzureCredential.assert_not_called()
         assert bot.token_provider is None
 
     def test_azure_ad_env_raises_import_error_when_azure_identity_missing(self):
@@ -793,7 +798,7 @@ class TestMicrobotUnit:
         mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
 
         with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
-             patch.dict('sys.modules', {'azure.identity': None}):
+             patch.dict('sys.modules', {'azure': None, 'azure.identity': None}):
             with pytest.raises(ImportError, match="pip install microbots\\[azure_ad\\]"):
                 MicroBot(
                     model="azure-openai/test-model",
