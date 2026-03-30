@@ -153,8 +153,90 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.error("❌  Failed to teardown overlay mount: %s", e)
 
+    def expose_port(self, container_port: int, host_port: int) -> bool:
+        """Expose an additional port from the running container using ``socat``.
+
+        Docker does not allow adding port mappings to an already-running
+        container.  Instead we install ``socat`` on the **host** and run it
+        as a background process that forwards ``host_port`` → the container's
+        IP on ``container_port``.
+
+        The socat process is tracked so it can be cleaned up in :meth:`stop`.
+        """
+        if not self.container:
+            logger.error("❌ No active container to expose port from")
+            return False
+
+        try:
+            # Resolve the container's IP on the Docker bridge network
+            self.container.reload()
+            networks = self.container.attrs["NetworkSettings"]["Networks"]
+            container_ip = next(iter(networks.values()))["IPAddress"]
+            if not container_ip:
+                logger.error("❌ Could not determine container IP address")
+                return False
+
+            # Launch a host-side socat forwarder in the background
+            proc = subprocess.Popen(
+                [
+                    "socat",
+                    f"TCP-LISTEN:{host_port},fork,reuseaddr",
+                    f"TCP:{container_ip}:{container_port}",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+            )
+
+            # Give socat a moment to bind, then verify it's still alive
+            time.sleep(0.5)
+            if proc.poll() is not None:
+                stderr = proc.stderr.read().decode() if proc.stderr else ""
+                logger.error(
+                    "❌ socat exited immediately (rc=%d): %s",
+                    proc.returncode,
+                    stderr,
+                )
+                return False
+
+            # Track the process for cleanup
+            if not hasattr(self, "_socat_procs"):
+                self._socat_procs: list[subprocess.Popen] = []
+            self._socat_procs.append(proc)
+
+            logger.info(
+                "✅ Exposed container port %d on host port %d (via socat, container IP %s)",
+                container_port,
+                host_port,
+                container_ip,
+            )
+            return True
+
+        except FileNotFoundError:
+            logger.error(
+                "❌ 'socat' is not installed on the host. "
+                "Install it with: apt-get install socat"
+            )
+            return False
+        except Exception as e:
+            logger.exception("❌ Failed to expose port: %s", e)
+            return False
+
+    def _cleanup_socat(self):
+        """Terminate any socat forwarder processes we spawned."""
+        for proc in getattr(self, "_socat_procs", []):
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        self._socat_procs = []
+
     def stop(self):
         """Stop and remove the container"""
+        self._cleanup_socat()
         if self.container:
             if self.overlay_mount:
                 self._teardown_overlay_mount()
