@@ -10,7 +10,7 @@ from pathlib import Path
 from pprint import pformat
 import subprocess
 import sys
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 import pytest
 # Add src directory to path to import from local source
