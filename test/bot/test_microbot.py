@@ -10,7 +10,7 @@ from pathlib import Path
 from pprint import pformat
 import subprocess
 import sys
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 import pytest
 # Add src directory to path to import from local source
@@ -731,6 +731,96 @@ class TestMicrobotUnit:
         assert captured_output[0] == raw_stdout
         # Warning should be logged
         assert "Failed to parse command output as JSON, using raw stdout" in caplog.text
+
+    def test_explicit_token_provider_is_stored(self):
+        """When token_provider is passed explicitly it is stored as-is, regardless of env."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
+        my_provider = Mock(return_value="tok")
+
+        with patch('microbots.llm.openai_api.AzureOpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test",
+                environment=mock_env,
+                token_provider=my_provider,
+            )
+
+        assert bot.token_provider is my_provider
+
+    def test_azure_ad_env_creates_token_provider_for_openai(self):
+        """When AZURE_AUTH_METHOD=azure_ad and provider is openai, token_provider is auto-created."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
+        mock_credential = Mock()
+        mock_provider = Mock(return_value="fake-token")
+
+        mock_azure_identity = MagicMock()
+        mock_azure_identity.DefaultAzureCredential.return_value = mock_credential
+        mock_azure_identity.get_bearer_token_provider.return_value = mock_provider
+
+        with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
+             patch.dict('sys.modules', {'azure': MagicMock(), 'azure.identity': mock_azure_identity}), \
+             patch('microbots.llm.openai_api.AzureOpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test",
+                environment=mock_env,
+            )
+
+        mock_azure_identity.get_bearer_token_provider.assert_called_once_with(
+            mock_credential, "https://cognitiveservices.azure.com/.default"
+        )
+        assert bot.token_provider is mock_provider
+
+    def test_azure_ad_env_does_not_create_token_provider_for_anthropic(self):
+        """When AZURE_AUTH_METHOD=azure_ad but provider is anthropic, no auto token_provider is created."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
+
+        mock_azure_identity = MagicMock()
+
+        with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
+             patch.dict('sys.modules', {'azure': MagicMock(), 'azure.identity': mock_azure_identity}), \
+             patch('microbots.llm.anthropic_api.Anthropic'):
+            bot = MicroBot(
+                model="anthropic/claude-sonnet-4-5",
+                system_prompt="test",
+                environment=mock_env,
+            )
+
+        mock_azure_identity.DefaultAzureCredential.assert_not_called()
+        assert bot.token_provider is None
+
+    def test_azure_ad_env_raises_import_error_when_azure_identity_missing(self):
+        """ImportError with install hint is raised when azure-identity is not installed."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
+
+        with patch.dict('os.environ', {'AZURE_AUTH_METHOD': 'azure_ad'}), \
+             patch.dict('sys.modules', {'azure': None, 'azure.identity': None}):
+            with pytest.raises(ImportError, match="pip install microbots\\[azure_ad\\]"):
+                MicroBot(
+                    model="azure-openai/test-model",
+                    system_prompt="test",
+                    environment=mock_env,
+                )
+
+    def test_no_azure_ad_env_leaves_token_provider_none(self):
+        """When AZURE_AUTH_METHOD is not set, token_provider defaults to None."""
+        mock_env = Mock()
+        mock_env.execute.return_value = Mock(return_code=0, stdout="", stderr="")
+
+        env_without_azure = {k: v for k, v in os.environ.items() if k != 'AZURE_AUTH_METHOD'}
+        with patch.dict('os.environ', env_without_azure, clear=True), \
+             patch('microbots.llm.openai_api.OpenAI'):
+            bot = MicroBot(
+                model="azure-openai/test-model",
+                system_prompt="test",
+                environment=mock_env,
+            )
+
+        assert bot.token_provider is None
 
 
 @pytest.mark.integration
