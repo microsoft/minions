@@ -26,10 +26,8 @@ _mock_copilot = MagicMock()
 _mock_copilot.CopilotClient = MagicMock
 _mock_copilot.ExternalServerConfig = MagicMock
 
-_mock_permission = MagicMock()
-_mock_permission.PermissionHandler = MagicMock()
-_mock_permission.PermissionHandler.approve_all = MagicMock()
-_mock_permission.PermissionRequestResult = MagicMock
+_mock_session = MagicMock()
+_mock_session.PermissionRequestResult = MagicMock
 
 _mock_events = MagicMock()
 _mock_events.SessionEventType = MagicMock()
@@ -43,11 +41,15 @@ _mock_tools.ToolInvocation = MagicMock
 _mock_tools.ToolResult = MagicMock
 _mock_tools.define_tool = MagicMock
 
+_mock_types = MagicMock()
+_mock_types.PermissionHandler = MagicMock()
+_mock_types.PermissionHandler.approve_all = MagicMock()
+
 sys.modules.setdefault("copilot", _mock_copilot)
-sys.modules.setdefault("copilot.session", _mock_permission)
+sys.modules.setdefault("copilot.session", _mock_session)
 sys.modules.setdefault("copilot.generated.session_events", _mock_events)
 sys.modules.setdefault("copilot.tools", _mock_tools)
-sys.modules.setdefault("copilot.types", MagicMock())
+sys.modules.setdefault("copilot.types", _mock_types)
 
 # Reload to pick up mock
 if "microbots.bot.CopilotBot" in sys.modules:
@@ -111,6 +113,7 @@ def mock_environment():
     env.execute = MagicMock(return_value=success_return)
     env.copy_to_container = MagicMock(return_value=True)
     env.stop = MagicMock()
+    env.get_ipv4_address = MagicMock(return_value="172.17.0.2")
     return env
 
 
@@ -143,7 +146,7 @@ def copilot_bot(mock_environment, mock_copilot_client):
     """Create a CopilotBot with all external dependencies mocked."""
     with (
         patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
-        patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000, 4322, 4323]),
+        patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
         patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
         patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
         patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
@@ -195,7 +198,7 @@ class TestCopilotBotInit:
 
         with (
             patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
-            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000, 4322]),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
             patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
             patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
             patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
@@ -272,7 +275,7 @@ class TestCopilotBotSystemMessage:
     def test_system_message_includes_mount_path(self, mock_environment, mock_copilot_client):
         with (
             patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
-            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000, 4322, 4323]),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
             patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
             patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
             patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
@@ -322,7 +325,7 @@ class TestCopilotBotCLIInstall:
         from microbots.bot.CopilotBot import CopilotBot
 
         with (
-            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000, 4322]),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
             patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
             patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
             patch("copilot.CopilotClient", return_value=AsyncMock()),
@@ -350,7 +353,7 @@ class TestCopilotBotCLIInstall:
         mock_environment.execute = MagicMock(return_value=fail_return)
 
         with (
-            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000, 4322]),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
             patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
             patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
             patch("copilot.CopilotClient", return_value=AsyncMock()),

@@ -11,7 +11,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-from microbots import AgentBoss
+from microbots import AgentBoss, CopilotBot
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -94,6 +94,23 @@ def run_agent(dataset):
     )
 
 
+def run_copilot_agent(dataset):
+    bot = CopilotBot(
+        model="gpt-4.1",
+        folder_to_mount=str(TEST_DIR / dataset['instance_id']),
+        permission="READ_WRITE",
+    )
+    try:
+        result = bot.run(
+            task=dataset['problem_statement'] + "\n\nHint: " + dataset['hints_text'],
+            timeout_in_seconds=3600 * 4,  # 4 hours
+        )
+        if not result.status:
+            logger.error(f"CopilotBot failed on {dataset['instance_id']}: {result.error}")
+    finally:
+        bot.stop()
+
+
 def generate_prediction(dataset):
     repo_path = TEST_DIR / dataset['instance_id']
     diff_output = subprocess.run(
@@ -146,5 +163,18 @@ def test_swe_bench():
     verify_fix()
 
 
+def test_swe_bench_copilot():
+    datasets = load_dataset(SWE_BENCH_SUITE, split="test")
+
+    for instance in selected_dataset:
+        dataset = datasets.filter(lambda x: x['instance_id'] == instance)[0]
+        logger.info(f"DATASET: {pprint(dataset)}")
+        setup_test_directory(dataset)
+        run_copilot_agent(dataset)
+        generate_prediction(dataset)
+
+    verify_fix()
+
+
 if __name__ == "__main__":
-    test_swe_bench()
+    test_swe_bench_copilot()
