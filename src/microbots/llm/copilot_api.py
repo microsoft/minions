@@ -8,6 +8,7 @@ from logging import getLogger
 from copilot import CopilotClient, PermissionHandler
 from copilot.types import SubprocessConfig
 from microbots.llm.llm import LLMAskResponse, LLMInterface
+from microbots.utils.copilot_auth import get_copilot_token
 
 logger = getLogger(__name__)
 
@@ -22,8 +23,8 @@ class CopilotApi(LLMInterface):
         self.max_retries = max_retries
         self.retries = 0
 
-        # Resolve GitHub token: explicit > GITHUB_TOKEN env var > logged-in user
-        self._github_token = github_token or os.environ.get("GITHUB_TOKEN")
+        # Resolve GitHub token: explicit > env var > ~/.copilot/config.json > SDK default
+        self._github_token = github_token or os.environ.get("GITHUB_TOKEN") or get_copilot_token()
 
         # Persistent event loop in a daemon thread for async-sync bridging.
         # The Copilot SDK is async-native; MicroBot's LLMInterface is sync.
