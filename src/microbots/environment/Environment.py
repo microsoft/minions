@@ -34,31 +34,23 @@ class Environment(ABC):
             f"This is an optional feature - only implement if needed for your use case."
         )
 
-    def expose_port(self, container_port: int, host_port: int) -> bool:
-        """Expose an additional port from the running environment.
+    def get_ipv4_address(self) -> str:
+        """Return the IPv4 address of the running environment.
 
-        Makes a service listening on *container_port* inside the environment
-        reachable at *host_port* on the host.  How this is achieved is up to
-        the implementation (e.g. socat, iptables, native platform API).
-
-        Parameters
-        ----------
-        container_port : int
-            The port the service is listening on **inside** the environment.
-        host_port : int
-            The port on the **host** that should forward to *container_port*.
+        This allows host-side code to connect directly to services
+        running inside the environment without port forwarding.
 
         Returns
         -------
-        bool
-            True if the port was exposed successfully, False otherwise.
+        str
+            The IPv4 address of the environment.
 
         Raises
         ------
         NotImplementedError
-            If the environment does not support dynamic port exposure.
+            If the environment does not support retrieving its IP address.
         """
         raise NotImplementedError(
-            f"{self.__class__.__name__} does not support exposing additional ports. "
+            f"{self.__class__.__name__} does not support retrieving its IP address. "
             f"This is an optional feature - only implement if needed for your use case."
         )

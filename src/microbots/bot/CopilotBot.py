@@ -51,7 +51,7 @@ from microbots.extras.mount import Mount, MountType
 from microbots.MicroBot import BotRunResult
 from microbots.tools.external_tool import ExternalTool
 from microbots.tools.tool import ToolAbstract
-from microbots.utils.network import get_free_port
+from microbots.utils.network import get_free_port  # still used for _create_environment
 
 logger = getLogger(" CopilotBot ")
 
@@ -104,7 +104,7 @@ class CopilotBot:
     ):
         try:
             from copilot import CopilotClient, ExternalServerConfig
-            from copilot.session import PermissionHandler
+            from copilot.types import PermissionHandler
         except ImportError:
             raise ImportError(
                 "CopilotBot requires the github-copilot-sdk package. "
@@ -148,7 +148,6 @@ class CopilotBot:
             logger.info("✅ Tool '%s' installed and verified", tool.name)
 
         # ── Install & start copilot-cli inside the container ────────
-        self._cli_host_port = get_free_port()
         self._install_copilot_cli()
         self._start_copilot_cli_server()
 
@@ -158,16 +157,18 @@ class CopilotBot:
         self._thread.start()
 
         # ── Connect SDK to in-container CLI ─────────────────────────
+        container_ip = self.environment.get_ipv4_address()
         self._client = CopilotClient(
-            ExternalServerConfig(url=f"localhost:{self._cli_host_port}")
+            ExternalServerConfig(url=f"{container_ip}:{_CONTAINER_CLI_PORT}")
         )
         self._run_async(self._client.start())
         self._PermissionHandler = PermissionHandler
 
         logger.info(
-            "✅ CopilotBot initialised — model=%s, cli_port=%d",
+            "✅ CopilotBot initialised — model=%s, cli=%s:%d",
             self.model,
-            self._cli_host_port,
+            container_ip,
+            _CONTAINER_CLI_PORT,
         )
 
     # ──────────────────────────────────────────────────────────────────
@@ -284,6 +285,8 @@ class CopilotBot:
 
         # Install Node.js (required for copilot-cli via npm)
         install_commands = [
+            # Remove stale third-party repos that may have expired GPG keys
+            "rm -f /etc/apt/sources.list.d/yarn.list",
             # Install Node.js 22.x (copilot-cli requires Node 22+)
             "apt-get update -qq && apt-get install -y -qq curl ca-certificates > /dev/null 2>&1",
             "curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1",
@@ -311,9 +314,10 @@ class CopilotBot:
     def _start_copilot_cli_server(self):
         """Start copilot-cli in headless server mode inside the container.
 
-        The CLI listens on ``_CONTAINER_CLI_PORT`` which is mapped to
-        ``self._cli_host_port`` on the host.  Authentication is handled
-        via the GITHUB_TOKEN environment variable injected into the container.
+        The CLI listens on ``_CONTAINER_CLI_PORT`` inside the container.
+        The host connects directly to the container's bridge-network IP.
+        Authentication is handled via the GITHUB_TOKEN environment variable
+        injected into the container.
         """
         # Inject the GitHub token into the container for authentication
         if self.github_token:
@@ -336,30 +340,23 @@ class CopilotBot:
                 f"Failed to start copilot-cli server: {result.stderr}"
             )
 
-        # Expose the CLI port from the environment to the host
-        if not self.environment.expose_port(_CONTAINER_CLI_PORT, self._cli_host_port):
-            raise RuntimeError(
-                f"Failed to expose copilot-cli port {_CONTAINER_CLI_PORT} "
-                f"on host port {self._cli_host_port}"
-            )
-
         # Wait for the server to be ready
         self._wait_for_cli_ready()
         logger.info(
-            "✅ copilot-cli headless server running on container port %d (host port %d)",
+            "✅ copilot-cli headless server running on container port %d",
             _CONTAINER_CLI_PORT,
-            self._cli_host_port,
         )
 
     def _wait_for_cli_ready(self):
         """Poll until the copilot-cli server is accepting connections."""
         import socket as _socket
 
+        container_ip = self.environment.get_ipv4_address()
         deadline = time.time() + _CLI_STARTUP_TIMEOUT
         while time.time() < deadline:
             try:
                 sock = _socket.create_connection(
-                    ("localhost", self._cli_host_port), timeout=2
+                    (container_ip, _CONTAINER_CLI_PORT), timeout=2
                 )
                 sock.close()
                 return
@@ -367,7 +364,7 @@ class CopilotBot:
                 time.sleep(1)
         raise TimeoutError(
             f"copilot-cli did not become ready within {_CLI_STARTUP_TIMEOUT}s "
-            f"on host port {self._cli_host_port}"
+            f"on {container_ip}:{_CONTAINER_CLI_PORT}"
         )
 
     # ──────────────────────────────────────────────────────────────────
@@ -483,6 +480,7 @@ class CopilotBot:
         result = input_data.get("toolResult", "")
         # Truncate long results for readable logs
         result_str = str(result)
+        logger.debug("Tool '%s'\nexecution result: %s", tool_name, result_str)
         if len(result_str) > 500:
             result_str = result_str[:500] + "... (truncated)"
         logger.info("⬅️  Tool result: %s — output: %s", tool_name, result_str)
