@@ -51,6 +51,7 @@ from microbots.extras.mount import Mount, MountType
 from microbots.MicroBot import BotRunResult
 from microbots.tools.external_tool import ExternalTool
 from microbots.tools.tool import ToolAbstract
+from microbots.utils.copilot_auth import get_copilot_token
 from microbots.utils.network import get_free_port  # still used for _create_environment
 
 logger = getLogger(" CopilotBot ")
@@ -118,6 +119,7 @@ class CopilotBot:
             or os.environ.get("COPILOT_GITHUB_TOKEN")
             or os.environ.get("GITHUB_TOKEN")
             or os.environ.get("GH_TOKEN")
+            or get_copilot_token()
         )
 
         # ── Mount setup ─────────────────────────────────────────────
