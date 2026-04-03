@@ -43,7 +43,7 @@ nav:
     - Home: index.md
   - Blogs:
     - blog/index.md
-    - Safety-First AI Agents: blog/safety_first_ai_agents.md
+    - "Microbots : Safety First Agentic Workflow": blog/microbots-safety-first-ai-agent.md
 
 extra_css:
   - stylesheets/extra.css

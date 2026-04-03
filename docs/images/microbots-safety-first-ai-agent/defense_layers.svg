@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#010409"/>
+  <rect x="1" y="1" width="798" height="478" fill="none" stroke="#3d444d" stroke-width="1"/>
+
+  <text x="400" y="32" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="15" font-weight="600" fill="#e6edf3">Defense in Depth — 5 Layers of Protection</text>
+
+  <!-- Agent -->
+  <rect x="30" y="210" width="100" height="50" rx="6" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+  <text x="80" y="232" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">Agent</text>
+  <text x="80" y="248" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#6e7681">command</text>
+  <line x1="130" y1="235" x2="165" y2="235" stroke="#6e7681" stroke-width="1"/>
+  <polygon points="163,230 173,235 163,240" fill="#6e7681"/>
+
+  <!-- Layer 5: Iteration Budget -->
+  <rect x="175" y="50" width="580" height="385" rx="10" fill="none" stroke="#d29922" stroke-width="1" stroke-dasharray="6,4"/>
+  <rect x="185" y="55" width="150" height="22" rx="4" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="193" y="70" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="600" fill="#d29922">5</text>
+  <text x="210" y="70" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="500" fill="#9ca3af">Iteration Budget</text>
+
+  <!-- Layer 4: Dangerous Command Detection -->
+  <rect x="195" y="90" width="545" height="320" rx="10" fill="none" stroke="#f85149" stroke-width="1"/>
+  <rect x="205" y="95" width="210" height="22" rx="4" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="213" y="110" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="600" fill="#f85149">4</text>
+  <text x="230" y="110" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="500" fill="#9ca3af">Dangerous Command Detection</text>
+
+  <!-- Layer 3: Permission Labels -->
+  <rect x="215" y="130" width="510" height="255" rx="10" fill="none" stroke="#a371f7" stroke-width="1"/>
+  <rect x="225" y="135" width="245" height="22" rx="4" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="233" y="150" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a371f7">3</text>
+  <text x="250" y="150" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="500" fill="#9ca3af">Permission Labels (READ_ONLY / READ_WRITE)</text>
+
+  <!-- Layer 2: OverlayFS -->
+  <rect x="235" y="170" width="475" height="190" rx="10" fill="none" stroke="#39d353" stroke-width="1"/>
+  <rect x="245" y="175" width="175" height="22" rx="4" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="253" y="190" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="600" fill="#39d353">2</text>
+  <text x="270" y="190" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="500" fill="#9ca3af">OverlayFS (Copy-on-Write)</text>
+
+  <!-- Layer 1: Container Isolation -->
+  <rect x="255" y="210" width="440" height="125" rx="10" fill="#0d1117" stroke="#3d444d" stroke-width="1.5"/>
+  <rect x="265" y="215" width="175" height="22" rx="4" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="273" y="230" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="600" fill="#e6edf3">1</text>
+  <text x="290" y="230" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="500" fill="#9ca3af">Container Isolation (Docker)</text>
+
+  <!-- Inner boxes -->
+  <rect x="280" y="248" width="110" height="38" rx="5" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="335" y="264" text-anchor="middle" font-family="'SF Mono', monospace" font-size="10" fill="#9ca3af">Shell Server</text>
+  <text x="335" y="278" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#6e7681">:8080</text>
+
+  <rect x="405" y="248" width="110" height="38" rx="5" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="460" y="264" text-anchor="middle" font-family="'SF Mono', monospace" font-size="10" fill="#9ca3af">/workspace</text>
+  <text x="460" y="278" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#6e7681">mounted</text>
+
+  <rect x="530" y="248" width="110" height="38" rx="5" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="585" y="264" text-anchor="middle" font-family="'SF Mono', monospace" font-size="10" fill="#9ca3af">Tools</text>
+  <text x="585" y="278" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#6e7681">grep, cscope</text>
+
+  <text x="470" y="320" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="9" fill="#6e7681" font-style="italic">Disposable — destroyed after each session</text>
+
+  <!-- Host safe -->
+  <rect x="620" y="410" width="110" height="28" rx="14" fill="#151b23" stroke="#39d353" stroke-width="1"/>
+  <text x="675" y="428" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" font-weight="500" fill="#39d353">Host Safe</text>
+
+  <text x="400" y="465" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" fill="#6e7681">Commands pass through all 5 layers before reaching the isolated environment</text>
+</svg>

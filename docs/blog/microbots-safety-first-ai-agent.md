@@ -1,6 +1,8 @@
 # Microbots : Safety First Agentic Workflow
 
-![Microbots : Safety First Agentic Workflow](../images/safety-first-ai-agents/safety_first_agents.svg)
+**Published on:** April 3, 2026 | **Last Edited:** April 3, 2026 | **Author:** Siva Kannan
+
+![Microbots : Safety First Agentic Workflow](../images/microbots-safety-first-ai-agent/safety_first_agents.svg)
 
 Autonomous AI coding agents are powerful — but power without guardrails is a liability. An agent that can write code, execute shell commands, and modify files is one misinterpreted instruction away from deleting a production database or leaking secrets. Microbots was built with a core conviction: **safety is not a feature — it is the foundation**.
 
@@ -8,7 +10,7 @@ This post walks through how Microbots tackles the fundamental safety challenges 
 
 ## The Problem: Unconstrained Agents
 
-![Unconstrained Agents](../images/safety-first-ai-agents/unconstrained_agents.svg)
+![Unconstrained Agents](../images/microbots-safety-first-ai-agent/unconstrained_agents.svg)
 
 Most AI coding tools operate directly on the host filesystem with no isolation boundary. When an LLM-powered agent gains the ability to execute arbitrary commands, the risk profile changes dramatically.
 
@@ -18,11 +20,17 @@ Microbots was designed from day one to make this scenario impossible.
 
 ## How Microbots Tackles It: 5 Layers of Defense
 
-![Defense in Depth - 5 Layers of Protection](../images/safety-first-ai-agents/defense_layers.svg)
+![Defense in Depth - 5 Layers of Protection](../images/microbots-safety-first-ai-agent/defense_layers.svg)
+
+1. **Container Isolation** — Every command runs inside a disposable Docker container
+2. **OverlayFS for Read-Only Safety** — Copy-on-write filesystem keeps host files untouched
+3. **Permission Labels** — OS-level READ_ONLY / READ_WRITE enforcement per mount
+4. **Dangerous Command Detection** — Safety validator blocks destructive patterns before execution
+5. **Iteration Budget Management** — Sub-agents share a finite compute budget to prevent runaway costs
 
 ### 1. Container Isolation
 
-![Container Isolation](../images/safety-first-ai-agents/container_isolation.svg)
+![Container Isolation](../images/microbots-safety-first-ai-agent/container_isolation.svg)
 
 Microbots never lets an agent touch the host machine directly. Every command — whether it's `grep`, `sed`, or even a dangerous `rm -rf` — executes inside a **disposable Docker container**. The container runs a lightweight shell server that accepts commands over HTTP, creating a clear network boundary between the agent and your system.
 
@@ -30,7 +38,7 @@ If the agent executes a destructive command, only the disposable container is af
 
 ### 2. OverlayFS for Read-Only Safety
 
-![OverlayFS](../images/safety-first-ai-agents/overlayfs.svg)
+![OverlayFS](../images/microbots-safety-first-ai-agent/overlayfs.svg)
 
 When an agent only needs to read source code, a naive read-only mount would prevent it from doing any work — it cannot write intermediate files, temp outputs, or tool artifacts. Microbots solves this with **OverlayFS**, a copy-on-write filesystem borrowed from how Linux live CDs work.
 
@@ -38,7 +46,7 @@ OverlayFS presents two layers to the container: a **read-only lower layer** cont
 
 ### 3. Permission Labels as First-Class Concepts
 
-![Permission Labels](../images/safety-first-ai-agents/permission_labels.svg)
+![Permission Labels](../images/microbots-safety-first-ai-agent/permission_labels.svg)
 
 Microbots enforces a clear permission model where `READ_ONLY` and `READ_WRITE` are **explicit labels attached to every mounted folder**. This is not prompt-level safety — it is infrastructure-level safety.
 
@@ -46,7 +54,7 @@ A `ReadingBot` physically cannot write to the codebase because its mount permiss
 
 ### 4. Dangerous Command Detection
 
-![Dangerous Command Detection](../images/safety-first-ai-agents/dangerous_command.svg)
+![Dangerous Command Detection](../images/microbots-safety-first-ai-agent/dangerous_command.svg)
 
 Before any command reaches the sandbox, Microbots runs it through a **safety validator** that scans against known destructive patterns: recursive deletions (`rm -rf`), unbounded `find` commands, recursive directory listings that could produce gigabytes of output, and more.
 
@@ -54,7 +62,7 @@ Blocked commands are not silently dropped. Instead, the agent receives a clear e
 
 ### 5. Iteration Budget Management
 
-![Iteration Budget Management](../images/safety-first-ai-agents/iteration_budget.svg)
+![Iteration Budget Management](../images/microbots-safety-first-ai-agent/iteration_budget.svg)
 
 When a parent agent delegates work to sub-agents, each sub-agent draws from the **parent's iteration budget**. If the parent allocates 50 iterations total and a sub-agent has used 30, the next sub-agent can only use 20.
 
