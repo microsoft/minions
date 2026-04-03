@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <rect width="800" height="300" fill="#010409"/>
+  <rect x="1" y="1" width="798" height="298" fill="none" stroke="#3d444d" stroke-width="1"/>
+
+  <text x="400" y="30" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="13" font-weight="600" fill="#e6edf3">How OverlayFS Works in Microbots</text>
+
+  <!-- Agent view (merged) -->
+  <rect x="260" y="48" width="280" height="45" rx="6" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+  <text x="400" y="68" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">Agent's View (Merged)</text>
+  <text x="400" y="84" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#6e7681">reads + writes appear seamless</text>
+
+  <!-- Arrow down -->
+  <line x1="400" y1="93" x2="400" y2="118" stroke="#6e7681" stroke-width="1"/>
+  <polygon points="394,116 400,126 406,116" fill="#6e7681"/>
+
+  <!-- OverlayFS frame -->
+  <rect x="140" y="128" width="520" height="125" rx="8" fill="none" stroke="#3d444d" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="400" y="146" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#6e7681">OverlayFS</text>
+
+  <!-- Upper layer -->
+  <rect x="160" y="158" width="230" height="78" rx="6" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+  <text x="275" y="178" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">Upper Layer (Writable)</text>
+  <rect x="180" y="190" width="70" height="18" rx="3" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="215" y="203" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#9ca3af">temp/</text>
+  <rect x="260" y="190" width="90" height="18" rx="3" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="305" y="203" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#9ca3af">modified.py</text>
+  <text x="275" y="228" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="9" fill="#6e7681">all writes captured here</text>
+
+  <!-- Lower layer -->
+  <rect x="410" y="158" width="230" height="78" rx="6" fill="#0d1117" stroke="#39d353" stroke-width="1"/>
+  <text x="525" y="178" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">Lower Layer (Read-Only)</text>
+  <rect x="430" y="190" width="50" height="18" rx="3" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="455" y="203" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#9ca3af">src/</text>
+  <rect x="490" y="190" width="50" height="18" rx="3" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="515" y="203" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#9ca3af">.env</text>
+  <rect x="550" y="190" width="50" height="18" rx="3" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+  <text x="575" y="203" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#9ca3af">*.py</text>
+  <text x="525" y="228" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="9" fill="#39d353">your source code — untouched</text>
+
+  <!-- Bottom label -->
+  <rect x="230" y="268" width="340" height="24" rx="12" fill="#151b23" stroke="#39d353" stroke-width="1"/>
+  <text x="400" y="284" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#39d353">Host filesystem is never modified</text>
+</svg>

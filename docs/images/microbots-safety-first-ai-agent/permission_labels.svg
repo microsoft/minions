@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <rect width="800" height="300" fill="#010409"/>
+  <rect x="1" y="1" width="798" height="298" fill="none" stroke="#3d444d" stroke-width="1"/>
+
+  <!-- ReadingBot -->
+  <rect x="50" y="40" width="140" height="82" rx="6" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+  <text x="120" y="65" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="12" font-weight="600" fill="#e6edf3">ReadingBot</text>
+  <text x="120" y="82" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#6e7681">code analysis</text>
+  <rect x="72" y="95" width="96" height="20" rx="10" fill="#151b23" stroke="#39d353" stroke-width="1"/>
+  <text x="120" y="109" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" font-weight="600" fill="#39d353">READ_ONLY</text>
+
+  <!-- Arrow -->
+  <line x1="190" y1="80" x2="278" y2="80" stroke="#6e7681" stroke-width="1"/>
+  <polygon points="276,75 286,80 276,85" fill="#6e7681"/>
+
+  <!-- Read-only mount -->
+  <rect x="290" y="45" width="170" height="70" rx="6" fill="#0d1117" stroke="#39d353" stroke-width="1"/>
+  <text x="375" y="68" text-anchor="middle" font-family="'SF Mono', monospace" font-size="10" fill="#9ca3af">/workspace/src</text>
+  <text x="375" y="88" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#39d353">OS-level read-only</text>
+  <text x="375" y="105" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6e7681">write → Permission denied</text>
+
+  <!-- WritingBot -->
+  <rect x="50" y="170" width="140" height="82" rx="6" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+  <text x="120" y="195" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="12" font-weight="600" fill="#e6edf3">WritingBot</text>
+  <text x="120" y="212" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#6e7681">code edits</text>
+  <rect x="72" y="225" width="96" height="20" rx="10" fill="#151b23" stroke="#58a6ff" stroke-width="1"/>
+  <text x="120" y="239" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" font-weight="600" fill="#58a6ff">READ_WRITE</text>
+
+  <!-- Arrow -->
+  <line x1="190" y1="210" x2="278" y2="210" stroke="#6e7681" stroke-width="1"/>
+  <polygon points="276,205 286,210 276,215" fill="#6e7681"/>
+
+  <!-- Read-write mount -->
+  <rect x="290" y="175" width="170" height="70" rx="6" fill="#0d1117" stroke="#58a6ff" stroke-width="1"/>
+  <text x="375" y="198" text-anchor="middle" font-family="'SF Mono', monospace" font-size="10" fill="#9ca3af">/workspace/src</text>
+  <text x="375" y="218" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#58a6ff">OS-level read-write</text>
+  <text x="375" y="235" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6e7681">write → allowed</text>
+
+  <!-- Comparison box -->
+  <rect x="530" y="65" width="230" height="160" rx="6" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+  <text x="645" y="92" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" font-weight="600" fill="#e6edf3">Infrastructure Safety</text>
+  <text x="645" y="112" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#6e7681">vs</text>
+  <text x="645" y="130" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" font-weight="600" fill="#f85149">Prompt-Level Safety</text>
+  <line x1="550" y1="142" x2="740" y2="142" stroke="#3d444d" stroke-width="1"/>
+  <text x="645" y="165" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#39d353">OS permissions survive</text>
+  <text x="645" y="182" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#39d353">prompt injection attacks</text>
+  <text x="645" y="208" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="10" fill="#f85149">"Please don't write" does not</text>
+
+  <text x="400" y="285" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="11" fill="#6e7681">Permissions enforced at the filesystem level, not the prompt level</text>
+</svg>
