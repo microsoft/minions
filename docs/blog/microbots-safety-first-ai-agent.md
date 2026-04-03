@@ -4,7 +4,7 @@
 
 ![Microbots : Safety First Agentic Workflow](../images/microbots-safety-first-ai-agent/safety_first_agents.svg)
 
-Autonomous AI coding agents are powerful — but power without guardrails is a liability. An agent that can write code, execute shell commands, and modify files is one misinterpreted instruction away from deleting a production database or leaking secrets. Microbots was built with a core conviction: **safety is not a feature — it is the foundation**.
+Autonomous AI coding agents are powerful — but power without guardrails is a liability. An agent that can write code, execute shell commands, and modify files is one misinterpreted instruction away from deleting a production database or leaking secrets. Microbots was built with a core conviction: **safety is not only/just a feature — it is the foundation**.
 
 This post walks through how Microbots tackles the fundamental safety challenges of agentic workflows through five reinforcing layers of protection.
 
