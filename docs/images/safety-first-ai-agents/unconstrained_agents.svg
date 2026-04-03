@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#bg2)"/>
+  <!-- Grid -->
+  <g opacity="0.04" stroke="#818cf8" stroke-width="1">
+    <line x1="0" y1="50" x2="800" y2="50"/><line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="150" x2="800" y2="150"/><line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="250" x2="800" y2="250"/><line x1="0" y1="300" x2="800" y2="300"/>
+    <line x1="0" y1="350" x2="800" y2="350"/>
+  </g>
+
+  <!-- AI Agent box -->
+  <rect x="60" y="100" width="160" height="80" rx="10" fill="#312e81" stroke="#6366f1" stroke-width="2"/>
+  <text x="140" y="135" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#c7d2fe">AI Agent</text>
+  <text x="140" y="158" text-anchor="middle" font-family="monospace" font-size="11" fill="#a5b4fc">rm -rf /project</text>
+
+  <!-- Arrow from agent to filesystem -->
+  <line x1="220" y1="140" x2="340" y2="140" stroke="#ef4444" stroke-width="3" marker-end="url(#arrowRed)"/>
+  <defs>
+    <marker id="arrowRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+  </defs>
+  <text x="280" y="128" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#fca5a5">DIRECT ACCESS</text>
+
+  <!-- Host filesystem -->
+  <rect x="350" y="70" width="180" height="140" rx="10" fill="#1e1b4b" stroke="#ef4444" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="440" y="98" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#fca5a5">Host Filesystem</text>
+  <!-- Files inside -->
+  <g opacity="0.8">
+    <rect x="370" y="110" width="65" height="22" rx="3" fill="#292524" stroke="#78716c" stroke-width="1"/>
+    <text x="402" y="125" text-anchor="middle" font-family="monospace" font-size="10" fill="#d6d3d1">src/</text>
+    <rect x="370" y="140" width="65" height="22" rx="3" fill="#292524" stroke="#78716c" stroke-width="1"/>
+    <text x="402" y="155" text-anchor="middle" font-family="monospace" font-size="10" fill="#d6d3d1">.env</text>
+    <rect x="370" y="170" width="65" height="22" rx="3" fill="#292524" stroke="#78716c" stroke-width="1"/>
+    <text x="402" y="185" text-anchor="middle" font-family="monospace" font-size="10" fill="#d6d3d1">db.conf</text>
+    <rect x="450" y="110" width="65" height="22" rx="3" fill="#292524" stroke="#78716c" stroke-width="1"/>
+    <text x="482" y="125" text-anchor="middle" font-family="monospace" font-size="10" fill="#d6d3d1">keys/</text>
+    <rect x="450" y="140" width="65" height="22" rx="3" fill="#292524" stroke="#78716c" stroke-width="1"/>
+    <text x="482" y="155" text-anchor="middle" font-family="monospace" font-size="10" fill="#d6d3d1">prod/</text>
+  </g>
+
+  <!-- Explosion / damage indicator -->
+  <g transform="translate(600, 110)">
+    <polygon points="0,-40 12,-15 40,-20 20,0 35,30 5,15 -15,35 -8,10 -40,15 -18,-8" fill="#ef4444" opacity="0.7"/>
+    <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" fill="#fef2f2">💥</text>
+  </g>
+  <text x="600" y="170" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#fca5a5">Data Loss</text>
+  <text x="600" y="186" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#fca5a5">Secrets Leaked</text>
+
+  <!-- Arrow from filesystem to damage -->
+  <line x1="530" y1="140" x2="560" y2="130" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,3"/>
+
+  <!-- Bottom warning banner -->
+  <rect x="60" y="250" width="680" height="70" rx="8" fill="#450a0a" opacity="0.6" stroke="#dc2626" stroke-width="1"/>
+  <text x="100" y="278" font-family="system-ui, sans-serif" font-size="13" fill="#fca5a5">⚠</text>
+  <text x="125" y="278" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#fecaca">No isolation boundary</text>
+  <text x="125" y="300" font-family="system-ui, sans-serif" font-size="12" fill="#fca5a5">Agent operates with full user permissions directly on the host machine — one wrong command away from disaster</text>
+
+  <!-- No shield / broken shield -->
+  <g transform="translate(690, 265)" opacity="0.5">
+    <path d="M0,-22 L25,-10 L25,10 Q25,28 0,35 Q-25,28 -25,10 L-25,-10 Z"
+          fill="none" stroke="#ef4444" stroke-width="2"/>
+    <line x1="-15" y1="-15" x2="15" y2="25" stroke="#ef4444" stroke-width="3"/>
+  </g>
+</svg>

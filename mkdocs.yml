@@ -25,6 +25,7 @@ theme:
     - navigation.instant
     - navigation.sections
     - navigation.top
+    - navigation.tabs
     - content.code.copy
 
 markdown_extensions:
@@ -38,4 +39,14 @@ markdown_extensions:
   - attr_list
 
 nav:
-  - Home: index.md
+  - Getting Started:
+    - Home: index.md
+  - Blogs:
+    - blog/index.md
+    - Safety-First AI Agents: blog/safety_first_ai_agents.md
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/lightbox.js

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 350">
+  <defs>
+    <linearGradient id="bgDC" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <marker id="arrDC" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6366f1"/>
+    </marker>
+    <marker id="arrOK" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#22c55e"/>
+    </marker>
+  </defs>
+  <rect width="800" height="350" fill="url(#bgDC)"/>
+  <g opacity="0.03" stroke="#818cf8" stroke-width="1">
+    <line x1="0" y1="50" x2="800" y2="50"/><line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="150" x2="800" y2="150"/><line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="250" x2="800" y2="250"/><line x1="0" y1="300" x2="800" y2="300"/>
+  </g>
+
+  <!-- Agent command input -->
+  <rect x="40" y="60" width="160" height="50" rx="8" fill="#312e81" stroke="#6366f1" stroke-width="2"/>
+  <text x="120" y="82" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#c7d2fe">Agent Command</text>
+  <text x="120" y="100" text-anchor="middle" font-family="monospace" font-size="10" fill="#a5b4fc">rm -rf /</text>
+
+  <!-- Arrow to validator -->
+  <line x1="200" y1="85" x2="260" y2="85" stroke="#6366f1" stroke-width="2" marker-end="url(#arrDC)"/>
+
+  <!-- Safety Validator -->
+  <rect x="270" y="40" width="260" height="90" rx="12" fill="#450a0a" stroke="#ef4444" stroke-width="2"/>
+  <text x="400" y="68" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#fca5a5">🛑 Safety Validator</text>
+  <text x="400" y="90" text-anchor="middle" font-family="monospace" font-size="10" fill="#fca5a5">scans against destructive patterns</text>
+  <text x="400" y="108" text-anchor="middle" font-family="monospace" font-size="9" fill="#7f1d1d">rm -rf | find -exec | chmod 777 | ...</text>
+
+  <!-- Blocked path (down-left) -->
+  <line x1="350" y1="130" x2="350" y2="170" stroke="#ef4444" stroke-width="2"/>
+  <polygon points="344,168 350,178 356,168" fill="#ef4444"/>
+
+  <!-- Blocked result -->
+  <rect x="230" y="180" width="240" height="80" rx="10" fill="#292524" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="350" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#ef4444">✗ BLOCKED</text>
+  <text x="350" y="220" text-anchor="middle" font-family="monospace" font-size="10" fill="#fca5a5">rm -rf / is destructive</text>
+  <text x="350" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#fca5a5">Reason sent back to agent</text>
+
+  <!-- Learning loop arrow back -->
+  <path d="M230 230 Q160 230 160 170 Q160 110 200 100" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="130" y="175" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#fcd34d">self-correct</text>
+
+  <!-- Safe command path -->
+  <rect x="40" y="280" width="160" height="50" rx="8" fill="#312e81" stroke="#6366f1" stroke-width="2"/>
+  <text x="120" y="302" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#c7d2fe">Agent (retry)</text>
+  <text x="120" y="320" text-anchor="middle" font-family="monospace" font-size="10" fill="#a5b4fc">ls -la src/</text>
+
+  <!-- Arrow to validator -->
+  <line x1="200" y1="305" x2="520" y2="305" stroke="#22c55e" stroke-width="2" marker-end="url(#arrOK)"/>
+  <text x="360" y="295" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#4ade80">passes validation ✓</text>
+
+  <!-- Sandbox execution -->
+  <rect x="530" y="275" width="230" height="55" rx="10" fill="#052e16" stroke="#22c55e" stroke-width="2"/>
+  <text x="645" y="298" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#86efac">✓ Executed in Sandbox</text>
+  <text x="645" y="318" text-anchor="middle" font-family="monospace" font-size="10" fill="#4ade80">safe command proceeds</text>
+
+  <!-- Right side: pattern list -->
+  <rect x="560" y="50" width="210" height="160" rx="10" fill="#1e1b4b" stroke="#475569" stroke-width="1.5"/>
+  <text x="665" y="75" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#e0e7ff">Blocked Patterns</text>
+  <line x1="575" y1="84" x2="755" y2="84" stroke="#475569" stroke-width="1"/>
+  <text x="580" y="106" font-family="monospace" font-size="10" fill="#ef4444">✗</text>
+  <text x="600" y="106" font-family="monospace" font-size="10" fill="#fca5a5">rm -rf</text>
+  <text x="580" y="126" font-family="monospace" font-size="10" fill="#ef4444">✗</text>
+  <text x="600" y="126" font-family="monospace" font-size="10" fill="#fca5a5">find / -exec</text>
+  <text x="580" y="146" font-family="monospace" font-size="10" fill="#ef4444">✗</text>
+  <text x="600" y="146" font-family="monospace" font-size="10" fill="#fca5a5">ls -R / (unbounded)</text>
+  <text x="580" y="166" font-family="monospace" font-size="10" fill="#ef4444">✗</text>
+  <text x="600" y="166" font-family="monospace" font-size="10" fill="#fca5a5">chmod 777</text>
+  <text x="580" y="186" font-family="monospace" font-size="10" fill="#ef4444">✗</text>
+  <text x="600" y="186" font-family="monospace" font-size="10" fill="#fca5a5">curl | bash</text>
+</svg>

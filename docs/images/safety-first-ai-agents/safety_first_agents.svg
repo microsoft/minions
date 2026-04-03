@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5"/>
+      <stop offset="100%" style="stop-color:#3730a3"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#818cf8;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#bg)"/>
+  <!-- Grid pattern -->
+  <g opacity="0.05" stroke="#818cf8" stroke-width="1">
+    <line x1="0" y1="50" x2="800" y2="50"/><line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="150" x2="800" y2="150"/><line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="250" x2="800" y2="250"/><line x1="0" y1="300" x2="800" y2="300"/>
+    <line x1="0" y1="350" x2="800" y2="350"/>
+    <line x1="100" y1="0" x2="100" y2="400"/><line x1="200" y1="0" x2="200" y2="400"/>
+    <line x1="300" y1="0" x2="300" y2="400"/><line x1="400" y1="0" x2="400" y2="400"/>
+    <line x1="500" y1="0" x2="500" y2="400"/><line x1="600" y1="0" x2="600" y2="400"/>
+    <line x1="700" y1="0" x2="700" y2="400"/>
+  </g>
+  <!-- Glow circle behind shield -->
+  <circle cx="400" cy="185" r="120" fill="url(#glow)"/>
+  <!-- Shield shape -->
+  <path d="M400 95 L470 125 L470 195 Q470 260 400 290 Q330 260 330 195 L330 125 Z"
+        fill="url(#shield)" stroke="#818cf8" stroke-width="2" opacity="0.9"/>
+  <!-- Lock icon on shield -->
+  <rect x="380" y="175" width="40" height="30" rx="4" fill="#e0e7ff" opacity="0.9"/>
+  <path d="M388 175 L388 162 Q388 148 400 148 Q412 148 412 162 L412 175"
+        fill="none" stroke="#e0e7ff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+  <!-- Orbiting elements -->
+  <g opacity="0.6">
+    <!-- Code brackets -->
+    <text x="280" y="145" font-family="monospace" font-size="28" fill="#34d399">&lt;/&gt;</text>
+    <!-- Terminal -->
+    <rect x="490" y="140" width="40" height="28" rx="4" fill="none" stroke="#f472b6" stroke-width="2"/>
+    <text x="497" y="160" font-family="monospace" font-size="14" fill="#f472b6">$_</text>
+    <!-- AI brain -->
+    <circle cx="310" cy="240" r="18" fill="none" stroke="#fbbf24" stroke-width="2"/>
+    <text x="301" y="246" font-family="sans-serif" font-size="16" fill="#fbbf24">AI</text>
+    <!-- File icon -->
+    <rect x="475" y="225" width="24" height="30" rx="2" fill="none" stroke="#60a5fa" stroke-width="2"/>
+    <line x1="481" y1="237" x2="493" y2="237" stroke="#60a5fa" stroke-width="1.5"/>
+    <line x1="481" y1="243" x2="493" y2="243" stroke="#60a5fa" stroke-width="1.5"/>
+    <line x1="481" y1="249" x2="490" y2="249" stroke="#60a5fa" stroke-width="1.5"/>
+  </g>
+  <!-- Title -->
+  <text x="400" y="350" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#e0e7ff">Microbots : Safety First Agentic Workflow</text>
+  <text x="400" y="378" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#94a3b8">Isolation · Permissions · Containment</text>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <defs>
+    <linearGradient id="bgIB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="320" fill="url(#bgIB)"/>
+  <g opacity="0.03" stroke="#818cf8" stroke-width="1">
+    <line x1="0" y1="50" x2="800" y2="50"/><line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="150" x2="800" y2="150"/><line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="250" x2="800" y2="250"/><line x1="0" y1="300" x2="800" y2="300"/>
+  </g>
+
+  <!-- Parent Agent -->
+  <rect x="50" y="40" width="170" height="70" rx="10" fill="#312e81" stroke="#6366f1" stroke-width="2"/>
+  <text x="135" y="68" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#c7d2fe">AgentBoss</text>
+  <text x="135" y="90" text-anchor="middle" font-family="monospace" font-size="11" fill="#a5b4fc">budget: 50 iterations</text>
+
+  <!-- Total budget bar -->
+  <rect x="260" y="55" width="500" height="28" rx="6" fill="#292524" stroke="#475569" stroke-width="1"/>
+  <rect x="262" y="57" width="496" height="24" rx="5" fill="#1e293b"/>
+  <text x="510" y="74" text-anchor="middle" font-family="monospace" font-size="11" fill="#64748b">Total Budget: 50 iterations</text>
+
+  <!-- Arrows down to sub-agents -->
+  <line x1="135" y1="110" x2="135" y2="140" stroke="#6366f1" stroke-width="1.5"/>
+  <line x1="135" y1="140" x2="180" y2="140" stroke="#6366f1" stroke-width="1.5"/>
+  <line x1="135" y1="140" x2="470" y2="140" stroke="#6366f1" stroke-width="1.5"/>
+
+  <!-- Sub-agent 1: ReadingBot -->
+  <rect x="50" y="155" width="170" height="65" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="135" y="178" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#93c5fd">ReadingBot</text>
+  <text x="135" y="198" text-anchor="middle" font-family="monospace" font-size="10" fill="#60a5fa">used: 30 iterations</text>
+  <!-- Budget bar for sub-agent 1 -->
+  <rect x="50" y="228" width="170" height="18" rx="4" fill="#292524"/>
+  <rect x="50" y="228" width="102" height="18" rx="4" fill="#f59e0b" opacity="0.8"/>
+  <text x="135" y="241" text-anchor="middle" font-family="monospace" font-size="9" fill="#fef3c7">30 / 50</text>
+
+  <!-- Sub-agent 2: WritingBot -->
+  <rect x="340" y="155" width="170" height="65" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="425" y="178" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#93c5fd">WritingBot</text>
+  <text x="425" y="198" text-anchor="middle" font-family="monospace" font-size="10" fill="#60a5fa">max: 20 remaining</text>
+  <!-- Budget bar for sub-agent 2 -->
+  <rect x="340" y="228" width="170" height="18" rx="4" fill="#292524"/>
+  <rect x="340" y="228" width="68" height="18" rx="4" fill="#22c55e" opacity="0.8"/>
+  <text x="425" y="241" text-anchor="middle" font-family="monospace" font-size="9" fill="#bbf7d0">20 / 50</text>
+
+  <!-- Hypothetical 3rd agent blocked -->
+  <rect x="600" y="155" width="170" height="65" rx="8" fill="#292524" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="685" y="178" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="600" fill="#fca5a5">Sub-Agent 3</text>
+  <text x="685" y="198" text-anchor="middle" font-family="monospace" font-size="10" fill="#ef4444">budget exhausted</text>
+  <!-- Budget bar empty -->
+  <rect x="600" y="228" width="170" height="18" rx="4" fill="#292524"/>
+  <text x="685" y="241" text-anchor="middle" font-family="monospace" font-size="9" fill="#ef4444">0 / 50 ✗</text>
+
+  <!-- Arrow from 1 to 2 showing budget transfer -->
+  <path d="M220 195 Q280 195 340 195" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+  <polygon points="338,189 348,195 338,201" fill="#f59e0b"/>
+  <text x="280" y="185" text-anchor="middle" font-family="monospace" font-size="9" fill="#fcd34d">-30</text>
+
+  <!-- Arrow from 2 to 3 showing budget exhausted -->
+  <path d="M510 195 Q555 195 600 195" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="555" y="185" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" fill="#ef4444">✗</text>
+
+  <!-- Bottom explanation -->
+  <rect x="100" y="268" width="600" height="38" rx="8" fill="#78350f" opacity="0.4" stroke="#f59e0b" stroke-width="1"/>
+  <text x="400" y="285" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#fcd34d">⚡ Sub-agents share the parent's iteration budget — prevents runaway compute costs</text>
+  <text x="400" y="300" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#fbbf24">No infinite loops, no surprise API bills</text>
+</svg>
