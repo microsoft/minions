@@ -4,7 +4,7 @@
 
 ![Microbots : Safety First Agentic Workflow](../images/microbots-safety-first-ai-agent/safety_first_agents.svg)
 
-Autonomous AI coding agents are powerful — but power without guardrails is a liability. An agent that can write code, execute shell commands, and modify files is one misinterpreted instruction away from deleting a production database or leaking secrets. Microbots was built with a core conviction: **safety is not only/just a feature — it is the foundation**.
+Autonomous AI coding agents are powerful — but power without guardrails is a liability. An agent that can write code, execute shell commands, and modify files is one misinterpreted instruction away from deleting a production database or leaking secrets. Microbots was built with a core conviction: **safety is not just a feature — it is the foundation**.
 
 This post walks through how Microbots tackles the fundamental safety challenges of agentic workflows through five reinforcing layers of protection.
 
@@ -81,4 +81,4 @@ The core philosophy behind Microbots is simple: **assume the LLM will eventually
 
 As AI agents gain capabilities like web browsing, database access, and deployment automation, the attack surface expands proportionally. Frameworks that bolt on safety as an afterthought will face increasingly severe failure modes. Microbots proves that you do not have to choose between capability and safety — with the right architecture, you get both.
 
-**Safety is not a feature. It is the foundation everything else is built on.**
+**Safety is not just a feature. It is the foundation everything else is built on.**
