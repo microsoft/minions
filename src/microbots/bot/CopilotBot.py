@@ -134,6 +134,8 @@ class CopilotBot:
             self._create_environment()
 
         # ── Validate tools — ExternalTool is not supported ──────────
+        # __ And ___
+        # ── Install additional tools inside the container ───────────
         for tool in self.additional_tools:
             if isinstance(tool, ExternalTool):
                 raise ValueError(
@@ -142,8 +144,6 @@ class CopilotBot:
                     f"internal (container-side) tools are allowed."
                 )
 
-        # ── Install additional tools inside the container ───────────
-        for tool in self.additional_tools:
             logger.info("🔧 Installing additional tool '%s'...", tool.name)
             tool.install_tool(self.environment)
             tool.verify_tool_installation(self.environment)
