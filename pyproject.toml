@@ -23,6 +23,7 @@ requires-python = ">=3.11"
 
 [project.optional-dependencies]
 ghcp = ["github-copilot-sdk"]
+azure_ad = ["azure-identity>=1.15.0"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
@@ -32,9 +33,6 @@ dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[project.optional-dependencies]
-azure_ad = ["azure-identity>=1.15.0"]
 
 [project.urls]
 "Source Repo" = "https://github.com/microsoft/minions"
