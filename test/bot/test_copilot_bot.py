@@ -58,6 +58,20 @@ if "microbots.bot.CopilotBot" in sys.modules:
 from microbots.MicroBot import BotRunResult
 
 
+def _restore_real_copilot_modules():
+    """Remove mock copilot modules from sys.modules and reload CopilotBot.
+
+    This allows integration tests to use the real copilot SDK instead of
+    the mocks injected at module level for unit tests.
+    """
+    mock_keys = [k for k in sys.modules if k == "copilot" or k.startswith("copilot.")]
+    for key in mock_keys:
+        del sys.modules[key]
+    # Also force CopilotBot to re-import the real SDK on next import
+    if "microbots.bot.CopilotBot" in sys.modules:
+        del sys.modules["microbots.bot.CopilotBot"]
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -68,9 +82,10 @@ def _copilot_cli_available():
 
 def _copilot_sdk_installed():
     try:
-        import copilot  # noqa: F401
-        return not isinstance(copilot, MagicMock)
-    except ImportError:
+        from importlib.metadata import version
+        version("github-copilot-sdk")
+        return True
+    except Exception:
         return False
 
 
@@ -368,6 +383,248 @@ class TestCopilotBotCLIInstall:
 
 
 # ---------------------------------------------------------------------------
+# Unit tests — resolve_auth_config and BYOK
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestResolveAuthConfig:
+    """Tests for the standalone resolve_auth_config function."""
+
+    def test_explicit_api_key_returns_byok_provider(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        model, gh_token, provider = resolve_auth_config(
+            model="gpt-4.1",
+            api_key="sk-test-key",
+            base_url="https://api.openai.com/v1",
+        )
+        assert model == "gpt-4.1"
+        assert gh_token is None
+        assert provider is not None
+        assert provider["type"] == "openai"
+        assert provider["base_url"] == "https://api.openai.com/v1"
+        assert provider["api_key"] == "sk-test-key"
+        assert "bearer_token" not in provider
+
+    def test_explicit_bearer_token_takes_precedence_over_api_key(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        _, _, provider = resolve_auth_config(
+            model="gpt-4.1",
+            api_key="sk-key",
+            bearer_token="my-bearer",
+            base_url="https://api.openai.com/v1",
+        )
+        assert provider["bearer_token"] == "my-bearer"
+        assert "api_key" not in provider
+
+    def test_explicit_api_key_without_base_url_raises(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        with pytest.raises(ValueError, match="base_url"):
+            resolve_auth_config(model="gpt-4.1", api_key="sk-test")
+
+    def test_azure_provider_type_includes_api_version(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        _, _, provider = resolve_auth_config(
+            model="gpt-4.1",
+            api_key="azure-key",
+            base_url="https://my-resource.openai.azure.com",
+            provider_type="azure",
+            azure_api_version="2024-10-21",
+        )
+        assert provider["type"] == "azure"
+        assert provider["azure"] == {"api_version": "2024-10-21"}
+
+    def test_wire_api_included_when_set(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        _, _, provider = resolve_auth_config(
+            model="gpt-5",
+            api_key="key",
+            base_url="https://endpoint.com/v1",
+            wire_api="responses",
+        )
+        assert provider["wire_api"] == "responses"
+
+    def test_env_vars_resolve_byok(self, monkeypatch):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        monkeypatch.setenv("COPILOT_BYOK_BASE_URL", "https://env-endpoint.com/v1")
+        monkeypatch.setenv("COPILOT_BYOK_API_KEY", "env-key")
+        monkeypatch.setenv("COPILOT_BYOK_PROVIDER_TYPE", "anthropic")
+        monkeypatch.setenv("COPILOT_BYOK_MODEL", "claude-sonnet-4.5")
+
+        model, gh_token, provider = resolve_auth_config(model="gpt-4.1")
+        assert model == "claude-sonnet-4.5"
+        assert gh_token is None
+        assert provider["type"] == "anthropic"
+        assert provider["base_url"] == "https://env-endpoint.com/v1"
+        assert provider["api_key"] == "env-key"
+
+    def test_env_vars_bearer_token(self, monkeypatch):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        monkeypatch.setenv("COPILOT_BYOK_BASE_URL", "https://endpoint.com/v1")
+        monkeypatch.setenv("COPILOT_BYOK_BEARER_TOKEN", "env-bearer")
+
+        _, _, provider = resolve_auth_config(model="gpt-4.1")
+        assert provider["bearer_token"] == "env-bearer"
+        assert "api_key" not in provider
+
+    def test_env_vars_ignored_when_explicit_key_provided(self, monkeypatch):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        monkeypatch.setenv("COPILOT_BYOK_BASE_URL", "https://env-endpoint.com/v1")
+        monkeypatch.setenv("COPILOT_BYOK_API_KEY", "env-key")
+
+        _, _, provider = resolve_auth_config(
+            model="gpt-4.1",
+            api_key="explicit-key",
+            base_url="https://explicit.com/v1",
+        )
+        assert provider["api_key"] == "explicit-key"
+        assert provider["base_url"] == "https://explicit.com/v1"
+
+    def test_token_provider_returns_byok_with_bearer(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        _, _, provider = resolve_auth_config(
+            model="gpt-4.1",
+            base_url="https://azure.endpoint.com/v1",
+            token_provider=lambda: "ad-token-123",
+        )
+        assert provider["bearer_token"] == "ad-token-123"
+        assert "api_key" not in provider
+
+    def test_token_provider_without_base_url_raises(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        with pytest.raises(ValueError, match="base_url"):
+            resolve_auth_config(
+                model="gpt-4.1",
+                token_provider=lambda: "token",
+            )
+
+    def test_token_provider_not_callable_raises(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        with pytest.raises(ValueError, match="callable"):
+            resolve_auth_config(
+                model="gpt-4.1",
+                base_url="https://endpoint.com/v1",
+                token_provider="not-a-callable",
+            )
+
+    def test_token_provider_returning_empty_raises(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        with pytest.raises(ValueError, match="non-empty"):
+            resolve_auth_config(
+                model="gpt-4.1",
+                base_url="https://endpoint.com/v1",
+                token_provider=lambda: "",
+            )
+
+    def test_token_provider_exception_raises(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        def bad_provider():
+            raise RuntimeError("auth failed")
+
+        with pytest.raises(ValueError, match="auth failed"):
+            resolve_auth_config(
+                model="gpt-4.1",
+                base_url="https://endpoint.com/v1",
+                token_provider=bad_provider,
+            )
+
+    def test_fallback_to_github_token(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        model, gh_token, provider = resolve_auth_config(
+            model="gpt-4.1",
+            github_token="ghp_test123",
+        )
+        assert model == "gpt-4.1"
+        assert gh_token == "ghp_test123"
+        assert provider is None
+
+    def test_default_provider_type_is_openai(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        _, _, provider = resolve_auth_config(
+            model="m", api_key="k", base_url="https://x.com/v1"
+        )
+        assert provider["type"] == "openai"
+
+    def test_anthropic_provider_type(self):
+        from microbots.bot.CopilotBot import resolve_auth_config
+
+        _, _, provider = resolve_auth_config(
+            model="claude-sonnet-4.5",
+            api_key="ant-key",
+            base_url="https://api.anthropic.com",
+            provider_type="anthropic",
+        )
+        assert provider["type"] == "anthropic"
+
+
+@pytest.mark.unit
+class TestCopilotBotBYOKInit:
+    """Tests for CopilotBot initialisation with BYOK parameters."""
+
+    def test_byok_api_key_sets_provider_config(self, mock_environment, mock_copilot_client):
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                api_key="sk-byok-key",
+                base_url="https://api.openai.com/v1",
+            )
+            assert bot._provider_config is not None
+            assert bot._provider_config["api_key"] == "sk-byok-key"
+            assert bot.github_token is None
+            bot.stop()
+
+    def test_byok_token_provider_sets_provider_config(self, mock_environment, mock_copilot_client):
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                base_url="https://azure.endpoint.com/v1",
+                token_provider=lambda: "ad-token-xyz",
+            )
+            assert bot._provider_config is not None
+            assert bot._provider_config["bearer_token"] == "ad-token-xyz"
+            assert bot.github_token is None
+            bot.stop()
+
+    def test_native_auth_has_no_provider_config(self, copilot_bot):
+        assert copilot_bot._provider_config is None
+        assert copilot_bot.github_token == "ghp_test_token_123"
+
+
+# ---------------------------------------------------------------------------
 # Integration tests — require real Docker + copilot-cli + auth
 # ---------------------------------------------------------------------------
 
@@ -397,6 +654,7 @@ class TestCopilotBotIntegration:
 
     def test_simple_task(self, test_repo, issue_1):
         """CopilotBot can fix a simple syntax error."""
+        _restore_real_copilot_modules()
         from microbots.bot.CopilotBot import CopilotBot
 
         issue_text = issue_1[0]
@@ -414,6 +672,70 @@ class TestCopilotBotIntegration:
                 timeout_in_seconds=300,
             )
             assert result.status is True, f"CopilotBot failed: {result.error}"
+            verify_function(test_repo)
+        finally:
+            bot.stop()
+
+
+# ---------------------------------------------------------------------------
+# BYOK helpers
+# ---------------------------------------------------------------------------
+
+def _byok_openai_available():
+    """Check if OpenAI BYOK credentials are configured via env vars."""
+    return bool(
+        os.environ.get("OPEN_AI_KEY")
+        and os.environ.get("OPEN_AI_END_POINT")
+    )
+
+
+_skip_no_byok_openai = pytest.mark.skipif(
+    not _byok_openai_available(),
+    reason="OpenAI BYOK not configured (set OPEN_AI_KEY and OPEN_AI_END_POINT)",
+)
+
+
+@_skip_no_copilot_cli
+@_skip_no_copilot_sdk
+@_skip_no_byok_openai
+@pytest.mark.integration
+@pytest.mark.slow
+class TestCopilotBotBYOKOpenAIIntegration:
+    """End-to-end integration tests for CopilotBot with OpenAI BYOK."""
+
+    def test_byok_openai_simple_task(self, test_repo, issue_1):
+        """CopilotBot can fix a simple syntax error using OpenAI BYOK credentials."""
+        _restore_real_copilot_modules()
+        from microbots.bot.CopilotBot import CopilotBot
+
+        issue_text = issue_1[0]
+        verify_function = issue_1[1]
+
+        api_key = os.environ["OPEN_AI_KEY"]
+        base_url = os.environ["OPEN_AI_END_POINT"]
+        model = os.getenv(
+            "AZURE_OPENAI_DEPLOYMENT_NAME", "mini-swe-agent-gpt5"
+        )
+
+        bot = CopilotBot(
+            model=model,
+            folder_to_mount=str(test_repo),
+            permission="READ_WRITE",
+            api_key=api_key,
+            base_url=base_url,
+            provider_type="openai",
+        )
+
+        try:
+            assert bot._provider_config is not None
+            assert bot._provider_config["type"] == "openai"
+            assert bot.github_token is None
+
+            result = bot.run(
+                issue_text,
+                timeout_in_seconds=300,
+            )
+            assert result.status is True, f"CopilotBot BYOK run failed: {result.error}"
             verify_function(test_repo)
         finally:
             bot.stop()

@@ -37,6 +37,7 @@ import asyncio
 import os
 import time
 import threading
+from collections.abc import Callable
 from logging import getLogger
 from typing import Optional
 
@@ -65,6 +66,177 @@ _CLI_STARTUP_TIMEOUT = 60
 # copilot-cli port inside the container
 _CONTAINER_CLI_PORT = 4321
 
+# Environment variable names for BYOK configuration
+_BYOK_ENV_PROVIDER_TYPE = "COPILOT_BYOK_PROVIDER_TYPE"
+_BYOK_ENV_BASE_URL = "COPILOT_BYOK_BASE_URL"
+_BYOK_ENV_API_KEY = "COPILOT_BYOK_API_KEY"
+_BYOK_ENV_BEARER_TOKEN = "COPILOT_BYOK_BEARER_TOKEN"
+_BYOK_ENV_WIRE_API = "COPILOT_BYOK_WIRE_API"
+_BYOK_ENV_AZURE_API_VERSION = "COPILOT_BYOK_AZURE_API_VERSION"
+_BYOK_ENV_MODEL = "COPILOT_BYOK_MODEL"
+
+
+def resolve_auth_config(
+    model: str = _DEFAULT_MODEL,
+    github_token: Optional[str] = None,
+    api_key: Optional[str] = None,
+    bearer_token: Optional[str] = None,
+    base_url: Optional[str] = None,
+    provider_type: Optional[str] = None,
+    wire_api: Optional[str] = None,
+    azure_api_version: Optional[str] = None,
+    token_provider: Optional[Callable[[], str]] = None,
+) -> tuple[str, Optional[str], Optional[dict]]:
+    """Resolve authentication and provider configuration for CopilotBot.
+
+    Determines whether to use BYOK (Bring Your Own Key) or native GitHub
+    Copilot authentication, and builds the appropriate provider config.
+
+    Priority order:
+      1. Explicit ``api_key`` or ``bearer_token`` with ``base_url`` → BYOK
+      2. Environment variables (``COPILOT_BYOK_*``) → BYOK
+      3. ``token_provider`` (e.g. Azure AD token provider) → BYOK with bearer token
+      4. GitHub token → native Copilot authentication
+
+    Parameters
+    ----------
+    model : str
+        Model name (e.g. ``"gpt-4.1"``, ``"claude-sonnet-4.5"``).
+    github_token : Optional[str]
+        GitHub token for native Copilot auth.
+    api_key : Optional[str]
+        API key for BYOK provider.
+    bearer_token : Optional[str]
+        Bearer token for BYOK (takes precedence over ``api_key``).
+    base_url : Optional[str]
+        API endpoint URL for BYOK provider.
+    provider_type : Optional[str]
+        Provider type: ``"openai"``, ``"azure"``, or ``"anthropic"``.
+    wire_api : Optional[str]
+        API format: ``"completions"`` or ``"responses"``.
+    azure_api_version : Optional[str]
+        Azure API version (only for ``type: "azure"``).
+    token_provider : Optional[Callable[[], str]]
+        Callable that returns a bearer token string (e.g. Azure AD
+        token provider).  The token is fetched once at config resolution
+        time.  For long-running sessions, create a new session with a
+        refreshed token.
+
+    Returns
+    -------
+    tuple[str, Optional[str], Optional[dict]]
+        ``(model, github_token, provider_config)`` where
+        ``provider_config`` is *None* for native Copilot auth or a dict
+        suitable for the ``provider`` kwarg of ``create_session``.
+
+    Raises
+    ------
+    ValueError
+        If BYOK is requested but ``base_url`` is missing, or if
+        ``token_provider`` is not a valid callable.
+    """
+
+    # ── 1. Explicit api_key / bearer_token ───────────────────────────
+    if api_key or bearer_token:
+        if not base_url:
+            raise ValueError(
+                "BYOK requires a base_url when api_key or bearer_token is provided."
+            )
+        provider = _build_provider_config(
+            provider_type=provider_type or "openai",
+            base_url=base_url,
+            api_key=api_key,
+            bearer_token=bearer_token,
+            wire_api=wire_api,
+            azure_api_version=azure_api_version,
+        )
+        logger.info("🔑 BYOK auth resolved via explicit credentials (type=%s)", provider["type"])
+        return model, None, provider
+
+    # ── 2. Environment variables ─────────────────────────────────────
+    env_base_url = os.environ.get(_BYOK_ENV_BASE_URL)
+    env_api_key = os.environ.get(_BYOK_ENV_API_KEY)
+    env_bearer_token = os.environ.get(_BYOK_ENV_BEARER_TOKEN)
+
+    if env_base_url and (env_api_key or env_bearer_token):
+        env_model = os.environ.get(_BYOK_ENV_MODEL, model)
+        provider = _build_provider_config(
+            provider_type=os.environ.get(_BYOK_ENV_PROVIDER_TYPE, "openai"),
+            base_url=env_base_url,
+            api_key=env_api_key,
+            bearer_token=env_bearer_token,
+            wire_api=os.environ.get(_BYOK_ENV_WIRE_API),
+            azure_api_version=os.environ.get(_BYOK_ENV_AZURE_API_VERSION),
+        )
+        logger.info("🔑 BYOK auth resolved via environment variables (type=%s)", provider["type"])
+        return env_model, None, provider
+
+    # ── 3. Token provider (e.g. Azure AD) ────────────────────────────
+    if token_provider:
+        if not callable(token_provider):
+            raise ValueError("token_provider must be a callable that returns a string token.")
+        resolved_url = base_url or env_base_url
+        if not resolved_url:
+            raise ValueError(
+                "BYOK with token_provider requires a base_url (pass it directly "
+                "or set COPILOT_BYOK_BASE_URL)."
+            )
+        try:
+            token = token_provider()
+        except Exception as e:
+            raise ValueError(f"token_provider failed during validation: {e}") from e
+        if not isinstance(token, str) or not token:
+            raise ValueError("token_provider must return a non-empty string token.")
+
+        provider = _build_provider_config(
+            provider_type=provider_type or os.environ.get(_BYOK_ENV_PROVIDER_TYPE, "openai"),
+            base_url=resolved_url,
+            bearer_token=token,
+            wire_api=wire_api or os.environ.get(_BYOK_ENV_WIRE_API),
+            azure_api_version=azure_api_version or os.environ.get(_BYOK_ENV_AZURE_API_VERSION),
+        )
+        logger.info("🔑 BYOK auth resolved via token_provider (type=%s)", provider["type"])
+        return model, None, provider
+
+    # ── 4. Native GitHub Copilot auth ────────────────────────────────
+    resolved_github_token = (
+        github_token
+        or os.environ.get("COPILOT_GITHUB_TOKEN")
+        or os.environ.get("GITHUB_TOKEN")
+        or os.environ.get("GH_TOKEN")
+        or get_copilot_token()
+    )
+    logger.info("🔑 Using native GitHub Copilot authentication")
+    return model, resolved_github_token, None
+
+
+def _build_provider_config(
+    provider_type: str,
+    base_url: str,
+    api_key: Optional[str] = None,
+    bearer_token: Optional[str] = None,
+    wire_api: Optional[str] = None,
+    azure_api_version: Optional[str] = None,
+) -> dict:
+    """Build the ``provider`` dict accepted by ``create_session``."""
+    config: dict = {
+        "type": provider_type,
+        "base_url": base_url,
+    }
+    # bearer_token takes precedence over api_key per SDK docs
+    if bearer_token:
+        config["bearer_token"] = bearer_token
+    elif api_key:
+        config["api_key"] = api_key
+
+    if wire_api:
+        config["wire_api"] = wire_api
+
+    if provider_type == "azure" and azure_api_version:
+        config["azure"] = {"api_version": azure_api_version}
+
+    return config
+
 
 class CopilotBot:
     """Wrapper around the GitHub Copilot SDK with a sandboxed Docker environment.
@@ -91,7 +263,27 @@ class CopilotBot:
         and, where possible, they are registered as SDK custom tools.
     github_token : Optional[str]
         Explicit GitHub token.  Falls back to ``GITHUB_TOKEN`` /
-        ``COPILOT_GITHUB_TOKEN`` env vars.
+        ``COPILOT_GITHUB_TOKEN`` env vars.  Used only when BYOK is not
+        configured.
+    api_key : Optional[str]
+        API key for BYOK provider.  When provided with ``base_url``,
+        bypasses GitHub Copilot auth and uses the key directly.
+    bearer_token : Optional[str]
+        Bearer token for BYOK provider.  Takes precedence over ``api_key``.
+    base_url : Optional[str]
+        API endpoint URL for BYOK (e.g.
+        ``"https://api.openai.com/v1"``).
+    provider_type : Optional[str]
+        BYOK provider type: ``"openai"``, ``"azure"``, or
+        ``"anthropic"``.  Defaults to ``"openai"``.
+    wire_api : Optional[str]
+        API format: ``"completions"`` (default) or ``"responses"``
+        (for GPT-5 series).
+    azure_api_version : Optional[str]
+        Azure API version string (only for ``provider_type="azure"``).
+    token_provider : Optional[Callable[[], str]]
+        A callable returning a bearer token (e.g. Azure AD token
+        provider).  Requires ``base_url``.
     """
 
     def __init__(
@@ -102,6 +294,13 @@ class CopilotBot:
         environment: Optional[LocalDockerEnvironment] = None,
         additional_tools: Optional[list[ToolAbstract]] = None,
         github_token: Optional[str] = None,
+        api_key: Optional[str] = None,
+        bearer_token: Optional[str] = None,
+        base_url: Optional[str] = None,
+        provider_type: Optional[str] = None,
+        wire_api: Optional[str] = None,
+        azure_api_version: Optional[str] = None,
+        token_provider: Optional[Callable[[], str]] = None,
     ):
         try:
             from copilot import CopilotClient, ExternalServerConfig
@@ -112,14 +311,19 @@ class CopilotBot:
                 "Install with: pip install microbots[ghcp]"
             )
 
-        self.model = model
         self.additional_tools = additional_tools or []
-        self.github_token = (
-            github_token
-            or os.environ.get("COPILOT_GITHUB_TOKEN")
-            or os.environ.get("GITHUB_TOKEN")
-            or os.environ.get("GH_TOKEN")
-            or get_copilot_token()
+
+        # ── Resolve auth: BYOK vs native GitHub Copilot ─────────────
+        self.model, self.github_token, self._provider_config = resolve_auth_config(
+            model=model,
+            github_token=github_token,
+            api_key=api_key,
+            bearer_token=bearer_token,
+            base_url=base_url,
+            provider_type=provider_type,
+            wire_api=wire_api,
+            azure_api_version=azure_api_version,
+            token_provider=token_provider,
         )
 
         # ── Mount setup ─────────────────────────────────────────────
@@ -321,8 +525,10 @@ class CopilotBot:
         Authentication is handled via the GITHUB_TOKEN environment variable
         injected into the container.
         """
-        # Inject the GitHub token into the container for authentication
-        if self.github_token:
+        # Inject the GitHub token into the container for native Copilot auth.
+        # When BYOK is active, authentication is handled via the provider
+        # config passed to create_session — no container-side token needed.
+        if self.github_token and not self._provider_config:
             self.environment.execute(
                 f'export GITHUB_TOKEN="{self.github_token}"'
             )
@@ -398,10 +604,13 @@ class CopilotBot:
             },
         }
 
+        if self._provider_config:
+            session_kwargs["provider"] = self._provider_config
+
         if system_content:
             session_kwargs["system_message"] = {"content": system_content}
 
-        logger.info("📡 Creating Copilot session (model=%s, streaming=%s)", self.model, streaming)
+        logger.info("📡 Creating Copilot session (model=%s, streaming=%s, byok=%s)", self.model, streaming, self._provider_config is not None)
         logger.debug("Session kwargs: %s", session_kwargs)
         session = await self._client.create_session(**session_kwargs)
 
