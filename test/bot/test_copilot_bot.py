@@ -625,6 +625,706 @@ class TestCopilotBotBYOKInit:
 
 
 # ---------------------------------------------------------------------------
+# Helper context manager shared by several new test classes
+# ---------------------------------------------------------------------------
+
+def _standard_init_patches(mock_environment, mock_copilot_client):
+    """Return a combined context manager for standard CopilotBot init patches."""
+    return (
+        patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+        patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+        patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+        patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+        patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+        patch("copilot.CopilotClient", return_value=mock_copilot_client),
+        patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — __init__ with folder_to_mount and auto-created environment
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotInitFolderMount:
+    """Tests for __init__ paths: folder_to_mount string and auto environment."""
+
+    def test_folder_to_mount_creates_mount_object(self, mock_environment, mock_copilot_client):
+        """When folder_to_mount string is provided, a Mount is stored."""
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                github_token="ghp_test",
+                folder_to_mount="/tmp/test_repo",
+            )
+            assert bot.folder_to_mount is not None
+            assert "test_repo" in bot.folder_to_mount.sandbox_path
+            bot.stop()
+
+    def test_auto_creates_environment_when_none(self, mock_environment, mock_copilot_client):
+        """When environment=None, LocalDockerEnvironment is instantiated."""
+        mock_environment.get_ipv4_address = MagicMock(return_value="172.17.0.2")
+        with (
+            patch(
+                "microbots.bot.CopilotBot.LocalDockerEnvironment",
+                return_value=mock_environment,
+            ) as mock_lde,
+            patch("microbots.bot.CopilotBot.get_free_port", return_value=9000),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                github_token="ghp_test",
+            )
+            mock_lde.assert_called_once()
+            assert bot.environment is mock_environment
+            bot.stop()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — non-ExternalTool installation in __init__
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotNonExternalToolInstall:
+    """Tests that non-ExternalTool tools are installed during __init__."""
+
+    def test_non_external_tool_install_and_verify_called(
+        self, mock_environment, mock_copilot_client
+    ):
+        """install_tool and verify_tool_installation are called for regular tools."""
+        from microbots.tools.tool import ToolAbstract
+
+        mock_tool = MagicMock(spec=ToolAbstract)
+        mock_tool.name = "my_tool"
+        mock_tool.usage_instructions_to_llm = "Use my_tool"
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                github_token="ghp_test",
+                additional_tools=[mock_tool],
+            )
+            mock_tool.install_tool.assert_called_once_with(mock_environment)
+            mock_tool.verify_tool_installation.assert_called_once_with(mock_environment)
+            bot.stop()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _install_copilot_cli verification failure
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotCLIVerification:
+    """Tests that copilot-cli verification failure raises RuntimeError."""
+
+    def test_install_cli_verify_fails_raises(self, mock_environment):
+        """RuntimeError raised when install commands succeed but 'copilot --version' fails."""
+        from microbots.bot.CopilotBot import CopilotBot
+
+        success_ret = MagicMock()
+        success_ret.return_code = 0
+        success_ret.stdout = ""
+        success_ret.stderr = ""
+
+        fail_ret = MagicMock()
+        fail_ret.return_code = 1
+        fail_ret.stdout = ""
+        fail_ret.stderr = "command not found: copilot"
+
+        def side_effect(cmd, **kwargs):
+            if "copilot --version" in cmd:
+                return fail_ret
+            return success_ret
+
+        mock_environment.execute = MagicMock(side_effect=side_effect)
+
+        with (
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=AsyncMock()),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            with pytest.raises(RuntimeError, match="verification failed"):
+                CopilotBot(
+                    model="gpt-4.1",
+                    environment=mock_environment,
+                    github_token="ghp_test",
+                )
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _start_copilot_cli_server
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotStartServer:
+    """Tests for _start_copilot_cli_server()."""
+
+    def _make_bot_for_server_test(self, mock_environment, mock_copilot_client, github_token=None, provider_config=None):
+        """Build a CopilotBot with _start_copilot_cli_server NOT patched."""
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            if github_token:
+                bot = CopilotBot(
+                    model="gpt-4.1",
+                    environment=mock_environment,
+                    github_token=github_token,
+                )
+            elif provider_config:
+                bot = CopilotBot(
+                    model="gpt-4.1",
+                    environment=mock_environment,
+                    api_key="sk-key",
+                    base_url="https://api.openai.com/v1",
+                )
+            else:
+                bot = CopilotBot(
+                    model="gpt-4.1",
+                    environment=mock_environment,
+                )
+            return bot
+
+    def test_start_server_injects_github_token(self, mock_environment, mock_copilot_client):
+        """Token injection calls when github_token is set without provider_config."""
+        bot = self._make_bot_for_server_test(
+            mock_environment, mock_copilot_client, github_token="ghp_server_test"
+        )
+        execute_args = [str(c) for c in mock_environment.execute.call_args_list]
+        assert any("GITHUB_TOKEN" in a for a in execute_args)
+        assert any("COPILOT_GITHUB_TOKEN" in a for a in execute_args)
+        bot.stop()
+
+    def test_start_server_skips_token_injection_for_byok(
+        self, mock_environment, mock_copilot_client
+    ):
+        """No token injection when BYOK provider_config is active."""
+        bot = self._make_bot_for_server_test(
+            mock_environment, mock_copilot_client, provider_config=True
+        )
+        execute_args = [str(c) for c in mock_environment.execute.call_args_list]
+        assert not any("GITHUB_TOKEN" in a for a in execute_args)
+        bot.stop()
+
+    def test_start_server_raises_on_execute_failure(self, mock_environment, mock_copilot_client):
+        """RuntimeError raised when start_cmd execute fails."""
+        fail_ret = MagicMock()
+        fail_ret.return_code = 1
+        fail_ret.stderr = "failed to start"
+
+        success_ret = MagicMock()
+        success_ret.return_code = 0
+        success_ret.stdout = ""
+        success_ret.stderr = ""
+
+        def side_effect(cmd, **kwargs):
+            if "copilot --headless" in cmd:
+                return fail_ret
+            return success_ret
+
+        mock_environment.execute = MagicMock(side_effect=side_effect)
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            with pytest.raises(RuntimeError, match="Failed to start copilot-cli server"):
+                CopilotBot(
+                    model="gpt-4.1",
+                    environment=mock_environment,
+                    github_token="ghp_test",
+                )
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _wait_for_cli_ready
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotWaitReady:
+    """Tests for _wait_for_cli_ready() called directly on a minimal instance."""
+
+    def _make_minimal_bot(self):
+        """Return a bare CopilotBot instance with only environment set."""
+        from microbots.bot.CopilotBot import CopilotBot
+
+        bot = object.__new__(CopilotBot)
+        mock_env = MagicMock()
+        mock_env.get_ipv4_address = MagicMock(return_value="127.0.0.1")
+        bot.environment = mock_env
+        return bot
+
+    def test_wait_for_cli_ready_success(self):
+        """Returns immediately when socket connection succeeds."""
+        bot = self._make_minimal_bot()
+        mock_sock = MagicMock()
+        with patch("socket.create_connection", return_value=mock_sock) as mock_conn:
+            bot._wait_for_cli_ready()
+            mock_conn.assert_called_once()
+            mock_sock.close.assert_called_once()
+
+    def test_wait_for_cli_ready_timeout(self):
+        """Raises TimeoutError when connections always fail past the deadline."""
+        bot = self._make_minimal_bot()
+        with (
+            patch("socket.create_connection", side_effect=ConnectionRefusedError()),
+            patch("microbots.bot.CopilotBot.time") as mock_time,
+        ):
+            # First call sets deadline (0 + _CLI_STARTUP_TIMEOUT), second exceeds it
+            mock_time.time.side_effect = [0, 9999]
+            mock_time.sleep = MagicMock()
+            with pytest.raises(TimeoutError, match="copilot-cli did not become ready"):
+                bot._wait_for_cli_ready()
+
+    def test_wait_for_cli_ready_oserror_retries(self):
+        """OSError is caught and retried like ConnectionRefusedError."""
+        bot = self._make_minimal_bot()
+        mock_sock = MagicMock()
+        # First attempt raises OSError, second attempt succeeds
+        with patch("socket.create_connection", side_effect=[OSError("network error"), mock_sock]):
+            with patch("microbots.bot.CopilotBot.time") as mock_time:
+                mock_time.time.side_effect = [0, 1, 2]
+                mock_time.sleep = MagicMock()
+                bot._wait_for_cli_ready()
+                mock_sock.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — run() with additional_mounts
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotRunMounts:
+    """Tests for run() with additional_mounts parameter."""
+
+    def test_run_with_additional_mounts_calls_mount_additional(self, copilot_bot):
+        """_mount_additional is called for each mount in additional_mounts."""
+        from microbots.extras.mount import Mount, MountType
+
+        mock_mount = MagicMock(spec=Mount)
+        mock_mount.mount_type = MountType.COPY
+        mock_mount.host_path_info = MagicMock()
+        mock_mount.host_path_info.abs_path = "/tmp/extra"
+        mock_mount.sandbox_path = "/workdir/extra"
+
+        copilot_bot.environment.copy_to_container = MagicMock(return_value=True)
+
+        with patch.object(copilot_bot, "_mount_additional") as mock_ma:
+            copilot_bot.run("test task", additional_mounts=[mock_mount])
+            mock_ma.assert_called_once_with(mock_mount)
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _execute_session
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotExecuteSession:
+    """Tests for _execute_session() paths."""
+
+    def test_execute_session_includes_provider_config(self, mock_environment, mock_copilot_client):
+        """provider is added to session kwargs when _provider_config is set."""
+        import asyncio
+
+        session = AsyncMock()
+        response = Mock()
+        response.data = Mock()
+        response.data.content = "done"
+        session.send_and_wait = AsyncMock(return_value=response)
+        session.on = MagicMock()
+        session.disconnect = AsyncMock()
+        mock_copilot_client.create_session = AsyncMock(return_value=session)
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                api_key="sk-key",
+                base_url="https://api.openai.com/v1",
+            )
+            result = asyncio.run(
+                bot._execute_session(
+                    task="do something",
+                    system_content="",
+                    timeout=30,
+                    streaming=False,
+                )
+            )
+            _, call_kwargs = mock_copilot_client.create_session.call_args
+            assert "provider" in call_kwargs
+            assert result == "done"
+            bot.stop()
+
+    def test_execute_session_includes_system_message(self, mock_environment, mock_copilot_client):
+        """system_message is added to session kwargs when system_content is non-empty."""
+        import asyncio
+
+        session = AsyncMock()
+        response = Mock()
+        response.data = Mock()
+        response.data.content = "done"
+        session.send_and_wait = AsyncMock(return_value=response)
+        session.on = MagicMock()
+        session.disconnect = AsyncMock()
+        mock_copilot_client.create_session = AsyncMock(return_value=session)
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                github_token="ghp_test",
+            )
+            asyncio.run(
+                bot._execute_session(
+                    task="do something",
+                    system_content="You are a helper.",
+                    timeout=30,
+                    streaming=False,
+                )
+            )
+            _, call_kwargs = mock_copilot_client.create_session.call_args
+            assert "system_message" in call_kwargs
+            assert call_kwargs["system_message"]["content"] == "You are a helper."
+            bot.stop()
+
+    def test_execute_session_returns_collected_event_text(
+        self, mock_environment, mock_copilot_client
+    ):
+        """Returns last collected text when send_and_wait returns no content."""
+        import asyncio
+
+        session = AsyncMock()
+        # send_and_wait returns response with no content
+        empty_response = Mock()
+        empty_response.data = Mock()
+        empty_response.data.content = ""
+        session.send_and_wait = AsyncMock(return_value=empty_response)
+        session.disconnect = AsyncMock()
+
+        captured = []
+
+        def capture_on(callback):
+            captured.append(callback)
+
+        session.on = MagicMock(side_effect=capture_on)
+        mock_copilot_client.create_session = AsyncMock(return_value=session)
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            from copilot.generated.session_events import SessionEventType
+
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                github_token="ghp_test",
+            )
+
+            # Simulate an ASSISTANT_MESSAGE event arriving before send_and_wait returns
+            async def _send_and_wait_with_event(task, timeout):
+                if captured:
+                    msg_event = Mock()
+                    msg_event.type = SessionEventType.ASSISTANT_MESSAGE
+                    msg_event.data = Mock()
+                    msg_event.data.content = "from event"
+                    captured[0](msg_event)
+                return empty_response
+
+            session.send_and_wait = _send_and_wait_with_event
+
+            result = asyncio.run(
+                bot._execute_session(
+                    task="do something",
+                    system_content="",
+                    timeout=30,
+                    streaming=False,
+                )
+            )
+            assert result == "from event"
+            bot.stop()
+
+    def test_execute_session_returns_fallback_when_no_content(
+        self, mock_environment, mock_copilot_client
+    ):
+        """Returns fallback message when no text is collected at all."""
+        import asyncio
+
+        session = AsyncMock()
+        empty_response = Mock()
+        empty_response.data = Mock()
+        empty_response.data.content = ""
+        session.send_and_wait = AsyncMock(return_value=empty_response)
+        session.on = MagicMock()
+        session.disconnect = AsyncMock()
+        mock_copilot_client.create_session = AsyncMock(return_value=session)
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                github_token="ghp_test",
+            )
+            result = asyncio.run(
+                bot._execute_session(
+                    task="do something",
+                    system_content="",
+                    timeout=1,
+                    streaming=False,
+                )
+            )
+            assert "without producing" in result
+            bot.stop()
+
+    def test_execute_session_on_event_handlers(self, mock_environment, mock_copilot_client):
+        """_on_event handles ASSISTANT_MESSAGE_DELTA, SESSION_IDLE, and unknown types."""
+        import asyncio
+
+        session = AsyncMock()
+        empty_response = Mock()
+        empty_response.data = Mock()
+        empty_response.data.content = ""
+        session.disconnect = AsyncMock()
+
+        captured = []
+
+        def capture_on(callback):
+            captured.append(callback)
+
+        session.on = MagicMock(side_effect=capture_on)
+
+        async def _send_and_wait_with_events(task, timeout):
+            if captured:
+                cb = captured[0]
+                # ASSISTANT_MESSAGE_DELTA with delta_content
+                delta_event = Mock()
+                delta_event.type = "assistant.message_delta"
+                delta_event.data = Mock()
+                delta_event.data.delta_content = "partial"
+                cb(delta_event)
+
+                # SESSION_IDLE
+                idle_event = Mock()
+                idle_event.type = "session.idle"
+                cb(idle_event)
+
+                # Unknown event type
+                unknown_event = Mock()
+                unknown_event.type = "some.other.event"
+                cb(unknown_event)
+
+                # ASSISTANT_MESSAGE with no content (data.content is empty)
+                msg_empty = Mock()
+                msg_empty.type = "assistant.message"
+                msg_empty.data = Mock()
+                msg_empty.data.content = ""
+                cb(msg_empty)
+
+            return empty_response
+
+        session.send_and_wait = _send_and_wait_with_events
+        mock_copilot_client.create_session = AsyncMock(return_value=session)
+
+        with (
+            patch("microbots.bot.CopilotBot.LocalDockerEnvironment", return_value=mock_environment),
+            patch("microbots.bot.CopilotBot.get_free_port", side_effect=[9000]),
+            patch("microbots.bot.CopilotBot.CopilotBot._install_copilot_cli"),
+            patch("microbots.bot.CopilotBot.CopilotBot._start_copilot_cli_server"),
+            patch("microbots.bot.CopilotBot.CopilotBot._wait_for_cli_ready"),
+            patch("copilot.CopilotClient", return_value=mock_copilot_client),
+            patch("copilot.ExternalServerConfig", return_value=MagicMock()),
+        ):
+            from microbots.bot.CopilotBot import CopilotBot
+            bot = CopilotBot(
+                model="gpt-4.1",
+                environment=mock_environment,
+                github_token="ghp_test",
+            )
+            # Should not raise — covers all branches of _on_event
+            asyncio.run(
+                bot._execute_session(
+                    task="do something",
+                    system_content="",
+                    timeout=5,
+                    streaming=False,
+                )
+            )
+            bot.stop()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _on_pre_tool_use and _on_post_tool_use hooks
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotToolUseHooks:
+    """Tests for _on_pre_tool_use() and _on_post_tool_use() async hooks."""
+
+    def test_on_pre_tool_use_returns_allow(self, copilot_bot):
+        import asyncio
+
+        result = asyncio.run(
+            copilot_bot._on_pre_tool_use(
+                {"toolName": "bash", "toolArgs": {"command": "ls"}},
+                None,
+            )
+        )
+        assert result == {"permissionDecision": "allow"}
+
+    def test_on_pre_tool_use_missing_keys(self, copilot_bot):
+        import asyncio
+
+        result = asyncio.run(copilot_bot._on_pre_tool_use({}, None))
+        assert result == {"permissionDecision": "allow"}
+
+    def test_on_post_tool_use_returns_empty_dict(self, copilot_bot):
+        import asyncio
+
+        result = asyncio.run(
+            copilot_bot._on_post_tool_use(
+                {"toolName": "bash", "toolResult": "output here"},
+                None,
+            )
+        )
+        assert result == {}
+
+    def test_on_post_tool_use_truncates_long_result(self, copilot_bot):
+        import asyncio
+
+        long_result = "x" * 600
+        # Should not raise even with a very long result string
+        result = asyncio.run(
+            copilot_bot._on_post_tool_use(
+                {"toolName": "bash", "toolResult": long_result},
+                None,
+            )
+        )
+        assert result == {}
+
+    def test_on_post_tool_use_missing_keys(self, copilot_bot):
+        import asyncio
+
+        result = asyncio.run(copilot_bot._on_post_tool_use({}, None))
+        assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _mount_additional
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestCopilotBotMountAdditional:
+    """Tests for _mount_additional()."""
+
+    def test_mount_additional_non_copy_raises(self, copilot_bot):
+        """ValueError raised for non-COPY mount type."""
+        from microbots.extras.mount import Mount, MountType
+
+        mock_mount = MagicMock()
+        mock_mount.mount_type = MountType.MOUNT  # not COPY
+        with pytest.raises(ValueError, match="Only COPY mount type"):
+            copilot_bot._mount_additional(mock_mount)
+
+    def test_mount_additional_copy_fails_raises(self, copilot_bot):
+        """ValueError raised when copy_to_container returns False."""
+        from microbots.extras.mount import MountType
+
+        mock_mount = MagicMock()
+        mock_mount.mount_type = MountType.COPY
+        mock_mount.host_path_info = MagicMock()
+        mock_mount.host_path_info.abs_path = "/host/path"
+        mock_mount.sandbox_path = "/workdir/path"
+
+        copilot_bot.environment.copy_to_container = MagicMock(return_value=False)
+        with pytest.raises(ValueError, match="Failed to copy additional mount"):
+            copilot_bot._mount_additional(mock_mount)
+
+    def test_mount_additional_copy_succeeds(self, copilot_bot):
+        """No error raised when copy_to_container succeeds."""
+        from microbots.extras.mount import MountType
+
+        mock_mount = MagicMock()
+        mock_mount.mount_type = MountType.COPY
+        mock_mount.host_path_info = MagicMock()
+        mock_mount.host_path_info.abs_path = "/host/path"
+        mock_mount.sandbox_path = "/workdir/path"
+
+        copilot_bot.environment.copy_to_container = MagicMock(return_value=True)
+        copilot_bot._mount_additional(mock_mount)  # should not raise
+
+
+# ---------------------------------------------------------------------------
 # Integration tests — require real Docker + copilot-cli + auth
 # ---------------------------------------------------------------------------
 
