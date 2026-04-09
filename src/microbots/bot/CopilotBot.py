@@ -530,10 +530,10 @@ class CopilotBot:
         # config passed to create_session — no container-side token needed.
         if self.github_token and not self._provider_config:
             self.environment.execute(
-                f'export GITHUB_TOKEN="{self.github_token}"'
+                f'export GITHUB_TOKEN="{self.github_token}"', sensitive=True
             )
             self.environment.execute(
-                f'export COPILOT_GITHUB_TOKEN="{self.github_token}"'
+                f'export COPILOT_GITHUB_TOKEN="{self.github_token}"', sensitive=True
             )
 
         # Start copilot in headless mode in the background
