@@ -153,6 +153,18 @@ class LocalDockerEnvironment(Environment):
         except Exception as e:
             logger.error("❌  Failed to teardown overlay mount: %s", e)
 
+    def get_ipv4_address(self) -> str:
+        """Return the container's IPv4 address on the Docker bridge network."""
+        if not self.container:
+            raise RuntimeError("No active container to get IP address from")
+
+        self.container.reload()
+        networks = self.container.attrs["NetworkSettings"]["Networks"]
+        container_ip = next(iter(networks.values()))["IPAddress"]
+        if not container_ip:
+            raise RuntimeError("Could not determine container IP address")
+        return container_ip
+
     def stop(self):
         """Stop and remove the container"""
         if self.container:

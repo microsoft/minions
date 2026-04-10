@@ -33,3 +33,24 @@ class Environment(ABC):
             f"{self.__class__.__name__} does not support copying files from container. "
             f"This is an optional feature - only implement if needed for your use case."
         )
+
+    def get_ipv4_address(self) -> str:
+        """Return the IPv4 address of the running environment.
+
+        This allows host-side code to connect directly to services
+        running inside the environment without port forwarding.
+
+        Returns
+        -------
+        str
+            The IPv4 address of the environment.
+
+        Raises
+        ------
+        NotImplementedError
+            If the environment does not support retrieving its IP address.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support retrieving its IP address. "
+            f"This is an optional feature - only implement if needed for your use case."
+        )

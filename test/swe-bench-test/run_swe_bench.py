@@ -11,10 +11,55 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-from microbots import AgentBoss
+from microbots import AgentBoss, CopilotBot
+
+LOG_DIR = Path(__file__).parent.resolve() / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+LOG_FORMAT = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logger.setLevel(logging.DEBUG)
+
+# Console output (always active)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(LOG_FORMAT)
+logger.addHandler(console_handler)
+
+# Track per-instance file handlers so they can be swapped between test cases
+_active_file_handlers: list[logging.Handler] = []
+
+
+def setup_instance_logging(instance_id: str):
+    """Create per-instance log directory and swap file handlers."""
+    root = logging.getLogger()
+
+    # Remove previous instance file handlers
+    for h in _active_file_handlers:
+        root.removeHandler(h)
+        h.close()
+    _active_file_handlers.clear()
+
+    instance_log_dir = LOG_DIR / instance_id
+    instance_log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Info log file
+    info_handler = logging.FileHandler(instance_log_dir / "info.log")
+    info_handler.setLevel(logging.INFO)
+    info_handler.setFormatter(LOG_FORMAT)
+
+    # Debug log file
+    debug_handler = logging.FileHandler(instance_log_dir / "debug.log")
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(LOG_FORMAT)
+
+    root.setLevel(logging.DEBUG)
+    root.addHandler(info_handler)
+    root.addHandler(debug_handler)
+    _active_file_handlers.extend([info_handler, debug_handler])
+
+    logger.info("Logging for instance %s -> %s", instance_id, instance_log_dir)
 
 # Verification method
 # `pip install swebench`
@@ -94,6 +139,23 @@ def run_agent(dataset):
     )
 
 
+def run_copilot_agent(dataset):
+    bot = CopilotBot(
+        model="gpt-5.4",
+        folder_to_mount=str(TEST_DIR / dataset['instance_id']),
+        permission="READ_WRITE",
+    )
+    try:
+        result = bot.run(
+            task=dataset['problem_statement'] + "\n\nHint: " + dataset['hints_text'],
+            timeout_in_seconds=3600 * 4,  # 4 hours
+        )
+        if not result.status:
+            logger.error(f"CopilotBot failed on {dataset['instance_id']}: {result.error}")
+    finally:
+        bot.stop()
+
+
 def generate_prediction(dataset):
     repo_path = TEST_DIR / dataset['instance_id']
     diff_output = subprocess.run(
@@ -136,6 +198,7 @@ def test_swe_bench():
     datasets = load_dataset(SWE_BENCH_SUITE, split="test")
 
     for instance in selected_dataset:
+        setup_instance_logging(instance)
         dataset = datasets.filter(lambda x: x['instance_id'] == instance)[0]
         logger.info(f"DATASET: {pprint(dataset)}")
         setup_test_directory(dataset)
@@ -146,5 +209,19 @@ def test_swe_bench():
     verify_fix()
 
 
+def test_swe_bench_copilot():
+    datasets = load_dataset(SWE_BENCH_SUITE, split="test")
+
+    for instance in selected_dataset:
+        setup_instance_logging(instance)
+        dataset = datasets.filter(lambda x: x['instance_id'] == instance)[0]
+        logger.info(f"DATASET: {pprint(dataset)}")
+        setup_test_directory(dataset)
+        run_copilot_agent(dataset)
+        generate_prediction(dataset)
+
+    verify_fix()
+
+
 if __name__ == "__main__":
-    test_swe_bench()
+    test_swe_bench_copilot()

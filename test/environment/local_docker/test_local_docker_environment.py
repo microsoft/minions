@@ -492,3 +492,54 @@ class TestCreateWorkingDir:
         assert "<redacted>" in caplog.text
         assert "SECRET_TOKEN" not in caplog.text
         assert "abc123" not in caplog.text
+
+
+@pytest.mark.unit
+class TestGetIpv4Address:
+    """Unit tests for LocalDockerEnvironment.get_ipv4_address"""
+
+    def _make_env(self):
+        """Create a bare LocalDockerEnvironment without calling __init__"""
+        env = LocalDockerEnvironment.__new__(LocalDockerEnvironment)
+        env.deleted = True
+        env.container = None
+        return env
+
+    def test_returns_ip_address_from_container_networks(self):
+        """get_ipv4_address returns the IP from the first Docker network"""
+        env = self._make_env()
+        env.container = Mock()
+        env.container.attrs = {
+            "NetworkSettings": {
+                "Networks": {
+                    "bridge": {"IPAddress": "172.17.0.2"}
+                }
+            }
+        }
+
+        result = env.get_ipv4_address()
+
+        env.container.reload.assert_called_once()
+        assert result == "172.17.0.2"
+
+    def test_raises_runtime_error_when_no_container(self):
+        """get_ipv4_address raises RuntimeError when container is None"""
+        env = self._make_env()
+
+        with pytest.raises(RuntimeError, match="No active container"):
+            env.get_ipv4_address()
+
+    def test_raises_runtime_error_when_ip_is_empty(self):
+        """get_ipv4_address raises RuntimeError when IP address is empty"""
+        env = self._make_env()
+        env.container = Mock()
+        env.container.attrs = {
+            "NetworkSettings": {
+                "Networks": {
+                    "bridge": {"IPAddress": ""}
+                }
+            }
+        }
+
+        with pytest.raises(RuntimeError, match="Could not determine container IP address"):
+            env.get_ipv4_address()
