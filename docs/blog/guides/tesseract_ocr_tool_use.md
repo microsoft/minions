@@ -1,12 +1,18 @@
-# Custom Tool Creation in Microbots: A Tesseract OCR Walkthrough
+# Custom Tool Integration Walkthrough
 
 **Published on:** April 13, 2026 | **Author:** Balakumaran Kannan
 
-Microbots agents run inside sandboxed Docker containers with only standard Linux utilities available. But real-world tasks often demand specialized software — debuggers, crash analyzers, linters, compilers, database clients, and more. Instead of baking every possible tool into the base image, Microbots provides a **YAML-based tool definition system** that lets you declare custom tools which are relevant and necessary to your workflow and inject them into any agent at runtime.
+Microbots agents run inside sandboxed Docker containers with only standard Linux utilities available. But real-world tasks often demand specialized software — debuggers, core-dump analyzers, linters, compilers, database clients, and more. Instead of baking every possible tool into the base image, Microbots provides a **YAML-based tool definition system** that lets you declare custom tools which are relevant and necessary to your workflow and inject them into any agent at runtime.
 
 This guide walks through the process by building a custom Tesseract OCR tool and using it with a `WritingBot` to extract form fields from a scanned document image.
 
 The problem statement is simple. Given a flattened (non-Acrobat) PDF file, recognize any field elements from it and list them into a JSON file. This is useful when developing a dynamic user interface based on a form the user needs to fill.
+
+Consider the following scanned form page:
+
+![Subscription Agreement Form](../../examples/tesseract_ocr_tool_use/pngs/pdf_page-01.png)
+
+This is a Subscription Agreement with two fillable fields: **Date** and **Name of Applicant**. The expectation from the agent is to run OCR on this image, identify these fields, and produce a JSON output listing each field along with its name, expected data type, and expected length.
 
 ## The Tool System at a Glance
 
@@ -59,13 +65,13 @@ First, import `parse_tool_definition` — the utility that turns a YAML file int
 Then parse the YAML into a tool object:
 
 ```python
---8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:42:44"
+--8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:40:42"
 ```
 
 And pass it to the bot via the `additional_tools` parameter. This is a list, so you can attach multiple tools for workflows that need them:
 
 ```python
---8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:46:50"
+--8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:43:47"
 ```
 
 Here is the complete agent script:
