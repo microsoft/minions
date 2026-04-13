@@ -1,0 +1,19 @@
+name: tesseract_ocr
+tool_type: internal
+description: Tesseract OCR tool for text recognition
+
+install_commands:
+  - rm -f /etc/apt/sources.list.d/yarn.list
+  - apt-get update
+  - apt-get install -y tesseract-ocr
+
+usage_instructions_to_llm: |
+  This tool uses Tesseract OCR to recognize text from images. To use this tool, provide the path to the image file you want to process. The tool will return the recognized text from the image.
+
+  Example usage:
+  ```
+  tesseract page_1.png page_1_output -l eng
+  ```
+
+  Make sure to replace "page_1.png" with the actual path to your image file and "page_1_output" with the desired output file name.
+
