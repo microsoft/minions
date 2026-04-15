@@ -124,7 +124,9 @@ A few patterns from the built-in Microbots tools:
 
 ### Keep `usage_instructions_to_llm` Non-Interactive
 
-LLM agents cannot interact with prompts or TUIs. Always instruct the LLM to use batch/CLI mode. For example, the built-in `cscope` tool explicitly states:
+Microbots scaffolding executes each command the LLM produces in a shell, captures the output, and sends it back to the LLM as part of the next ReAct loop iteration. This means the shell must run to completion and return output for the loop to advance. Any command that opens an interactive prompt or TUI — such as `vim`, `less`, or an interactive `cscope` session — will block the shell indefinitely, stalling the entire agent.
+
+So, always instruct the LLM to use non-interactive, batch, or CLI modes. For example, the built-in `cscope` tool definition explicitly states:
 
 > Do NOT run interactive `cscope` (no curses UI). Use the `-L` batch mode flags.
 
