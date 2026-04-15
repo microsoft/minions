@@ -39,9 +39,9 @@ def main():
     tesseract_ocr_yaml = os.path.join(os.getcwd(), "tesseract_ocr.yaml")
 
     tool = parse_tool_definition(tesseract_ocr_yaml)
-    
+
     bot = WritingBot(
-        model = "azure-openai/mini-swe-agent-gpt5",
+        model = "azure-openai/my-gpt5-model",
         folder_to_mount = os.path.join(os.getcwd(), "pngs"),
         additional_tools=[tool]
     )

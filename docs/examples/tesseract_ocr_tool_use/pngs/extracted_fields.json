@@ -1,0 +1,9 @@
+{
+  "fields": [
+    {"name": "Date_Day", "value": "", "confidence": 76.517, "expected_data_type": "numeric", "expected_length": 2},
+    {"name": "Date_YearSuffix", "value": "", "confidence": 83.308, "expected_data_type": "numeric", "expected_length": 2},
+    {"name": "Name_of_Applicant", "value": "", "confidence": 96.820, "expected_data_type": "string", "expected_length": null},
+    {"name": "Name_of_General_Partner", "value": "", "confidence": 95.703, "expected_data_type": "string", "expected_length": null},
+    {"name": "Name_of_Fund", "value": "", "confidence": 95.922, "expected_data_type": "string", "expected_length": null}
+  ]
+}

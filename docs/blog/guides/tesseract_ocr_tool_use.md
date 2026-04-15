@@ -14,6 +14,8 @@ Consider the following scanned form page:
 
 This is a Subscription Agreement with two fillable fields: **Date** and **Name of Applicant**. The expectation from the agent is to run OCR on this image, identify these fields, and produce a JSON output listing each field along with its name, expected data type, and expected length.
 
+You can find a sample output JSON file in the `pngs/` directory of the example. The exact output may vary based on the LLM's interpretation of the instructions and the OCR results.
+
 ## The Tool System at a Glance
 
 Every tool in Microbots is described by a YAML file. The YAML definition is the only file you need to create — Microbots handles parsing, installation, verification, and prompt injection automatically. The tool will be installed inside the sandboxed Environment, and the LLM will use it to perform specialized operations on data or artifacts specific to your workflow.
@@ -42,7 +44,7 @@ The `usage_instructions_to_llm` field is critical — it is the only way the LLM
 
 Following the table of fields above, create a file called `tesseract_ocr.yaml`:
 
-```yaml
+```yaml title="tesseract_ocr.yaml" linenums="1"
 --8<-- "docs/examples/tesseract_ocr_tool_use/tesseract_ocr.yaml"
 ```
 
@@ -58,25 +60,25 @@ With the YAML defined, wiring it into an agent takes only a few lines.
 
 First, import `parse_tool_definition` — the utility that turns a YAML file into a `Tool` object:
 
-```python
+```python title="field_extractor_agent.py" linenums="4"
 --8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:4:4"
 ```
 
 Then parse the YAML into a tool object:
 
-```python
+```python title="field_extractor_agent.py" linenums="40"
 --8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:40:42"
 ```
 
 And pass it to the bot via the `additional_tools` parameter. This is a list, so you can attach multiple tools for workflows that need them:
 
-```python
+```python title="field_extractor_agent.py" linenums="43"
 --8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py:43:47"
 ```
 
 Here is the complete agent script:
 
-```python
+```python title="field_extractor_agent.py" linenums="1"
 --8<-- "docs/examples/tesseract_ocr_tool_use/field_extractor_agent.py"
 ```
 
@@ -107,6 +109,14 @@ python field_extractor_agent.py
 ```
 
 The agent will install Tesseract inside the sandbox, run OCR on the image, and produce structured JSON output — all without installing anything on your host.
+
+Here is the output it has produced in my run.
+
+```json title="extracted_fields.json" linenums="1"
+--8<-- "docs/examples/tesseract_ocr_tool_use/pngs/extracted_fields.json"
+```
+
+*Note: The output may vary based on the LLM's interpretation of the instructions and the OCR results. When you want to try this example yourself. Delete this output file before running the Agent.*
 
 ## Writing Effective Tool Definitions
 
