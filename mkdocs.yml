@@ -41,12 +41,16 @@ markdown_extensions:
 
 nav:
   - Getting Started:
-    - Home: index.md
+    - Home: getting-started/home.md
   - Guides:
-    - CopilotBot: copilot-bot.md
-    - Authentication: authentication.md
+    - guides/index.md
+    - Bots:
+      - "Microbots : Introduction, Installation Guide and Creating Your First MicroBot": guides/bots/microbots-introduction-installation-guide-creating-your-first-bot.md
+    - CopilotBot: guides/bots/copilot-bot.md
     - Tools:
-      - "Custom Tool Integration Walkthrough": blog/guides/tesseract_ocr_tool_use.md
+      - "Custom Tool Integration Walkthrough": guides/tools/tesseract_ocr_tool_use.md
+    - Advanced:
+      - Authentication: guides/advanced/authentication.md
   - Blogs:
     - blog/index.md
     - "Microbots : Safety First Agentic Workflow": blog/microbots-safety-first-ai-agent.md

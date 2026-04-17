@@ -44,7 +44,7 @@ print(data.results)
 
 ## ⚙️ How it works
 
-![Overall Architecture](images/overall_architecture.png)
+![Overall Architecture](../images/overall_architecture.png)
 
 MicroBots creates a containerized environment and mounts the specified directory, restricting permissions to read-only or read/write based on the Bot used. This ensures AI agents operate within defined boundaries, enhancing security and control over code modifications while protecting the local environment.
 
